@@ -75,9 +75,9 @@ void main() {
   });
 
   group('nextBackupName', () {
-    test('emits a lexically-sortable UTC timestamped name', () {
+    test('emits a lexically-sortable UTC timestamped name (ms resolution)', () {
       final name = const BackupRotator().nextBackupName('vault', now);
-      expect(name, 'vault.20260614T120000.kdbx.bak');
+      expect(name, 'vault.20260614T120000000.kdbx.bak');
     });
 
     test('lexical order matches chronological order', () {
@@ -85,6 +85,14 @@ void main() {
       final earlier = r.nextBackupName('v', DateTime.utc(2026, 1, 1, 0, 0, 0));
       final later = r.nextBackupName('v', DateTime.utc(2026, 12, 31, 23, 59, 59));
       expect(earlier.compareTo(later) < 0, isTrue);
+    });
+
+    test('sequence suffix disambiguates same-instant backups (R15 minor)', () {
+      const r = BackupRotator();
+      final a = r.nextBackupName('v', now, sequence: 0);
+      final b = r.nextBackupName('v', now, sequence: 1);
+      expect(a, isNot(b));
+      expect(a.compareTo(b) < 0, isTrue, reason: 'sequence preserves order');
     });
   });
 }
