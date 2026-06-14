@@ -100,7 +100,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Large database handling (250MB+) — streaming/lazy load (Performer)
 - [x] Rolling local backups — retention/rotation policy (keepLast + maxAge + maxTotalCount) + next-name (Performer)
 - [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer); copyEntry deep-clone source-corruption FIXED R9 (was Critic T1)
-- [ ] Local-only / local databases support (Performer)
+- [x] Local-only / local databases support — database registry + storage-location model + local-only sync guard (refuses remote targets) (Composer)
 - [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
 - [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)
 - [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt). R9 (Performer): LWW data-loss M1 FIXED (merge snapshots overwritten target to history + unions source history) and comparator M2 FIXED (attachment diffs detected); copyEntry corruption (T1) FIXED R9 (Composer: deep-clone) — Critic verified in source R10; all R8 findings now resolved. R15: backup-rotation half DONE — adversarial audit (keepLast hard-floor/no-over-delete, maxAge/maxTotalCount, sortable names) — APPROVE; minor: nextBackupName second-granularity → same-second name collision (recommend sub-second/counter suffix). This Critic task now COMPLETE
