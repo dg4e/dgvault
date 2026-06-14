@@ -83,8 +83,8 @@ void main() {
     });
   });
 
-  group('DatabaseMerger — DATA LOSS on concurrent edits (flagged)', () {
-    test('field edits on the losing side are lost with no history trail', () {
+  group('DatabaseMerger — concurrent edits keep a recovery trail (R9 fix)', () {
+    test('overwritten target version is snapshotted to history (recoverable)', () {
       // target edited the username; source edited the password slightly later.
       final t = _db([
         _entry('e', {Field.userName: 'alice-edited', Field.password: 'orig'},
@@ -96,12 +96,18 @@ void main() {
       ]);
       const DatabaseMerger().merge(t, s);
       final merged = t.root.entries.single;
-      // Whole-entry LWW: target's username edit is silently overwritten...
+      // Whole-entry LWW: source (newer) wins the live values...
       expect(merged.fields[Field.userName]!.value.reveal(), 'alice');
       expect(_pw(merged), 'src-edited');
-      // ...and unlike KeePass there is no history union/snapshot to recover it.
-      expect(merged.history, isEmpty,
-          reason: 'overwritten target version is unrecoverable — see review');
+      // ...but the overwritten target version is now preserved in history,
+      // so the losing-side edit ('alice-edited') is recoverable (Critic M1 fix).
+      expect(merged.history, isNotEmpty);
+      expect(
+        merged.history.any(
+            (h) => h.fields[Field.userName]?.value.reveal() == 'alice-edited'),
+        isTrue,
+        reason: 'pre-merge target snapshot must be recoverable',
+      );
     });
   });
 
