@@ -132,4 +132,23 @@ void main() {
     expect(src.binaryPool.map((b) => b.id), ['b1']); // source pool intact
     expect(dst.binaryPool.map((b) => b.id), ['b1']);
   });
+
+  // Regression for Critic R8 finding T1: copy must deep-clone, never aliasing
+  // the source entry nor rewriting its attachment ids.
+  test('copyEntry deep-clones — source ref untouched on id collision', () {
+    final entry = _entry('e1', atts: [_bin('b1', name: 'mine.png', size: 10)]);
+    final src = _db('src',
+        entries: [entry], pool: [_bin('b1', name: 'mine.png', size: 10)]);
+    // Dest already has a DIFFERENT binary under id 'b1' → forces a minted id.
+    final dst = _db('dst', pool: [_bin('b1', name: 'other.png', size: 99)]);
+
+    final copy = transfer.copyEntry(entry, src, dst, dst.root);
+
+    // Source entry's attachment ref is unchanged...
+    expect(src.root.entries.single.attachments.single.id, 'b1');
+    // ...the dest copy got the minted id...
+    expect(copy.attachments.single.id, isNot('b1'));
+    // ...and the two databases hold distinct Entry objects.
+    expect(identical(src.root.entries.single, dst.root.entries.single), isFalse);
+  });
 }

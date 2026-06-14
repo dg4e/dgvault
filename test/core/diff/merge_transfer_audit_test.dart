@@ -140,10 +140,10 @@ void main() {
     });
   });
 
-  group('DatabaseTransfer.copyEntry — CORRUPTION (flagged)', () {
-    test('copy mutates the SOURCE entry ref and aliases the object', () {
+  group('DatabaseTransfer.copyEntry — FIXED (Composer R9, was Critic T1)', () {
+    test('copy deep-clones: source ref intact, no object aliasing', () {
       // Source binary 'b1'; dest already has a *different* binary under id 'b1',
-      // forcing a fresh minted id — which gets written back into the entry.
+      // forcing a fresh minted id on the dest side only.
       final e = _entry('e', {Field.title: 'X'},
           attachments: [Attachment(id: 'b1', name: 'f.png', size: 10)]);
       final source = _db([e], pool: [Attachment(id: 'b1', name: 'f.png', size: 10)]);
@@ -151,13 +151,15 @@ void main() {
 
       const DatabaseTransfer().copyEntry(e, source, dest, dest.root);
 
-      // BUG: copyEntry relinked the SOURCE entry's own attachment to a dest id
-      // that does not exist in the source pool — "source unchanged" is violated.
-      expect(source.root.entries.single.attachments.single.id, isNot('b1'),
-          reason: 'source entry attachment ref corrupted by copy');
-      // And the SAME object now lives in both databases (aliasing).
-      expect(identical(source.root.entries.single, dest.root.entries.single), isTrue,
-          reason: 'copy shares one Entry object across two databases');
+      // FIXED: the source entry's attachment ref is untouched by the copy.
+      expect(source.root.entries.single.attachments.single.id, 'b1',
+          reason: 'source entry attachment ref must survive a copy unchanged');
+      // FIXED: the two databases now hold distinct Entry objects.
+      expect(identical(source.root.entries.single, dest.root.entries.single),
+          isFalse,
+          reason: 'copy must deep-clone, not share one Entry across databases');
+      // The dest copy carries the minted id (collision avoided).
+      expect(dest.root.entries.single.attachments.single.id, isNot('b1'));
     });
   });
 }
