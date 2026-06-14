@@ -81,32 +81,31 @@ void main() {
     });
   });
 
-  // ---- DATA-LOSS findings: these assert the CURRENT (lossy) behaviour so a fix
-  // is a deliberate, visible change. Flagged REQUEST_CHANGES in the review. ----
-  group('DATA LOSS — export drops non-column data', () {
-    test('custom fields are NOT exported (silent loss)', () {
+  // ---- Custom fields + tags are now exported losslessly. (Fix for the Critic
+  // R7 REQUEST_CHANGES: export added a Tags column + one column per custom key.)
+  group('custom fields + tags survive the round-trip (lossless export)', () {
+    test('custom fields are exported as columns and round-trip', () {
       final e = Entry(uuid: 'e', fields: {
         Field.title: _f(Field.title, 'Bank'),
         'Security Question': _f('Security Question', 'first pet', protect: false),
         'Recovery Code': _f('Recovery Code', 'ABCD-EFGH', protect: false),
       });
       final csv = const CsvExporter().export(_rootWith(e));
-      expect(csv.contains('Security Question'), isFalse,
-          reason: 'custom field header absent → value cannot survive export');
+      expect(csv.contains('Security Question'), isTrue,
+          reason: 'custom field must appear as a column header');
       final imported = CsvImporter(random: Random(1)).import(csv).root.entries.single;
-      expect(imported.fields.containsKey('Security Question'), isFalse);
-      expect(imported.fields.containsKey('Recovery Code'), isFalse);
+      expect(imported.fields['Security Question']!.value.reveal(), 'first pet');
+      expect(imported.fields['Recovery Code']!.value.reveal(), 'ABCD-EFGH');
     });
 
-    test('tags are NOT exported (silent loss)', () {
+    test('tags are exported via the Tags column and round-trip', () {
       final e = Entry(
         uuid: 'e',
         fields: {Field.title: _f(Field.title, 'X')},
         tags: ['work', 'vip'],
       );
       final imported = _roundTrip(_rootWith(e)).root.entries.single;
-      expect(imported.tags, isEmpty,
-          reason: 'exporter has no Tags column — tags are lost on export');
+      expect(imported.tags, containsAll(['work', 'vip']));
     });
   });
 }
