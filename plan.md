@@ -85,7 +85,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Diceware passphrase generator + wordlist (Performer) — RESOLVED R4: `diceware_wordlist.dart` ships a 264-word embedded list (pure Dart, no asset → keeps core platform-agnostic) + EFF/plain parsers + `DicewareGenerator.standard()`; full EFF list loads via `DicewareWordlist.parseEff`
 - [x] TOTP support (RFC 6238/4226 HOTP, Steam variant, otpauth:// QR URI, base32) — injected HMAC keeps it pure/testable against RFC 4226 vectors (Composer); real HMAC-SHA1/256/512 impl = crypto-layer (Performer) — Critic R17 APPROVE: verified RFC 4226 truncation math by hand; Composer's vectors (Appendix-D 0–2, Steam exact, base32, otpauth) excellent; Critic added the independent §5.4 canonical example (872921, offset-10 path) + digit-slicing + exact-multiple base32
 - [x] Auto-clear clipboard timer — generation-guarded clear scheduler (newer copy supersedes), injectable clock (Performer) — Critic R16 SECURITY review: APPROVE; added end-to-end supersession assertion (stale timer inert past its own clearAt). Caller caveat: platform layer should verify the clipboard still holds the secret before wiping (avoid clobbering externally-copied content). Note: timeout>0 is an assert but fails SAFE (over-eager clear, not data loss)
-- [ ] Favicon downloader (Performer)
+- [x] Favicon downloader — pure favicon-URL resolution (well-known candidates + <link rel=icon> HTML parse, size-ordered, relative→absolute); HTTP fetch is platform layer (Performer)
 - [x] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic) — generator adversarial audit DONE R3; TOTP RFC-vector audit DONE R17 (independent §5.4 offset-10 vector + digit-slicing + base32 boundary). COMPLETE
 
 ### Phase 4 — Security & Audit (Round 4–5)
@@ -100,7 +100,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Large database handling (250MB+) — streaming/lazy load (Performer)
 - [x] Rolling local backups — retention/rotation policy (keepLast + maxAge + maxTotalCount) + next-name (Performer)
 - [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer); copyEntry deep-clone source-corruption FIXED R9 (was Critic T1)
-- [ ] Local-only / local databases support (Performer)
+- [x] Local-only / local databases support — database registry + storage-location model + local-only sync guard (refuses remote targets) (Composer)
 - [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
 - [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)
 - [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt). R9 (Performer): LWW data-loss M1 FIXED (merge snapshots overwritten target to history + unions source history) and comparator M2 FIXED (attachment diffs detected); copyEntry corruption (T1) FIXED R9 (Composer: deep-clone) — Critic verified in source R10; all R8 findings now resolved. R15: backup-rotation half DONE — adversarial audit (keepLast hard-floor/no-over-delete, maxAge/maxTotalCount, sortable names) — APPROVE; minor: nextBackupName second-granularity → same-second name collision (recommend sub-second/counter suffix). This Critic task now COMPLETE
