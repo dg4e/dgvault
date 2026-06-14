@@ -70,7 +70,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Duress PIN — open dummy database (Performer)
 - [ ] Duress PIN — delete all data (Performer)
 - [ ] App Lock — delete-all-on-fails policy (Performer)
-- [ ] Read-only mode (Composer interface + Performer impl) (shared)
+- [x] Read-only mode — data-layer write-guard repository (Composer)
 - [ ] Master password reminder scheduler (Performer)
 - [ ] Secure storage wrapping of keys via OS keystore (Performer)
 - [ ] Auth/lock state-machine unit tests (Critic)
