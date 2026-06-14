@@ -22,27 +22,51 @@ void main() {
     });
   });
 
-  // ---- 🔴 SECURITY FINDING (REQUEST_CHANGES) — pinned current behaviour ----
-  group('SECURITY: dotless integer-encoded public IP bypasses the guard', () {
-    test('134744072 (== 8.8.8.8) is mis-classified as LOCAL', () {
-      // No dots → isLocal()'s single-label-hostname rule returns true. But HTTP
-      // stacks (curl, many libs) resolve an all-integer host as an IP, so
-      // http://134744072/ reaches the PUBLIC 8.8.8.8 while the guard thinks it's
-      // a LAN name. REQUEST_CHANGES: a pure-integer host (and 0x.../0-prefixed
-      // forms) must be parsed as an int IP and range-checked, or denied — never
-      // auto-classified local.
-      expect(HostClassifier.isLocal('134744072'), isTrue,
-          reason: 'CURRENT UNSAFE behaviour pinned; must become non-local after fix');
+  // ---- ✅ SECURITY FINDING FIXED (R20 REQUEST_CHANGES → regression guard) ----
+  // Was: a dotless integer-encoded public IP hit the single-label-LAN rule and
+  // was classified local, so local-only ALLOWED a fetch to the public internet.
+  // Fix: a pure-integer / 0x-hex / 0-octal host is parsed as a 32-bit IPv4 and
+  // range-checked (never blanket-local). Assertions flipped to the safe outcome.
+  group('SECURITY: dotless integer-encoded public IP is NOT local', () {
+    test('134744072 (== 8.8.8.8) classifies as non-local', () {
+      expect(HostClassifier.isLocal('134744072'), isFalse,
+          reason: 'decimal-int public IP must be range-checked, not auto-local');
     });
 
-    test('end-to-end: local-only policy ALLOWS the decimal-IP public host', () {
+    test('0x-hex / 0-octal public-IP encodings are non-local too', () {
+      expect(HostClassifier.isLocal('0x08080808'), isFalse); // hex 8.8.8.8
+      expect(HostClassifier.isLocal('0x8080808'), isFalse);
+      // 01002004010 (octal) == 134744072 == 8.8.8.8
+      expect(HostClassifier.isLocal('01002004010'), isFalse);
+    });
+
+    test('out-of-range / overflow integer hosts fail safe (non-local)', () {
+      expect(HostClassifier.isLocal('9999999999'), isFalse); // > 2^32-1
+    });
+
+    test('genuine local integer-IP encodings still classify local', () {
+      // 2130706433 == 0x7F000001 == 127.0.0.1 loopback
+      expect(HostClassifier.isLocal('2130706433'), isTrue);
+      expect(HostClassifier.isLocal('0x7f000001'), isTrue);
+      // 3232235777 == 192.168.1.1
+      expect(HostClassifier.isLocal('3232235777'), isTrue);
+    });
+
+    test('non-numeric single-label LAN names are still local', () {
+      expect(HostClassifier.isLocal('nas'), isTrue);
+      expect(HostClassifier.isLocal('my-server'), isTrue);
+    });
+
+    test('end-to-end: local-only policy DENIES the integer-IP public host', () {
       const p = LocalOnlyPolicy(enabled: true);
-      expect(p.allows('http://134744072/'), isTrue,
-          reason: 'pinned bypass — local-only should DENY (resolves to public 8.8.8.8)');
-      // A normal public host is correctly denied, confirming the guard otherwise works.
+      expect(p.allows('http://134744072/'), isFalse,
+          reason: 'bypass closed — resolves to public 8.8.8.8, must be denied');
+      expect(p.allows('http://0x08080808/'), isFalse);
+      // A normal public host is denied, confirming the guard otherwise works.
       expect(p.allows('https://example.com'), isFalse);
-      // And a genuine LAN host is allowed.
+      // Genuine LAN hosts (dotted and integer-encoded loopback) are allowed.
       expect(p.allows('http://192.168.1.10/db.kdbx'), isTrue);
+      expect(p.allows('http://2130706433/'), isTrue);
     });
   });
 }

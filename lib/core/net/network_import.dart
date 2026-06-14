@@ -37,18 +37,60 @@ class HostClassifier {
     if (_ipv4.hasMatch(h)) return _isLocalIpv4(h);
     if (h.contains(':')) return _isLocalIpv6(h);
 
-    // Bare single-label hostname (no dot) → treated as a LAN host.
-    if (!h.contains('.')) return true;
+    // Bare single-label host (no dot). A genuine LAN hostname has at least one
+    // non-digit; a purely numeric / 0x-hex / 0-octal host is an integer-encoded
+    // IPv4 that HTTP stacks (curl, many libs) resolve as a real IP — e.g.
+    // 134744072 == public 8.8.8.8. Such a host MUST be parsed as a 32-bit IPv4
+    // and range-checked, never blanket-classified local (that was the SSRF/leak
+    // bypass; Critic R20). Anything numeric-looking we can't confidently place in
+    // a local range fails safe → not local.
+    if (!h.contains('.')) {
+      final asInt = _parseIntHost(h);
+      if (asInt != null) return _isLocalIpv4Int(asInt);
+      return true; // non-numeric single-label LAN name
+    }
 
     return false; // dotted public FQDN
   }
 
   static final RegExp _ipv4 = RegExp(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$');
+  static final RegExp _digits = RegExp(r'^\d+$');
+
+  /// Parse a dotless integer-encoded host (decimal / 0x-hex / 0-octal, per
+  /// inet_aton) to its numeric value, or null if it is not a pure integer host.
+  static int? _parseIntHost(String h) {
+    if (h.isEmpty) return null;
+    if (h.startsWith('0x') || h.startsWith('0X')) {
+      if (h.length == 2) return null;
+      return int.tryParse(h.substring(2), radix: 16);
+    }
+    if (!_digits.hasMatch(h)) return null;
+    // A leading zero means octal under inet_aton; honour that so we range-check
+    // the IP a fetch would actually reach.
+    if (h.length > 1 && h.startsWith('0')) return int.tryParse(h, radix: 8);
+    return int.tryParse(h);
+  }
 
   static bool _isLocalIpv4(String ip) {
     final m = _ipv4.firstMatch(ip)!;
     final o = [for (var i = 1; i <= 4; i++) int.parse(m.group(i)!)];
     if (o.any((b) => b > 255)) return false; // malformed → not local
+    return _isLocalOctets(o);
+  }
+
+  /// Range-check an integer-encoded IPv4 (single 32-bit value, inet_aton form).
+  static bool _isLocalIpv4Int(int v) {
+    if (v < 0 || v > 0xFFFFFFFF) return false; // out of IPv4 range → not local
+    final o = [
+      (v >> 24) & 0xff,
+      (v >> 16) & 0xff,
+      (v >> 8) & 0xff,
+      v & 0xff,
+    ];
+    return _isLocalOctets(o);
+  }
+
+  static bool _isLocalOctets(List<int> o) {
     if (o[0] == 127) return true; // 127.0.0.0/8 loopback
     if (o[0] == 10) return true; // 10.0.0.0/8
     if (o[0] == 192 && o[1] == 168) return true; // 192.168.0.0/16
