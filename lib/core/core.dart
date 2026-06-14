@@ -21,3 +21,5 @@ export 'history/entry_history.dart';
 export 'search/entry_search.dart';
 
 export 'sort/entry_sort.dart';
+
+export 'format/keepass_xml.dart';
