@@ -76,8 +76,8 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Auth/lock state-machine unit tests (Critic)
 
 ### Phase 3 — Password Gen & Utilities (Round 4)
-- [ ] Configurable + customizable password generator (Performer)
-- [ ] Diceware passphrase generator + wordlist (Performer)
+- [x] Configurable + customizable password generator (Performer)
+- [x] Diceware passphrase generator + wordlist (Performer)
 - [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
 - [ ] Auto-clear clipboard timer (Performer)
 - [ ] Favicon downloader (Performer)
