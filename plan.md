@@ -46,11 +46,11 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 ## 3. Phased Task Plan
 
 ### Phase 0 — Foundation (Round 2 target)
-- [ ] Scaffold Flutter project structure (`lib/core`, `lib/platform`, `lib/ui`, `lib/data`, `test/`) (Composer)
-- [ ] Add `analysis_options.yaml`, CI test script, and dependency manifest (`pubspec.yaml`) (Composer)
-- [ ] Define core domain interfaces: `Database`, `Entry`, `Group`, `Field`, `Attachment`, `KdfParams` (Composer)
-- [ ] Define crypto/KDF interface contracts (`Cipher`, `KeyDerivation`, `SecureKey`) (Composer)
-- [ ] Write ADR docs in `/docs` capturing stack + zero-knowledge model (Composer)
+- [x] Scaffold Flutter project structure (`lib/core`, `lib/platform`, `lib/ui`, `lib/data`, `test/`) (Composer)
+- [x] Add `analysis_options.yaml`, CI test script, and dependency manifest (`pubspec.yaml`) (Composer)
+- [x] Define core domain interfaces: `Database`, `Entry`, `Group`, `Field`, `Attachment`, `KdfParams` (Composer)
+- [x] Define crypto/KDF interface contracts (`Cipher`, `KeyDerivation`, `SecureKey`) (Composer)
+- [x] Write ADR docs in `/docs` capturing stack + zero-knowledge model (Composer)
 
 ### Phase 1 — KeePass Core (Rounds 2–3)
 - [ ] KDBX 4 reader/writer (XML inner format compatibility) (Performer)
