@@ -61,7 +61,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Key File support + Master Password handling (Performer)
 - [x] Entry History tracking — snapshot service + repository updateEntry wiring (Composer; Performer deferred duplicate)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
-- [ ] Tags (KeePass) model + Custom Fields + Attachments (Performer)
+- [x] Tags (KeePass) model + Custom Fields + Attachments — tag index/rename/remove + custom-field + attachment-pool services (Performer)
 - [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history adversarial audits DONE; golden round-trip blocked on KDBX reader/writer
 - [x] ✅ INTEGRATION (round 7): `ensemble/Critic` now merged into master each round; all Critic CI gate + adversarial suites + reviews are on master (Critic)
 
