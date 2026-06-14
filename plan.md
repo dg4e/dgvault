@@ -76,15 +76,15 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock — Critic R15 SECURITY SIGN-OFF: APPROVE (covered by same matrix audit)
 - [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests. F1+F2 FIXED R15 (Performer): `maxAttempts<=0` now throws `ArgumentError` (release-safe) + `isWipePending` getter added — Critic VERIFIED in source R15, REQUEST_CHANGES resolved ✅
 - [x] Read-only mode — data-layer write-guard repository (Composer)
-- [x] Master password reminder scheduler — pure due/snooze scheduler (interval since last verify, injectable clock) (Composer)
+- [x] Master password reminder scheduler — pure due/snooze scheduler (interval since last verify, injectable clock) (Composer) — Critic R16 review: APPROVE (correct; author tests comprehensive incl. snooze-noop & clears-snooze — no redundant tests added per §8)
 - [ ] Secure storage wrapping of keys via OS keystore (Performer)
 - [ ] Auth/lock state-machine unit tests (Critic)
 
 ### Phase 3 — Password Gen & Utilities (Round 4)
 - [x] Configurable + customizable password generator (Performer)
 - [x] Diceware passphrase generator + wordlist (Performer) — RESOLVED R4: `diceware_wordlist.dart` ships a 264-word embedded list (pure Dart, no asset → keeps core platform-agnostic) + EFF/plain parsers + `DicewareGenerator.standard()`; full EFF list loads via `DicewareWordlist.parseEff`
-- [x] TOTP support (RFC 6238/4226 HOTP, Steam variant, otpauth:// QR URI, base32) — injected HMAC keeps it pure/testable against RFC 4226 vectors (Composer); real HMAC-SHA1/256/512 impl = crypto-layer (Performer)
-- [x] Auto-clear clipboard timer — generation-guarded clear scheduler (newer copy supersedes), injectable clock (Performer)
+- [x] TOTP support (RFC 6238/4226 HOTP, Steam variant, otpauth:// QR URI, base32) — injected HMAC keeps it pure/testable against RFC 4226 vectors (Composer); real HMAC-SHA1/256/512 impl = crypto-layer (Performer) ⚠ Critic RFC-vector + Steam audit PENDING R17 (Phase 3 Critic task)
+- [x] Auto-clear clipboard timer — generation-guarded clear scheduler (newer copy supersedes), injectable clock (Performer) — Critic R16 SECURITY review: APPROVE; added end-to-end supersession assertion (stale timer inert past its own clearAt). Caller caveat: platform layer should verify the clipboard still holds the secret before wiping (avoid clobbering externally-copied content). Note: timeout>0 is an assert but fails SAFE (over-eager clear, not data loss)
 - [ ] Favicon downloader (Performer)
 - [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic) — generator audit tests DONE; TOTP half blocked on impl
 
