@@ -84,8 +84,8 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic)
 
 ### Phase 4 — Security & Audit (Round 4–5)
-- [ ] Audit: find weaknesses (weak/reused/old passwords) (Performer)
-- [ ] Find-similar audit (Performer)
+- [x] Audit: find weaknesses (weak/reused/old passwords) (Performer)
+- [x] Find-similar audit (Performer)
 - [ ] Passkeys support (Performer)
 - [ ] Audit engine unit tests (Critic)
 
