@@ -103,6 +103,9 @@ class PlaceholderResolver {
       if (!_FieldCode.isValid(wanted) || !_FieldCode.isValid(searchIn)) {
         return m.group(0)!; // leave malformed refs untouched
       }
+      // Empty search text would substring-match every entry and silently
+      // resolve to an arbitrary credential — treat as no match (Critic R4 #1).
+      if (text.isEmpty) return m.group(0)!;
       final target = _findEntry(searchIn, text);
       if (target == null) return m.group(0)!;
       return _FieldCode.read(target, wanted) ?? '';
@@ -119,7 +122,8 @@ class PlaceholderResolver {
     });
     out = out.replaceAllMapped(_customPattern, (m) {
       final name = m.group(1)!;
-      final field = context.fields[name];
+      // KeePass custom-string reference names are case-insensitive (Critic R4 #2).
+      final field = context.fields[name] ?? _customFieldCi(context, name);
       return field != null ? field.value.reveal() : m.group(0)!;
     });
     return out;
@@ -164,6 +168,15 @@ class PlaceholderResolver {
         final ui = uri.userInfo;
         final c = ui.indexOf(':');
         return c < 0 ? '' : ui.substring(c + 1);
+    }
+    return null;
+  }
+
+  /// Case-insensitive custom-field lookup fallback for {S:Name}.
+  Field? _customFieldCi(Entry context, String name) {
+    final lower = name.toLowerCase();
+    for (final f in context.fields.values) {
+      if (f.key.toLowerCase() == lower) return f;
     }
     return null;
   }
