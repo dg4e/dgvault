@@ -83,7 +83,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 ### Phase 3 — Password Gen & Utilities (Round 4)
 - [x] Configurable + customizable password generator (Performer)
 - [x] Diceware passphrase generator + wordlist (Performer) — RESOLVED R4: `diceware_wordlist.dart` ships a 264-word embedded list (pure Dart, no asset → keeps core platform-agnostic) + EFF/plain parsers + `DicewareGenerator.standard()`; full EFF list loads via `DicewareWordlist.parseEff`
-- [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
+- [x] TOTP support (RFC 6238/4226 HOTP, Steam variant, otpauth:// QR URI, base32) — injected HMAC keeps it pure/testable against RFC 4226 vectors (Composer); real HMAC-SHA1/256/512 impl = crypto-layer (Performer)
 - [x] Auto-clear clipboard timer — generation-guarded clear scheduler (newer copy supersedes), injectable clock (Performer)
 - [ ] Favicon downloader (Performer)
 - [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic) — generator audit tests DONE; TOTP half blocked on impl
