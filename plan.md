@@ -107,7 +107,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 6 — Import / Export (Round 5–6)
 - [x] Import/Export 1Password + CSV (Performer)
-- [ ] Import/Export CSV encrypted (Performer)
+- [x] Import/Export CSV encrypted — versioned self-describing container (kdf params + salt + iv + ciphertext) over the CSV codec, using injected Cipher/KeyDerivation; real AEAD/Argon2 = crypto layer (Performer)
 - [x] Direct URL import + local-network-only import/export — URL validate/format-dispatch + local-network host classifier (loopback/RFC1918/link-local/ULA/mDNS) + local-only guard (Performer)
 - [x] Import/export round-trip tests (Critic) — data-loss FIXED R8 (Performer): export now emits a Tags column + one column per custom field (union), lossless round-trip; Critic's pinning test updated to assert preservation
 
