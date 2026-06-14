@@ -58,7 +58,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] AES-256 / ChaCha20 cipher layer (Performer)
 - [ ] Encrypted local database storage at rest (Performer)
 - [ ] Key File support + Master Password handling (Performer)
-- [ ] Entry History tracking (Performer)
+- [x] Entry History tracking (Performer)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [ ] Tags (KeePass) model + Custom Fields + Attachments (Performer)
 - [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic)
