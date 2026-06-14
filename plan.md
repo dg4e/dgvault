@@ -90,7 +90,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Audit engine unit tests (Critic)
 
 ### Phase 5 — Database & Sync (Round 5)
-- [ ] Compare databases / advanced merge (3-way) (Performer)
+- [x] Compare databases / advanced merge (3-way) (Performer)
 - [ ] Offline editing + offline viewing (Performer)
 - [ ] Large database handling (250MB+) — streaming/lazy load (Performer)
 - [ ] Rolling local backups (Performer)
