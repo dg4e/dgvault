@@ -62,7 +62,8 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Entry History tracking — snapshot service + repository updateEntry wiring (Composer; Performer deferred duplicate)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [ ] Tags (KeePass) model + Custom Fields + Attachments (Performer)
-- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver adversarial audit DONE; golden round-trip blocked on KDBX reader/writer
+- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history adversarial audits DONE; golden round-trip blocked on KDBX reader/writer
+- [ ] ⚠ INTEGRATION: merge `ensemble/Critic` into master — ALL Critic work (CI gate, test strategy, 4 adversarial test suites, reviews) is unmerged; master is ff-able to ensemble/Critic (orchestrator action; Critic cannot checkout master from a linked worktree)
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
 - [ ] PIN code unlock (Performer)
