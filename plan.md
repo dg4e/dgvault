@@ -62,7 +62,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Entry History tracking (Performer)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [ ] Tags (KeePass) model + Custom Fields + Attachments (Performer)
-- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic)
+- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver adversarial audit DONE; golden round-trip blocked on KDBX reader/writer
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
 - [ ] PIN code unlock (Performer)
@@ -78,7 +78,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 3 — Password Gen & Utilities (Round 4)
 - [x] Configurable + customizable password generator (Performer)
-- [x] Diceware passphrase generator + wordlist (Performer)
+- [x] Diceware passphrase generator + wordlist (Performer) — ⚠ Critic REQUEST_CHANGES (round 3, still open): no EFF wordlist asset/loader ships; "+ wordlist" not delivered
 - [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
 - [ ] Auto-clear clipboard timer (Performer)
 - [ ] Favicon downloader (Performer)
