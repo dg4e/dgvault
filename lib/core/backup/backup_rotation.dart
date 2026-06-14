@@ -73,12 +73,17 @@ class BackupRotator {
   }
 
   /// Deterministic, sortable backup name: `<base>.<UTC-timestamp>.kdbx.bak`,
-  /// timestamp `yyyyMMddTHHmmss` so lexical order matches chronological order.
-  String nextBackupName(String base, DateTime now) {
+  /// timestamp `yyyyMMddTHHmmssSSS` (millisecond resolution) so lexical order
+  /// matches chronological order. An optional [sequence] suffix (`-NN`)
+  /// guarantees uniqueness when two backups land in the same millisecond
+  /// (Critic R15 minor: second-granularity name collision).
+  String nextBackupName(String base, DateTime now, {int? sequence}) {
     final u = now.toUtc();
     String two(int n) => n.toString().padLeft(2, '0');
+    final ms = u.millisecond.toString().padLeft(3, '0');
     final ts = '${u.year.toString().padLeft(4, '0')}${two(u.month)}'
-        '${two(u.day)}T${two(u.hour)}${two(u.minute)}${two(u.second)}';
-    return '$base.$ts.kdbx.bak';
+        '${two(u.day)}T${two(u.hour)}${two(u.minute)}${two(u.second)}$ms';
+    final seq = sequence == null ? '' : '-${two(sequence)}';
+    return '$base.$ts$seq.kdbx.bak';
   }
 }

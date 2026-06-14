@@ -83,7 +83,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 ### Phase 3 — Password Gen & Utilities (Round 4)
 - [x] Configurable + customizable password generator (Performer)
 - [x] Diceware passphrase generator + wordlist (Performer) — RESOLVED R4: `diceware_wordlist.dart` ships a 264-word embedded list (pure Dart, no asset → keeps core platform-agnostic) + EFF/plain parsers + `DicewareGenerator.standard()`; full EFF list loads via `DicewareWordlist.parseEff`
-- [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
+- [x] TOTP support (RFC 6238/4226 HOTP, Steam variant, otpauth:// QR URI, base32) — injected HMAC keeps it pure/testable against RFC 4226 vectors (Composer); real HMAC-SHA1/256/512 impl = crypto-layer (Performer) ⚠ Critic RFC-vector + Steam audit PENDING R17 (Phase 3 Critic task)
 - [x] Auto-clear clipboard timer — generation-guarded clear scheduler (newer copy supersedes), injectable clock (Performer) — Critic R16 SECURITY review: APPROVE; added end-to-end supersession assertion (stale timer inert past its own clearAt). Caller caveat: platform layer should verify the clipboard still holds the secret before wiping (avoid clobbering externally-copied content). Note: timeout>0 is an assert but fails SAFE (over-eager clear, not data loss)
 - [ ] Favicon downloader (Performer)
 - [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic) — generator audit tests DONE; TOTP half blocked on impl
@@ -114,7 +114,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 ### Phase 7 — UI & Entry Management (Round 6)
 - [x] Powerful search (all fields) — core search engine (Composer); Critic adversarial audit added R10 (protected name-vs-value, AND×protection) — APPROVE
 - [x] Custom order & sorting — core sort + manual reorder service (Composer); Critic adversarial audit added (descending-stability, purity, moveBefore edges) — APPROVE
-- [ ] Custom icons + preset icon sets (Performer)
+- [x] Custom icons + preset icon sets — custom-icon pool (add/dedupe/reference-scan/orphan-prune) + preset-icon validation (Performer)
 - [ ] Markdown notes rendering (Performer)
 - [ ] Custom URL handling + custom app icons (Performer)
 
