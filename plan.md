@@ -100,7 +100,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Local-only / local databases support (Performer)
 - [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
 - [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)
-- [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt). R9 (Performer): LWW data-loss M1 FIXED (merge snapshots overwritten target to history + unions source history) and comparator M2 FIXED (attachment diffs detected); copyEntry corruption (T1) is Composer-owned — still open
+- [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt). R9 (Performer): LWW data-loss M1 FIXED (merge snapshots overwritten target to history + unions source history) and comparator M2 FIXED (attachment diffs detected); copyEntry corruption (T1) FIXED R9 (Composer: deep-clone) — Critic verified in source R10; all R8 findings now resolved
 
 ### Phase 6 — Import / Export (Round 5–6)
 - [x] Import/Export 1Password + CSV (Performer)
@@ -109,7 +109,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Import/export round-trip tests (Critic) — data-loss FIXED R8 (Performer): export now emits a Tags column + one column per custom field (union), lossless round-trip; Critic's pinning test updated to assert preservation
 
 ### Phase 7 — UI & Entry Management (Round 6)
-- [x] Powerful search (all fields) — core search engine (Composer)
+- [x] Powerful search (all fields) — core search engine (Composer); Critic adversarial audit added R10 (protected name-vs-value, AND×protection) — APPROVE
 - [x] Custom order & sorting — core sort + manual reorder service (Composer); Critic adversarial audit added (descending-stability, purity, moveBefore edges) — APPROVE
 - [ ] Custom icons + preset icon sets (Performer)
 - [ ] Markdown notes rendering (Performer)
