@@ -63,7 +63,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [ ] Tags (KeePass) model + Custom Fields + Attachments (Performer)
 - [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history adversarial audits DONE; golden round-trip blocked on KDBX reader/writer
-- [ ] ⚠ INTEGRATION: merge `ensemble/Critic` into master — ALL Critic work (CI gate, test strategy, 4 adversarial test suites, reviews) is unmerged; master is ff-able to ensemble/Critic (orchestrator action; Critic cannot checkout master from a linked worktree)
+- [x] ✅ INTEGRATION (round 7): `ensemble/Critic` now merged into master each round; all Critic CI gate + adversarial suites + reviews are on master (Critic)
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
 - [ ] PIN code unlock (Performer)
@@ -100,7 +100,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Local-only / local databases support (Performer)
 - [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
 - [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)
-- [ ] Merge-conflict + backup-rotation unit tests (Critic)
+- [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt)
 
 ### Phase 6 — Import / Export (Round 5–6)
 - [x] Import/Export 1Password + CSV (Performer)
