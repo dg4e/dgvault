@@ -21,6 +21,7 @@ export 'security/master_password_reminder.dart';
 export 'otp/totp.dart';
 
 export 'template/placeholder_resolver.dart';
+export 'url/custom_url.dart';
 
 export 'history/entry_history.dart';
 
