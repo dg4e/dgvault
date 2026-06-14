@@ -98,7 +98,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Compare databases / advanced merge (3-way) (Performer)
 - [ ] Offline editing + offline viewing (Performer)
 - [ ] Large database handling (250MB+) — streaming/lazy load (Performer)
-- [ ] Rolling local backups (Performer)
+- [x] Rolling local backups — retention/rotation policy (keepLast + maxAge + maxTotalCount) + next-name (Performer)
 - [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer); copyEntry deep-clone source-corruption FIXED R9 (was Critic T1)
 - [ ] Local-only / local databases support (Performer)
 - [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
