@@ -88,7 +88,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Audit: find weaknesses (weak/reused/old passwords) (Performer)
 - [x] Find-similar audit (Performer)
 - [ ] Passkeys support (Performer)
-- [ ] Audit engine unit tests (Critic)
+- [x] Audit engine unit tests — adversarial coverage beyond author tests (Critic)
 
 ### Phase 5 — Database & Sync (Round 5)
 - [ ] Compare databases / advanced merge (3-way) (Performer)

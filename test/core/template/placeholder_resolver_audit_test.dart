@@ -74,17 +74,16 @@ void main() {
     });
   });
 
-  group('empty REF search text — documented foot-gun', () {
-    test('{REF:P@T:} matches the FIRST entry via empty-substring match', () {
-      // needle '' -> hay.contains('') is always true, so the first scanned
-      // entry is selected. This is surprising; flagged in the review as a
-      // potential foot-gun rather than a hard bug. Test pins current behaviour
-      // so a future fix is a conscious, visible change.
+  group('empty REF search text — foot-gun FIXED in round 4', () {
+    test('{REF:P@T:} is left verbatim (no arbitrary first-entry match)', () {
+      // My round-4 review flagged that an empty search text substring-matched
+      // the first entry and leaked its password. Performer fixed it; this test
+      // now guards the corrected behaviour (the ref is left unresolved).
       final first = _entry('f1', {Field.title: 'Alpha', Field.password: 'first-pw'});
       final second = _entry('s1', {Field.title: 'Beta', Field.password: 'second-pw'});
       final ctx = _entry('c1', {Field.title: 'ctx'});
       final r = PlaceholderResolver(_db([first, second, ctx]));
-      expect(r.resolve('{REF:P@T:}', ctx), 'first-pw');
+      expect(r.resolve('{REF:P@T:}', ctx), '{REF:P@T:}');
     });
   });
 }
