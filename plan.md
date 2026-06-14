@@ -65,7 +65,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Entry History tracking — snapshot service + repository updateEntry wiring (Composer; Performer deferred duplicate)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [x] Tags (KeePass) model + Custom Fields + Attachments — tag index/rename/remove + custom-field + attachment-pool services (Performer)
-- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history adversarial audits DONE; golden round-trip blocked on KDBX reader/writer
+- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history + XML-codec + VariantDictionary adversarial audits DONE; R13: full-pipeline end-to-end round-trip (rich db: nested groups/protected custom/history/unicode/metachars/whitespace) DONE with stub cipher; ONLY remaining = real Argon2/AES body + KeePassXC reference-fixture golden (toolchain-gated)
 - [x] ✅ INTEGRATION (round 7): `ensemble/Critic` now merged into master each round; all Critic CI gate + adversarial suites + reviews are on master (Critic)
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
