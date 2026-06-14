@@ -111,4 +111,35 @@ void main() {
       expect(e.history, isEmpty); // no snapshot taken on rejection
     });
   });
+
+  group('restore', () {
+    test('reverts a prior version and keeps the pre-restore state undoable', () {
+      final e = _entry('e1', 'v1');
+      EntryHistory.record(e); // history: [v1]
+      e.fields[Field.password] = Field(
+        key: Field.password,
+        value: InMemoryProtectedValue('v2'),
+      );
+
+      EntryHistory.restore(e, 0); // restore v1; snapshot v2 first
+      expect(e.fields[Field.password]!.value.reveal(), 'v1');
+      // The pre-restore value (v2) was captured so the restore is undoable.
+      expect(
+        e.history.map((h) => h.fields[Field.password]!.value.reveal()),
+        contains('v2'),
+      );
+    });
+
+    test('out-of-range index throws', () {
+      final e = _entry('e1', 'v');
+      expect(() => EntryHistory.restore(e, 0), throwsRangeError);
+    });
+
+    test('clearHistory empties history', () {
+      final e = _entry('e1', 'v');
+      EntryHistory.record(e);
+      EntryHistory.clearHistory(e);
+      expect(e.history, isEmpty);
+    });
+  });
 }

@@ -80,6 +80,49 @@ class EntryHistory {
     }
   }
 
+  /// Restores historical version [index] (0 = oldest) into [entry] in place,
+  /// so users can browse and revert prior versions. When [keepCurrentInHistory]
+  /// is true the current state is snapshotted first, making the restore itself
+  /// undoable (KeePass behaviour: the restored version is left in history).
+  static void restore(
+    Entry entry,
+    int index, {
+    bool keepCurrentInHistory = true,
+    EntryHistoryPolicy policy = EntryHistoryPolicy.keepassDefault,
+  }) {
+    if (index < 0 || index >= entry.history.length) {
+      throw RangeError.index(index, entry.history, 'index');
+    }
+    final target = entry.history[index];
+    if (keepCurrentInHistory) {
+      entry.history.add(snapshotOf(entry));
+    }
+    entry.fields
+      ..clear()
+      ..addAll({
+        for (final f in target.fields.entries)
+          f.key: Field(
+            key: f.value.key,
+            value: InMemoryProtectedValue(
+              f.value.value.reveal(),
+              isProtected: f.value.value.isProtected,
+            ),
+          ),
+      });
+    entry.tags
+      ..clear()
+      ..addAll(target.tags);
+    entry.attachments
+      ..clear()
+      ..addAll(target.attachments);
+    entry.iconId = target.iconId;
+    entry.customIconUuid = target.customIconUuid;
+    prune(entry.history, policy);
+  }
+
+  /// Removes all historical versions of [entry].
+  static void clearHistory(Entry entry) => entry.history.clear();
+
   static int _totalSize(List<Entry> history) {
     var total = 0;
     for (final e in history) {
