@@ -19,3 +19,5 @@ export 'template/placeholder_resolver.dart';
 export 'history/entry_history.dart';
 
 export 'search/entry_search.dart';
+
+export 'sort/entry_sort.dart';

@@ -79,7 +79,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 3 — Password Gen & Utilities (Round 4)
 - [x] Configurable + customizable password generator (Performer)
-- [x] Diceware passphrase generator + wordlist (Performer) — ⚠ Critic REQUEST_CHANGES (round 3, still open): no EFF wordlist asset/loader ships; "+ wordlist" not delivered
+- [x] Diceware passphrase generator + wordlist (Performer) — RESOLVED R4: `diceware_wordlist.dart` ships a 264-word embedded list (pure Dart, no asset → keeps core platform-agnostic) + EFF/plain parsers + `DicewareGenerator.standard()`; full EFF list loads via `DicewareWordlist.parseEff`
 - [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
 - [ ] Auto-clear clipboard timer (Performer)
 - [ ] Favicon downloader (Performer)
@@ -106,11 +106,11 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Import/Export 1Password + CSV (Performer)
 - [ ] Import/Export CSV encrypted (Performer)
 - [ ] Direct URL import + local-network-only import/export (Performer)
-- [x] Import/export round-trip tests (Critic) — ⚠ found export DROPS custom fields & tags (data loss); see review
+- [x] Import/export round-trip tests (Critic) — data-loss FIXED R8 (Performer): export now emits a Tags column + one column per custom field (union), lossless round-trip; Critic's pinning test updated to assert preservation
 
 ### Phase 7 — UI & Entry Management (Round 6)
 - [x] Powerful search (all fields) — core search engine (Composer)
-- [ ] Custom order & sorting (Performer)
+- [x] Custom order & sorting — core sort + manual reorder service (Composer)
 - [ ] Custom icons + preset icon sets (Performer)
 - [ ] Markdown notes rendering (Performer)
 - [ ] Custom URL handling + custom app icons (Performer)
