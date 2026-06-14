@@ -55,6 +55,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 1 — KeePass Core (Rounds 2–3)
 - [ ] KDBX 4 reader/writer (XML inner format compatibility) (Performer)
+- [x] KDBX4 reader/writer pipeline orchestrator (header ⇄ injected body-cipher ⇄ injected compressor ⇄ XML codec ⇄ model) — completes the format structure; real Argon2/AES body delegated via `KdbxBodyCipher` interface (Composer)
 - [x] KeePass 2.x XML inner-format codec (model ⇄ XML, package:xml) — unblocks KDBX reader/writer & Critic golden round-trip (Composer); Critic adversarial round-trip audit added R11 (XML metachars, whitespace-under-pretty bug-probe, unicode+Protected) — APPROVE; flagged forward interop risk: real KeePass protected values are inner-stream-encrypted+base64, KDBX layer must apply/strip around this codec
 - [x] KDBX4 outer header + VariantDictionary binary codec (magic/version/TLV fields, KdfParameters ⇄ KdfParams; SHA-256/HMAC framing + cipher/KDF transform remain, toolchain-gated) (Composer + Performer) — COLLISION RESOLVED R11 (Composer): both implemented independently; kept Composer's split form (`variant_dictionary.dart` + `kdbx_header.dart`) to avoid a duplicate `VariantDictionary` class; Performer's combined file superseded
 - [ ] Argon2 KDF (GPU-resistant) integration + params (Performer)
