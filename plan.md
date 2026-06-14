@@ -55,9 +55,9 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 1 — KeePass Core (Rounds 2–3)
 - [ ] KDBX 4 reader/writer (XML inner format compatibility) (Performer)
-- [x] KeePass 2.x XML inner-format codec (model ⇄ XML, package:xml) — unblocks KDBX reader/writer & Critic golden round-trip (Composer)
-- [x] KDBX4 binary header + VariantDictionary codec (structural reader/writer: signatures, version, TLV header fields, KDF param dict — pre-crypto; SHA-256/HMAC framing + cipher/KDF transform remain, toolchain-gated) (Performer)
-- [x] KDBX4 outer header + VariantDictionary binary codec (magic/version/TLV fields + KdfParameters ⇄ KdfParams) — crypto-free structural container for KDF/cipher (Composer)
+- [x] KeePass 2.x XML inner-format codec (model ⇄ XML, package:xml) — unblocks KDBX reader/writer & Critic golden round-trip (Composer); Critic adversarial round-trip audit added R11 (XML metachars, whitespace-under-pretty bug-probe, unicode+Protected) — APPROVE; flagged forward interop risk: real KeePass protected values are inner-stream-encrypted+base64, KDBX layer must apply/strip around this codec
+- [x] KDBX4 binary header + VariantDictionary codec (structural reader/writer: signatures, version, TLV header fields, KDF param dict — pre-crypto; SHA-256/HMAC framing + cipher/KDF transform remain, toolchain-gated) (Performer) ⚠ COLLISION: overlaps Composer's outer-header codec below — Critic to reconcile R12
+- [x] KDBX4 outer header + VariantDictionary binary codec (magic/version/TLV fields + KdfParameters ⇄ KdfParams) — crypto-free structural container for KDF/cipher (Composer) ⚠ COLLISION: overlaps Performer's header codec above — Critic to reconcile R12
 - [ ] Argon2 KDF (GPU-resistant) integration + params (Performer)
 - [ ] AES-256 / ChaCha20 cipher layer (Performer)
 - [ ] Encrypted local database storage at rest (Performer)
