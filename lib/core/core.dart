@@ -13,3 +13,5 @@ export 'model/database.dart';
 export 'crypto/secure_key.dart';
 export 'crypto/key_derivation.dart';
 export 'crypto/cipher.dart';
+
+export 'template/placeholder_resolver.dart';
