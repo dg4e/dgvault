@@ -51,6 +51,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Define core domain interfaces: `Database`, `Entry`, `Group`, `Field`, `Attachment`, `KdfParams` (Composer)
 - [ ] Define crypto/KDF interface contracts (`Cipher`, `KeyDerivation`, `SecureKey`) (Composer)
 - [ ] Write ADR docs in `/docs` capturing stack + zero-knowledge model (Composer)
+- [x] Establish CI quality gate (analyze + test) and golden round-trip test harness/strategy (Critic)
 
 ### Phase 1 — KeePass Core (Rounds 2–3)
 - [ ] KDBX 4 reader/writer (XML inner format compatibility) (Performer)
