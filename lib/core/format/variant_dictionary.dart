@@ -45,6 +45,8 @@ class VariantDictionary {
   // ---- typed getters (return null when absent) ----
   int? getUInt32(String key) => _entries[key]?.value as int?;
   int? getUInt64(String key) => _entries[key]?.value as int?;
+  int? getInt32(String key) => _entries[key]?.value as int?;
+  int? getInt64(String key) => _entries[key]?.value as int?;
   bool? getBool(String key) => _entries[key]?.value as bool?;
   String? getString(String key) => _entries[key]?.value as String?;
   Uint8List? getBytes(String key) => _entries[key]?.value as Uint8List?;
@@ -52,6 +54,8 @@ class VariantDictionary {
   // ---- typed setters ----
   void setUInt32(String key, int v) => _entries[key] = _Entry(typeUInt32, v);
   void setUInt64(String key, int v) => _entries[key] = _Entry(typeUInt64, v);
+  void setInt32(String key, int v) => _entries[key] = _Entry(typeInt32, v);
+  void setInt64(String key, int v) => _entries[key] = _Entry(typeInt64, v);
   void setBool(String key, bool v) => _entries[key] = _Entry(typeBool, v);
   void setString(String key, String v) =>
       _entries[key] = _Entry(typeString, v);
