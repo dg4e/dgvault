@@ -72,8 +72,8 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] PIN code unlock (Performer)
 - [ ] Biometric unlock (Face ID / Touch ID via platform channel) (Performer)
 - [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
-- [ ] Duress PIN — open dummy database (Performer)
-- [ ] Duress PIN — delete all data (Performer)
+- [x] Duress PIN — open dummy database (Composer) — unified `DuressPolicy` routing (real/decoy/duress-wipe/none → outcome) with indistinguishability invariant
+- [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock
 - [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer)
 - [x] Read-only mode — data-layer write-guard repository (Composer)
 - [ ] Master password reminder scheduler (Performer)
