@@ -105,4 +105,36 @@ void main() {
       expect(out, contains('{REF:P@I:'));
     });
   });
+
+  group('URL component placeholders {URL:...}', () {
+    Entry urlEntry(String url) => _entry('u1', {Field.url: url});
+
+    test('decomposes a full URL', () {
+      final e = urlEntry('https://user:pw@host.example:8443/path?q=1');
+      final r = PlaceholderResolver(_db([e]));
+      expect(r.resolve('{URL:SCM}', e), 'https');
+      expect(r.resolve('{URL:HOST}', e), 'host.example');
+      expect(r.resolve('{URL:PORT}', e), '8443');
+      expect(r.resolve('{URL:PATH}', e), '/path');
+      expect(r.resolve('{URL:QUERY}', e), '?q=1');
+      expect(r.resolve('{URL:USERNAME}', e), 'user');
+      expect(r.resolve('{URL:PASSWORD}', e), 'pw');
+      expect(r.resolve('{URL:USERINFO}', e), 'user:pw');
+      expect(r.resolve('{URL:RMVSCM}', e),
+          'user:pw@host.example:8443/path?q=1');
+    });
+
+    test('{URL} (no component) is unaffected by the component pass', () {
+      final e = urlEntry('https://host.example/');
+      final r = PlaceholderResolver(_db([e]));
+      expect(r.resolve('{URL}', e), 'https://host.example/');
+      expect(r.resolve('{URL:PORT}', e), ''); // absent port → empty
+    });
+
+    test('unknown component is left verbatim', () {
+      final e = urlEntry('https://host.example/');
+      final r = PlaceholderResolver(_db([e]));
+      expect(r.resolve('{URL:BOGUS}', e), '{URL:BOGUS}');
+    });
+  });
 }

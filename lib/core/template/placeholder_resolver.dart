@@ -5,6 +5,7 @@
 // platform concerns and left untouched):
 //
 //   Local fields:   {TITLE} {USERNAME} {PASSWORD} {URL} {NOTES} {UUID}
+//   URL components: {URL:RMVSCM|SCM|HOST|PORT|PATH|QUERY|USERINFO|USERNAME|PASSWORD}
 //   Custom strings: {S:Name}
 //   References:     {REF:<wanted>@<searchin>:<text>}
 //                   where <wanted>/<searchin> ∈ {T,U,P,A,N,I,O}
@@ -71,6 +72,13 @@ class PlaceholderResolver {
     caseSensitive: false,
   );
 
+  // {URL:RMVSCM} etc. — decomposition of the context entry's URL field. Note
+  // this never collides with {URL} (no colon) handled by _localPattern.
+  static final RegExp _urlComponentPattern = RegExp(
+    r'\{URL:([A-Za-z]+)\}',
+    caseSensitive: false,
+  );
+
   /// Fully resolves [input] in the scope of [context].
   ///
   /// [maxDepth] bounds recursive expansion; on exhaustion the partially
@@ -99,6 +107,11 @@ class PlaceholderResolver {
       if (target == null) return m.group(0)!;
       return _FieldCode.read(target, wanted) ?? '';
     });
+    out = out.replaceAllMapped(_urlComponentPattern, (m) {
+      final component = m.group(1)!.toUpperCase();
+      final value = _urlComponent(context, component);
+      return value ?? m.group(0)!; // unknown component → leave verbatim
+    });
     out = out.replaceAllMapped(_localPattern, (m) {
       final name = m.group(1)!.toUpperCase();
       final value = _localValue(context, name);
@@ -110,6 +123,49 @@ class PlaceholderResolver {
       return field != null ? field.value.reveal() : m.group(0)!;
     });
     return out;
+  }
+
+  /// Decomposes the context entry's URL field into a component, mirroring
+  /// KeePass {URL:...} placeholders. Returns null for an unknown component so
+  /// the placeholder is left verbatim; returns '' when the URL is absent or the
+  /// requested component is empty.
+  String? _urlComponent(Entry context, String component) {
+    const known = {
+      'RMVSCM', 'SCM', 'HOST', 'PORT', 'PATH', 'QUERY',
+      'USERINFO', 'USERNAME', 'PASSWORD',
+    };
+    if (!known.contains(component)) return null;
+    final raw = _FieldCode.read(context, 'A') ?? '';
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return '';
+    switch (component) {
+      case 'RMVSCM':
+        if (!uri.hasScheme) return raw;
+        final prefix = '${uri.scheme}://';
+        return raw.startsWith(prefix) ? raw.substring(prefix.length) : raw;
+      case 'SCM':
+        return uri.scheme;
+      case 'HOST':
+        return uri.host;
+      case 'PORT':
+        return uri.hasPort ? '${uri.port}' : '';
+      case 'PATH':
+        return uri.path;
+      case 'QUERY':
+        return uri.hasQuery ? '?${uri.query}' : '';
+      case 'USERINFO':
+        return uri.userInfo;
+      case 'USERNAME':
+        final ui = uri.userInfo;
+        if (ui.isEmpty) return '';
+        final c = ui.indexOf(':');
+        return c < 0 ? ui : ui.substring(0, c);
+      case 'PASSWORD':
+        final ui = uri.userInfo;
+        final c = ui.indexOf(':');
+        return c < 0 ? '' : ui.substring(c + 1);
+    }
+    return null;
   }
 
   String? _localValue(Entry entry, String placeholder) {
