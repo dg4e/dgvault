@@ -107,7 +107,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Import/export round-trip tests (Critic)
 
 ### Phase 7 — UI & Entry Management (Round 6)
-- [ ] Powerful search (all fields) (Performer)
+- [x] Powerful search (all fields) — core search engine (Composer)
 - [ ] Custom order & sorting (Performer)
 - [ ] Custom icons + preset icon sets (Performer)
 - [ ] Markdown notes rendering (Performer)
