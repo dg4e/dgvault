@@ -18,6 +18,8 @@ export 'crypto/key_file.dart';
 export 'security/duress_policy.dart';
 export 'security/master_password_reminder.dart';
 
+export 'otp/totp.dart';
+
 export 'template/placeholder_resolver.dart';
 
 export 'history/entry_history.dart';
