@@ -1,114 +1,143 @@
-# dgvault — KeePass-Compatible Cross-Platform Password Manager
+# dgvault — Cross-Platform KeePass-Compatible Password Manager
 
-**Ensemble plan.** Tasks are claimed by changing `- [ ]` → `- [x] ... (Agent)` and committing
-before work begins. Integration branch is `master`.
-
-## Roles
-- **🎼 Composer** — architecture, scaffolding, public interfaces, data models.
-- **🎸 Performer** — implementation: business logic, tests, make it pass.
-- **🔎 Critic** — review, test coverage, security audit, conformance to KeePass spec.
-
-## Tech Stack (proposed — Composer to ratify Round 1)
-- **Core:** Rust crate `dgcore` — KDBX4 parse/serialize, crypto (Argon2id, AES-256, ChaCha20),
-  KeePass XML, field references, TOTP. Pure, deterministic, heavily unit-tested. Zero-knowledge:
-  plaintext keys never leave the core; cleared on drop.
-- **Bindings:** `flutter_rust_bridge` exposing `dgcore` to a **Flutter** UI (desktop + Android + iOS).
-- **Secure storage:** platform keystore (Keychain/Keystore) via `flutter_secure_storage`;
-  encrypted DB at rest is the KDBX file itself.
-- **Rationale:** Rust core gives one audited crypto/format implementation across all platforms;
-  Flutter gives one UI codebase. Native plugins bridge biometrics, autofill, SSH agent.
-
-> If Composer chooses a different stack, this plan's task list stays valid — only the module
-> names change. Acceptance criteria are stack-agnostic.
+**Plan author:** 🎼 Composer (technical architect)
+**Round 1 status:** Scoring / planning only — no business code.
 
 ---
 
-## Phase 0 — Foundation (Round 2 priority)
-- [ ] Repo scaffold: workspace layout, `dgcore` crate, Flutter app shell, CI config — *Composer*
-  - AC: `cargo test` and `flutter analyze` run green on empty scaffold.
-- [ ] Core data model: `Database`, `Group`, `Entry`, `Field`, `Attachment`, `History`, `Tags` — *Composer*
-  - AC: types serialize round-trip in tests; mirror KeePass XML schema fields.
-- [ ] Error types + Result conventions across core — *Composer*
-- [ ] Test harness + fixtures: sample KDBX4 files (empty, large, key-file, YubiKey) — *Critic*
-  - AC: fixtures committed under `dgcore/fixtures/`; loader helper in tests.
+## 1. Architecture Decision Record (ADR)
 
-## Phase 1 — Crypto & Format Core (Performer-heavy)
-- [ ] Argon2id KDF (GPU-resistant) with configurable params — *Performer*
-  - AC: matches KeePass reference vectors; param round-trips in header.
-- [ ] AES-256-CBC + ChaCha20 cipher support — *Performer*
-- [ ] KDBX4 header parse/serialize (incl. KDF params, cipher id, master seed) — *Performer*
-- [ ] KeePass XML parse/serialize (groups, entries, history, times, tags) — *Performer*
-  - AC: round-trip a KeePassXC-produced file byte-stable on re-export of unchanged data.
-- [ ] Inner stream protection (ChaCha20 for protected fields) — *Performer*
-- [ ] Composite key: master password + key file + challenge-response (YubiKey HMAC) — *Performer*
-- [ ] KeePass field references & placeholders (`{REF:...}`, `{USERNAME}`, etc.) — *Performer*
-- [ ] Conformance review of all Phase 1 against KDBX4 spec — *Critic*
+### 1.1 Stack
+- **Language / framework:** **Flutter (Dart)** for a single shared codebase across desktop (Linux/macOS/Windows), Android, and iOS.
+  - Rationale: one UI + business-logic codebase, mature crypto FFI story, good platform-channel access for biometrics/AutoFill/SSH-agent, and a strong existing reference (`kdbx` Dart library) for KeePass `.kdbx` parsing.
+- **KeePass core:** `kdbx` format (KDBX 4.x) with **Argon2** KDF and ChaCha20/AES-256 ciphers. XML inner format compatible with KeePass 2.x.
+- **Crypto:** platform-vetted libs only — Argon2 + AES/ChaCha via `cryptography`/FFI; **no hand-rolled primitives.**
+- **Secure storage:** OS keystore (Keychain / Keystore / libsecret / DPAPI) via `flutter_secure_storage` for wrapping keys; database file always encrypted at rest.
+- **Architecture style:** layered — `core/` (pure Dart, platform-agnostic, fully unit-testable) ← `platform/` (channels) ← `ui/`. Zero-knowledge: master secret never persisted in plaintext; derived keys held only in memory and zeroed on lock.
 
-## Phase 2 — Authentication & Unlock
-- [ ] Master password unlock + Argon2 wiring — *Performer*
-- [ ] PIN code unlock (PIN wraps a stored key blob in secure storage) — *Performer*
-- [ ] Biometric unlock: Face ID / Touch ID / Android BiometricPrompt — *Performer*
-- [ ] YubiKey support (challenge-response) + YubiKey Secret emergency unlock — *Performer*
-- [ ] Duress PIN → open dummy database — *Performer*
-- [ ] Duress PIN → delete all data — *Performer*
-- [ ] App Lock: delete-all-on-N-fails counter — *Performer*
-- [ ] Read-only mode flag (blocks all writes through one gate) — *Performer*
-- [ ] Master password reminder scheduler — *Performer*
-- [ ] Passkeys (WebAuthn) support — *Performer*
-- [ ] Security review: duress flows, fail-counter, no key leakage — *Critic*
+### 1.2 Repo layout (target)
+```
+/lib
+  /core        # kdbx model, crypto, KDF, merge, audit, generator (pure Dart)
+  /platform    # biometrics, autofill, ssh-agent, cloud providers, secure storage
+  /ui          # screens, widgets, state
+  /data        # repositories, sync, backup, import/export
+/test          # unit + golden tests mirroring lib/
+/docs          # ADRs, format notes
+```
 
-## Phase 3 — Database Features
-- [ ] Local-only / local databases support — *Performer*
-- [ ] Offline editing & viewing — *Performer*
-- [ ] Large database handling (250MB+): streaming/lazy attachment load — *Performer*
-- [ ] Rolling local backups (configurable retention) — *Performer*
-- [ ] Compare databases (structural diff) — *Performer*
-- [ ] Advanced sync & merge (KeePass merge by UUID + timestamps) — *Performer*
-- [ ] Move items between databases — *Performer*
-- [ ] Entry history (track/restore versions) — *Performer*
-
-## Phase 4 — Password Generation & Entry Management
-- [ ] Configurable + customizable password generator — *Performer*
-- [ ] Diceware passphrase generator (bundled wordlist) — *Performer*
-- [ ] Attachments & custom fields — *Performer*
-- [ ] Custom icons + preset icon sets — *Performer*
-- [ ] Custom order & sorting — *Performer*
-- [ ] Tags (KeePass) — *Performer*
-- [ ] Key file support (gen + use) — *Performer*
-- [ ] Powerful search (all fields, including protected) — *Performer*
-- [ ] Markdown notes rendering — *Performer*
-- [ ] Custom URL handling — *Performer*
-
-## Phase 5 — Sync, Import/Export, Integrations
-- [ ] Import/Export 1Password + CSV (plain & encrypted) — *Performer*
-- [ ] Direct URL import — *Performer*
-- [ ] Local-network-only import/export — *Performer*
-- [ ] Cloud sync: OneDrive, Google Drive, Dropbox (native) — *Performer*
-- [ ] SFTP native — *Performer*
-- [ ] WebDAV native (Nextcloud/Owncloud, SharePoint) — *Performer*
-- [ ] iCloud + iOS Files integration — *Performer*
-
-## Phase 6 — Utilities & Platform
-- [ ] TOTP (RFC 6238, QR import, Steam) — *Performer*
-- [ ] Favicon downloader — *Performer*
-- [ ] Auto-clear clipboard (configurable timeout) — *Performer*
-- [ ] Audit: weak/reused passwords (find weaknesses, find similar) — *Performer*
-- [ ] AutoFill (Android Autofill Framework / iOS Credential Provider) — *Performer*
-- [ ] SSH agent (desktop) — *Performer*
-- [ ] Custom app icons — *Performer*
-
-## Phase 7 — Hardening & Release
-- [ ] Full test suite green on all platforms — *Critic*
-- [ ] Security audit pass (zero-knowledge guarantees, memory zeroing) — *Critic*
-- [ ] Docs: README, build, architecture, security model — *Composer*
+### 1.3 Conventions
+- Every `core/` module ships with unit tests; PRs without tests are REQUEST_CHANGES.
+- Feature flags gate platform-specific features so the shared build stays green.
+- `analysis_options.yaml` lint must pass; `flutter test` must be green before any CONSENSUS: YES.
 
 ---
 
-## Round-by-round expectation
-- **R1:** this plan (no business code). ✅
-- **R2:** Phase 0 scaffold + start Phase 1 crypto/format core (the foundation everything needs).
-- **R3+:** climb the phases; Critic reviews each phase before the ensemble votes consensus.
+## 2. Ownership Model
 
-## Definition of Done (for CONSENSUS: YES)
-All checkboxes checked, `cargo test` + `flutter test` green, Critic security review clean,
-every feature in the task brief mapped to a completed task.
+- **🎼 Composer** — architecture, interfaces/contracts, `core/` data model, scaffolding, plan upkeep.
+- **🎻 Performer** — feature implementation against Composer's interfaces (UI, platform channels, sync).
+- **🔎 Critic** — tests, audits, security review, acceptance verification.
+
+Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim protocol.
+
+---
+
+## 3. Phased Task Plan
+
+### Phase 0 — Foundation (Round 2 target)
+- [ ] Scaffold Flutter project structure (`lib/core`, `lib/platform`, `lib/ui`, `lib/data`, `test/`) (Composer)
+- [ ] Add `analysis_options.yaml`, CI test script, and dependency manifest (`pubspec.yaml`) (Composer)
+- [ ] Define core domain interfaces: `Database`, `Entry`, `Group`, `Field`, `Attachment`, `KdfParams` (Composer)
+- [ ] Define crypto/KDF interface contracts (`Cipher`, `KeyDerivation`, `SecureKey`) (Composer)
+- [ ] Write ADR docs in `/docs` capturing stack + zero-knowledge model (Composer)
+
+### Phase 1 — KeePass Core (Rounds 2–3)
+- [ ] KDBX 4 reader/writer (XML inner format compatibility) (Performer)
+- [ ] Argon2 KDF (GPU-resistant) integration + params (Performer)
+- [ ] AES-256 / ChaCha20 cipher layer (Performer)
+- [ ] Encrypted local database storage at rest (Performer)
+- [ ] Key File support + Master Password handling (Performer)
+- [ ] Entry History tracking (Performer)
+- [ ] KeePass Field References & Placeholders resolver (Performer)
+- [ ] Tags (KeePass) model + Custom Fields + Attachments (Performer)
+- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic)
+
+### Phase 2 — Authentication & Lock (Rounds 3–4)
+- [ ] PIN code unlock (Performer)
+- [ ] Biometric unlock (Face ID / Touch ID via platform channel) (Performer)
+- [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
+- [ ] Duress PIN — open dummy database (Performer)
+- [ ] Duress PIN — delete all data (Performer)
+- [ ] App Lock — delete-all-on-fails policy (Performer)
+- [ ] Read-only mode (Composer interface + Performer impl) (shared)
+- [ ] Master password reminder scheduler (Performer)
+- [ ] Secure storage wrapping of keys via OS keystore (Performer)
+- [ ] Auth/lock state-machine unit tests (Critic)
+
+### Phase 3 — Password Gen & Utilities (Round 4)
+- [ ] Configurable + customizable password generator (Performer)
+- [ ] Diceware passphrase generator + wordlist (Performer)
+- [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
+- [ ] Auto-clear clipboard timer (Performer)
+- [ ] Favicon downloader (Performer)
+- [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic)
+
+### Phase 4 — Security & Audit (Round 4–5)
+- [ ] Audit: find weaknesses (weak/reused/old passwords) (Performer)
+- [ ] Find-similar audit (Performer)
+- [ ] Passkeys support (Performer)
+- [ ] Audit engine unit tests (Critic)
+
+### Phase 5 — Database & Sync (Round 5)
+- [ ] Compare databases / advanced merge (3-way) (Performer)
+- [ ] Offline editing + offline viewing (Performer)
+- [ ] Large database handling (250MB+) — streaming/lazy load (Performer)
+- [ ] Rolling local backups (Performer)
+- [ ] Move items between databases (Performer)
+- [ ] Local-only / local databases support (Performer)
+- [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
+- [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)
+- [ ] Merge-conflict + backup-rotation unit tests (Critic)
+
+### Phase 6 — Import / Export (Round 5–6)
+- [ ] Import/Export 1Password + CSV (Performer)
+- [ ] Import/Export CSV encrypted (Performer)
+- [ ] Direct URL import + local-network-only import/export (Performer)
+- [ ] Import/export round-trip tests (Critic)
+
+### Phase 7 — UI & Entry Management (Round 6)
+- [ ] Powerful search (all fields) (Performer)
+- [ ] Custom order & sorting (Performer)
+- [ ] Custom icons + preset icon sets (Performer)
+- [ ] Markdown notes rendering (Performer)
+- [ ] Custom URL handling + custom app icons (Performer)
+
+### Phase 8 — Platform Integrations (Round 6–7)
+- [ ] AutoFill (Android/iOS) (Performer)
+- [ ] iOS Files integration (Performer)
+- [ ] SSH agent (desktop) (Performer)
+- [ ] Platform integration smoke tests (Critic)
+
+---
+
+## 4. Acceptance Criteria (definition of done)
+
+A feature is "done" when:
+1. Its checkbox is checked with `(Owner)` annotation in plan.md.
+2. Code lives under the correct `lib/` layer with a clear interface.
+3. Corresponding unit tests exist and `flutter test` passes.
+4. `flutter analyze` reports no errors.
+5. For security-sensitive features (crypto, duress, secure storage): Critic has reviewed and approved in `reviews/`.
+6. KeePass interop features validated against a reference `.kdbx` round-trip.
+
+**Round 1 consensus criterion:** `plan.md` exists, is committed, and is merged to `main` with ownership + acceptance criteria defined. No business code expected this round.
+
+---
+
+## 5. Risk Register
+- **R1 — Scope:** feature list is very large; phased delivery with hard "core-first" ordering mitigates. Crypto correctness gates everything.
+- **R2 — Crypto correctness:** use vetted libs + test vectors only; Critic audits all crypto paths.
+- **R3 — Platform fragmentation:** isolate behind `platform/` channel interfaces so `core/` stays testable headless.
+- **R4 — Large DB performance:** design for streaming/lazy decryption from Phase 1, not retrofitted.
+- **R5 — Duress safety:** delete-all paths must be irreversible-by-design yet guarded against accidental trigger; require Critic sign-off.
