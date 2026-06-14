@@ -1,150 +1,104 @@
 // dgvault — Entry History tracking.
 //
-// KeePass keeps a bounded list of prior versions of each entry. On every edit
-// the *pre-edit* state is snapshotted and pushed onto [Entry.history]
-// (oldest-first), then pruned to a retention policy (KeePass defaults: keep 10
-// versions and at most ~6 MiB total). Users can browse and restore old
-// versions.
+// KeePass keeps prior versions of an entry so edits are reversible. Before an
+// entry is modified, a snapshot of its current state is appended to its history
+// list (oldest-first). Retention is bounded by [EntryHistoryPolicy] — by item
+// count and by total size — matching KeePass's MaxHistoryItems / MaxHistorySize.
 //
-// Pure Dart, platform-agnostic, deterministic (caller supplies `now`).
+// Pure Dart, platform-agnostic. A snapshot deliberately does NOT carry its own
+// history (history versions are flat, never nested).
 
+import '../model/attachment.dart';
 import '../model/entry.dart';
 import '../model/field.dart';
+import '../model/protected_value.dart';
 
-/// Retention policy for an entry's history. Mirrors KeePass meta defaults.
-class HistoryPolicy {
-  const HistoryPolicy({
+/// Retention policy for an entry's history. A negative bound means "unlimited".
+class EntryHistoryPolicy {
+  const EntryHistoryPolicy({
     this.maxItems = 10,
-    this.maxTotalSizeBytes = 6 * 1024 * 1024,
+    this.maxSizeBytes = 6 * 1024 * 1024,
   });
 
-  /// Maximum number of historical versions kept (-1 = unlimited).
+  /// KeePass defaults: keep 10 versions, cap at 6 MiB.
+  static const EntryHistoryPolicy keepassDefault = EntryHistoryPolicy();
+
   final int maxItems;
-
-  /// Maximum cumulative size of historical versions (-1 = unlimited). Oldest
-  /// versions are dropped first when exceeded.
-  final int maxTotalSizeBytes;
-
-  static const HistoryPolicy unlimited =
-      HistoryPolicy(maxItems: -1, maxTotalSizeBytes: -1);
+  final int maxSizeBytes;
 }
 
-class EntryHistoryService {
-  const EntryHistoryService({this.policy = const HistoryPolicy()});
+class EntryHistory {
+  /// Records the current state of [entry] as a historical version, then prunes
+  /// per [policy]. Call this immediately BEFORE mutating the live entry.
+  static void record(
+    Entry entry, {
+    EntryHistoryPolicy policy = EntryHistoryPolicy.keepassDefault,
+  }) {
+    entry.history.add(snapshotOf(entry));
+    prune(entry.history, policy);
+  }
 
-  final HistoryPolicy policy;
-
-  /// Deep-copy the *content* of [e] (fields/tags/attachments/icon/timestamps)
-  /// without its own history, so a snapshot never nests history recursively.
-  static Entry snapshot(Entry e) {
+  /// A flat copy of [entry]'s content (no nested history). Field secrets are
+  /// re-wrapped in fresh [InMemoryProtectedValue]s so later disposal of the live
+  /// entry's values does not corrupt the snapshot.
+  static Entry snapshotOf(Entry entry) {
     final fields = <String, Field>{};
-    e.fields.forEach((key, f) {
+    entry.fields.forEach((key, field) {
       fields[key] = Field(
-        key: f.key,
-        value: InMemoryProtectedValue(f.value.reveal(), isProtected: f.isProtected),
+        key: field.key,
+        value: InMemoryProtectedValue(
+          field.value.reveal(),
+          isProtected: field.value.isProtected,
+        ),
       );
     });
     return Entry(
-      uuid: e.uuid,
+      uuid: entry.uuid,
       fields: fields,
-      tags: List<String>.of(e.tags),
-      attachments: List.of(e.attachments), // Attachment is immutable
-      history: const [], // snapshots carry no nested history
-      iconId: e.iconId,
-      customIconUuid: e.customIconUuid,
-      created: e.created,
-      modified: e.modified,
+      tags: List<String>.of(entry.tags),
+      attachments: List<Attachment>.of(entry.attachments),
+      history: <Entry>[], // flat: snapshots never nest history
+      iconId: entry.iconId,
+      customIconUuid: entry.customIconUuid,
+      created: entry.created,
+      modified: entry.modified,
     );
   }
 
-  /// Approximate stored size of an entry version in bytes: UTF-16 field values
-  /// plus known attachment sizes. Used only for retention accounting.
-  static int versionSize(Entry e) {
-    var bytes = 0;
-    for (final f in e.fields.values) {
-      bytes += f.key.length * 2;
-      bytes += f.value.reveal().length * 2;
+  /// Trims [history] (oldest-first) to satisfy [policy]. At least one version is
+  /// always retained when any size limit would otherwise empty the list.
+  static void prune(List<Entry> history, EntryHistoryPolicy policy) {
+    if (policy.maxItems >= 0) {
+      while (history.length > policy.maxItems) {
+        history.removeAt(0);
+      }
     }
-    for (final a in e.attachments) {
-      bytes += a.size;
+    if (policy.maxSizeBytes >= 0) {
+      while (history.length > 1 && _totalSize(history) > policy.maxSizeBytes) {
+        history.removeAt(0);
+      }
+    }
+  }
+
+  static int _totalSize(List<Entry> history) {
+    var total = 0;
+    for (final e in history) {
+      total += estimateSize(e);
+    }
+    return total;
+  }
+
+  /// Rough byte size of an entry's content for size-based pruning: field values
+  /// (UTF-16 code units ≈ 2 bytes) plus attachment payload sizes.
+  static int estimateSize(Entry entry) {
+    var bytes = 0;
+    for (final field in entry.fields.values) {
+      bytes += field.key.length * 2;
+      bytes += field.value.reveal().length * 2;
+    }
+    for (final att in entry.attachments) {
+      bytes += att.size;
     }
     return bytes;
-  }
-
-  /// Record the current state of [entry] as a historical version, then bump
-  /// [entry.modified] to [now] (if given) and prune per [policy].
-  ///
-  /// Call this immediately BEFORE applying an edit, so the snapshot captures the
-  /// pre-edit state. Returns the number of versions retained.
-  int record(Entry entry, {DateTime? now}) {
-    entry.history.add(snapshot(entry));
-    if (now != null) entry.modified = now;
-    prune(entry);
-    return entry.history.length;
-  }
-
-  /// Restore historical version [index] (0 = oldest) into [entry] in place.
-  ///
-  /// When [keepCurrentInHistory] is true the current state is first snapshotted
-  /// so the restore itself is undoable. The restored version is left in history
-  /// (KeePass behaviour: restoring does not consume the version).
-  void restore(Entry entry, int index, {bool keepCurrentInHistory = true, DateTime? now}) {
-    if (index < 0 || index >= entry.history.length) {
-      throw RangeError.index(index, entry.history, 'index');
-    }
-    final target = entry.history[index];
-    if (keepCurrentInHistory) {
-      entry.history.add(snapshot(entry));
-    }
-    // Copy target content into entry (fields/tags/attachments/icon).
-    entry.fields
-      ..clear()
-      ..addAll({
-        for (final e in target.fields.entries)
-          e.key: Field(
-            key: e.value.key,
-            value: InMemoryProtectedValue(e.value.value.reveal(),
-                isProtected: e.value.isProtected),
-          ),
-      });
-    entry.tags
-      ..clear()
-      ..addAll(target.tags);
-    entry.attachments
-      ..clear()
-      ..addAll(target.attachments);
-    entry.iconId = target.iconId;
-    entry.customIconUuid = target.customIconUuid;
-    if (now != null) entry.modified = now;
-    prune(entry);
-  }
-
-  /// Enforce [policy] on [entry.history], dropping oldest versions first.
-  void prune(Entry entry) {
-    final h = entry.history;
-    if (policy.maxItems >= 0) {
-      while (h.length > policy.maxItems) {
-        h.removeAt(0);
-      }
-    }
-    if (policy.maxTotalSizeBytes >= 0) {
-      var total = h.fold<int>(0, (sum, e) => sum + versionSize(e));
-      while (h.length > 1 && total > policy.maxTotalSizeBytes) {
-        total -= versionSize(h.removeAt(0));
-      }
-    }
-  }
-
-  /// Remove all historical versions.
-  void clear(Entry entry) => entry.history.clear();
-}
-
-/// Convenience extension for call sites that just want to track an edit.
-extension EntryHistoryX on Entry {
-  /// Snapshot current state into history using the default policy. Returns the
-  /// retained version count. Prefer [EntryHistoryService.record] when you need a
-  /// custom policy or to set the modified timestamp.
-  int pushHistory({DateTime? now, HistoryPolicy policy = const HistoryPolicy()}) {
-    return EntryHistoryService(policy: policy).record(this, now: now);
   }
 }

@@ -1,142 +1,114 @@
-import 'dart:typed_data';
-
-import 'package:dgvault/core/model/entry.dart';
-import 'package:dgvault/core/model/field.dart';
-import 'package:dgvault/core/model/attachment.dart';
-import 'package:dgvault/core/model/protected_value.dart';
-import 'package:dgvault/core/history/entry_history.dart';
+import 'package:dgvault/core/core.dart';
 import 'package:test/test.dart';
 
-Entry entryWith(String title, {List<Attachment> attachments = const []}) {
+Entry _entry(String uuid, String password, {List<String>? tags}) {
   return Entry(
-    uuid: 'u1',
+    uuid: uuid,
     fields: {
-      Field.title: Field(key: Field.title, value: InMemoryProtectedValue.plain(title)),
+      Field.password: Field(
+        key: Field.password,
+        value: InMemoryProtectedValue(password),
+      ),
     },
-    attachments: List.of(attachments),
+    tags: tags,
   );
 }
 
-void setTitle(Entry e, String title) {
-  e.fields[Field.title] =
-      Field(key: Field.title, value: InMemoryProtectedValue.plain(title));
-}
-
 void main() {
-  group('snapshot', () {
-    test('deep-copies content and carries no nested history', () {
-      final e = entryWith('orig');
-      final snap = EntryHistoryService.snapshot(e);
-      expect(snap.title, 'orig');
+  group('snapshotOf', () {
+    test('copies fields/tags but carries no nested history', () {
+      final e = _entry('e1', 'v1', tags: ['a']);
+      e.history.add(_entry('e1', 'old'));
+      final snap = EntryHistory.snapshotOf(e);
+      expect(snap.uuid, 'e1');
+      expect(snap.fields[Field.password]!.value.reveal(), 'v1');
+      expect(snap.tags, ['a']);
       expect(snap.history, isEmpty);
-      // Mutating the original must not affect the snapshot.
-      setTitle(e, 'changed');
-      expect(e.title, 'changed');
-      expect(snap.title, 'orig');
+    });
+
+    test('snapshot is independent of later disposal of the live value', () {
+      final e = _entry('e1', 'secret');
+      final snap = EntryHistory.snapshotOf(e);
+      e.fields[Field.password]!.value.dispose();
+      // Live value is now wiped, but the snapshot keeps its own copy.
+      expect(snap.fields[Field.password]!.value.reveal(), 'secret');
     });
   });
 
-  group('record', () {
-    test('captures pre-edit state and bumps modified', () {
-      final svc = EntryHistoryService();
-      final e = entryWith('v1');
-      final now = DateTime.utc(2026, 6, 14);
-      svc.record(e, now: now);
-      expect(e.history, hasLength(1));
-      expect(e.history.first.title, 'v1');
-      expect(e.modified, now);
-      // Edit after recording does not alter the stored version.
-      setTitle(e, 'v2');
-      expect(e.history.first.title, 'v1');
+  group('record + prune', () {
+    test('records prior versions oldest-first', () {
+      final e = _entry('e1', 'v1');
+      EntryHistory.record(e); // captures v1
+      e.fields[Field.password] = Field(
+        key: Field.password,
+        value: InMemoryProtectedValue('v2'),
+      );
+      EntryHistory.record(e); // captures v2
+      expect(e.history.map((h) => h.fields[Field.password]!.value.reveal()),
+          ['v1', 'v2']);
     });
 
-    test('extension pushHistory works', () {
-      final e = entryWith('a');
-      expect(e.pushHistory(), 1);
-      expect(e.history, hasLength(1));
-    });
-  });
-
-  group('prune', () {
-    test('enforces maxItems (drops oldest first)', () {
-      final svc = EntryHistoryService(
-          policy: const HistoryPolicy(maxItems: 3, maxTotalSizeBytes: -1));
-      final e = entryWith('x');
-      for (var i = 0; i < 5; i++) {
-        setTitle(e, 'v$i');
-        svc.record(e);
+    test('maxItems prunes the oldest', () {
+      final e = _entry('e1', 'v');
+      const policy = EntryHistoryPolicy(maxItems: 3, maxSizeBytes: -1);
+      for (var i = 0; i < 6; i++) {
+        e.fields[Field.password] = Field(
+          key: Field.password,
+          value: InMemoryProtectedValue('v$i'),
+        );
+        EntryHistory.record(e, policy: policy);
       }
-      expect(e.history, hasLength(3));
-      // Oldest (v0, v1) dropped; newest retained.
-      expect(e.history.map((h) => h.title), ['v2', 'v3', 'v4']);
+      expect(e.history.length, 3);
+      // Oldest three (v0,v1,v2) dropped; newest three remain.
+      expect(e.history.map((h) => h.fields[Field.password]!.value.reveal()),
+          ['v3', 'v4', 'v5']);
     });
 
-    test('enforces maxTotalSizeBytes (keeps at least one)', () {
-      final att = Attachment(id: 'a', name: 'f', size: 600, inlineData: null);
-      final svc = EntryHistoryService(
-          policy: const HistoryPolicy(maxItems: -1, maxTotalSizeBytes: 1300));
-      final e = entryWith('a', attachments: [att]); // ~612 bytes per version
-      for (var i = 0; i < 5; i++) {
-        svc.record(e);
-      }
-      // Two versions (~1224B) fit under 1300; a third would exceed it.
-      expect(e.history, hasLength(2));
-    });
-
-    test('unlimited policy keeps everything', () {
-      final svc = EntryHistoryService(policy: HistoryPolicy.unlimited);
-      final e = entryWith('x');
-      for (var i = 0; i < 25; i++) {
-        svc.record(e);
-      }
-      expect(e.history, hasLength(25));
-    });
-  });
-
-  group('restore', () {
-    test('restores an old version and keeps current as new history', () {
-      final svc = EntryHistoryService();
-      final e = entryWith('v1');
-      svc.record(e); // history: [v1]
-      setTitle(e, 'v2');
-      svc.restore(e, 0); // restore v1, snapshot v2
-      expect(e.title, 'v1');
-      // history now contains the original v1 plus the snapshotted v2.
-      expect(e.history.map((h) => h.title), containsAll(['v1', 'v2']));
-    });
-
-    test('restore can skip keeping current state', () {
-      final svc = EntryHistoryService();
-      final e = entryWith('v1');
-      svc.record(e);
-      setTitle(e, 'v2');
-      svc.restore(e, 0, keepCurrentInHistory: false);
-      expect(e.title, 'v1');
-      expect(e.history, hasLength(1)); // only the original v1
-    });
-
-    test('out-of-range index throws', () {
-      final svc = EntryHistoryService();
-      final e = entryWith('v1');
-      svc.record(e);
-      expect(() => svc.restore(e, 5), throwsA(isA<RangeError>()));
-    });
-  });
-
-  group('versionSize + clear', () {
-    test('counts field and attachment bytes', () {
-      final att = Attachment(
-          id: 'a', name: 'f', size: 1000, inlineData: Uint8List(0));
-      final e = entryWith('ab', attachments: [att]); // 'Title'(10)+'ab'(4)=14 +1000
-      expect(EntryHistoryService.versionSize(e), 1014);
-    });
-
-    test('clear empties history', () {
-      final svc = EntryHistoryService();
-      final e = entryWith('x');
-      svc.record(e);
-      svc.clear(e);
+    test('maxItems == 0 keeps no history', () {
+      final e = _entry('e1', 'v');
+      EntryHistory.record(e, policy: const EntryHistoryPolicy(maxItems: 0));
       expect(e.history, isEmpty);
+    });
+
+    test('size pruning always keeps at least one version', () {
+      final e = _entry('e1', 'a-very-long-password-value-exceeding-limit');
+      const tiny = EntryHistoryPolicy(maxItems: -1, maxSizeBytes: 1);
+      EntryHistory.record(e, policy: tiny);
+      EntryHistory.record(e, policy: tiny);
+      expect(e.history.length, 1);
+    });
+  });
+
+  group('repository updateEntry wiring', () {
+    test('snapshots prior state then applies the mutation', () {
+      final e = _entry('e1', 'old');
+      final root = Group(uuid: 'r', name: 'Root', entries: [e]);
+      final repo = InMemoryDatabaseRepository(
+        Database(meta: DatabaseMeta(name: 'T'), root: root),
+      );
+
+      repo.updateEntry(e, (draft) {
+        draft.fields[Field.password] = Field(
+          key: Field.password,
+          value: InMemoryProtectedValue('new'),
+        );
+      });
+
+      expect(e.fields[Field.password]!.value.reveal(), 'new');
+      expect(e.history.single.fields[Field.password]!.value.reveal(), 'old');
+    });
+
+    test('updateEntry is rejected on a read-only database', () {
+      final e = _entry('e1', 'v');
+      final root = Group(uuid: 'r', name: 'Root', entries: [e]);
+      final repo = InMemoryDatabaseRepository(
+        Database(meta: DatabaseMeta(name: 'T'), root: root, readOnly: true),
+      );
+      expect(
+        () => repo.updateEntry(e, (_) {}),
+        throwsA(isA<ReadOnlyDatabaseException>()),
+      );
+      expect(e.history, isEmpty); // no snapshot taken on rejection
     });
   });
 }

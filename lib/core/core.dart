@@ -15,3 +15,5 @@ export 'crypto/key_derivation.dart';
 export 'crypto/cipher.dart';
 
 export 'template/placeholder_resolver.dart';
+
+export 'history/entry_history.dart';
