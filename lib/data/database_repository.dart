@@ -8,6 +8,7 @@
 //
 // Pure Dart, platform-agnostic, fully unit-testable.
 
+import '../core/history/entry_history.dart';
 import '../core/model/database.dart';
 import '../core/model/entry.dart';
 import '../core/model/group.dart';
@@ -39,6 +40,15 @@ abstract interface class DatabaseRepository {
   void deleteEntry(Entry entry);
   void moveEntry(Entry entry, Group destination);
   void addGroup(Group parent, Group group);
+
+  /// Applies [mutate] to [entry] after snapshotting its prior state into the
+  /// entry's history (Entry History feature). The snapshot is taken before the
+  /// mutation runs, so a single prior version is always recoverable.
+  void updateEntry(
+    Entry entry,
+    void Function(Entry entry) mutate, {
+    EntryHistoryPolicy? policy,
+  });
 
   /// Toggle the session read-only flag. This is a view-mode change, not a
   /// content write, so it is always permitted.
@@ -111,6 +121,20 @@ class InMemoryDatabaseRepository implements DatabaseRepository {
   void addGroup(Group parent, Group group) {
     _guard('addGroup');
     parent.groups.add(group);
+  }
+
+  @override
+  void updateEntry(
+    Entry entry,
+    void Function(Entry entry) mutate, {
+    EntryHistoryPolicy? policy,
+  }) {
+    _guard('updateEntry');
+    EntryHistory.record(
+      entry,
+      policy: policy ?? EntryHistoryPolicy.keepassDefault,
+    );
+    mutate(entry);
   }
 
   @override
