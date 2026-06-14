@@ -76,7 +76,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock ⚠ Critic security sign-off PENDING R15 (R5 duress)
 - [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests added; 🟠 hardening F1 (REQUEST_CHANGES): `maxAttempts>0` guarded only by debug-only `assert` → a release misconfig wipes on the first failure; use `throw ArgumentError`. F2: add a wipe-pending getter so a wipe interrupted by app-kill completes at startup
 - [x] Read-only mode — data-layer write-guard repository (Composer)
-- [ ] Master password reminder scheduler (Performer)
+- [x] Master password reminder scheduler — pure due/snooze scheduler (interval since last verify, injectable clock) (Composer)
 - [ ] Secure storage wrapping of keys via OS keystore (Performer)
 - [ ] Auth/lock state-machine unit tests (Critic)
 
