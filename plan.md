@@ -96,7 +96,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Offline editing + offline viewing (Performer)
 - [ ] Large database handling (250MB+) — streaming/lazy load (Performer)
 - [ ] Rolling local backups (Performer)
-- [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer)
+- [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer); copyEntry deep-clone source-corruption FIXED R9 (was Critic T1)
 - [ ] Local-only / local databases support (Performer)
 - [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
 - [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)

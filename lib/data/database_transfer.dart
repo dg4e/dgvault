@@ -13,7 +13,9 @@
 import '../core/model/attachment.dart';
 import '../core/model/database.dart';
 import '../core/model/entry.dart';
+import '../core/model/field.dart';
 import '../core/model/group.dart';
+import '../core/model/protected_value.dart';
 import 'database_repository.dart';
 
 class DatabaseTransfer {
@@ -46,9 +48,12 @@ class DatabaseTransfer {
     destGroup.entries.add(entry);
   }
 
-  /// Copies [entry] into [destGroup] of [dest] (source unchanged), relinking
-  /// attachments into the destination pool. The copy keeps the same UUID, so
-  /// callers wanting a distinct identity should assign a new UUID afterwards.
+  /// Copies [entry] into [destGroup] of [dest], leaving the source entirely
+  /// unchanged. The entry is **deep-cloned first** so relinking its attachments
+  /// into the destination pool never mutates the source entry's references and
+  /// the two databases never alias the same object. Returns the inserted clone.
+  /// The copy keeps the same UUID, so callers wanting a distinct identity should
+  /// assign a new UUID to the returned entry.
   Entry copyEntry(
     Entry entry,
     Database source,
@@ -57,9 +62,45 @@ class DatabaseTransfer {
   ) {
     if (dest.readOnly) throw ReadOnlyDatabaseException('copyEntry(dest)');
     _assertNoUuidCollision(dest, entry);
-    _relinkBinariesIntoDest(source, dest, entry);
-    destGroup.entries.add(entry);
-    return entry;
+    final clone = _cloneEntry(entry);
+    _relinkBinariesIntoDest(source, dest, clone);
+    destGroup.entries.add(clone);
+    return clone;
+  }
+
+  /// Deep-clones an entry: fresh field/value instances, copied attachment
+  /// references, tags, and history (history versions carry no nested history,
+  /// so the recursion terminates).
+  Entry _cloneEntry(Entry e) {
+    final fields = <String, Field>{};
+    e.fields.forEach((key, f) {
+      fields[key] = Field(
+        key: f.key,
+        value: InMemoryProtectedValue(
+          f.value.reveal(),
+          isProtected: f.value.isProtected,
+        ),
+      );
+    });
+    return Entry(
+      uuid: e.uuid,
+      fields: fields,
+      tags: List<String>.of(e.tags),
+      attachments: [
+        for (final a in e.attachments)
+          Attachment(
+            id: a.id,
+            name: a.name,
+            size: a.size,
+            inlineData: a.inlineData,
+          ),
+      ],
+      history: [for (final h in e.history) _cloneEntry(h)],
+      iconId: e.iconId,
+      customIconUuid: e.customIconUuid,
+      created: e.created,
+      modified: e.modified,
+    );
   }
 
   void _assertNoUuidCollision(Database dest, Entry entry) {
