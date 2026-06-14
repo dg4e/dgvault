@@ -115,7 +115,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Powerful search (all fields) — core search engine (Composer); Critic adversarial audit added R10 (protected name-vs-value, AND×protection) — APPROVE
 - [x] Custom order & sorting — core sort + manual reorder service (Composer); Critic adversarial audit added (descending-stability, purity, moveBefore edges) — APPROVE
 - [x] Custom icons + preset icon sets — custom-icon pool (add/dedupe/reference-scan/orphan-prune) + preset-icon validation (Performer)
-- [ ] Markdown notes rendering (Performer)
+- [x] Markdown notes — render-agnostic parser (headings/code-fence/blockquote/lists/paragraph + inline bold/italic/code/link/autolink), UI renders the AST (Performer)
 - [x] Custom URL handling — URL override precedence ({URL} embed) + placeholder resolution + scheme classification + safe-to-auto-open policy (Composer); custom app icons (platform/UI) remain (Performer)
 
 ### Phase 8 — Platform Integrations (Round 6–7)
