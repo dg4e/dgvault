@@ -43,19 +43,24 @@ void main() {
   });
 
   // ---- 🔴 SECURITY FINDING (REQUEST_CHANGES) — pinned current behaviour ----
-  group('SECURITY: whitespace/control-char scheme obfuscation', () {
-    test('a tab inside a javascript scheme DEFEATS the block-list (current bug)', () {
-      // `java\tscript:` — the regex in _schemeName rejects the tab, so the string
-      // is treated as having NO scheme → implicit https → autoOpen. Browsers and
-      // OS launchers strip \t/\n/\r from schemes, so this would actually run
-      // javascript:. The block-list must strip ASCII control/whitespace from the
-      // scheme BEFORE matching, and a colon-bearing-but-invalid scheme should
-      // default to confirmFirst (not https). REQUEST_CHANGES — see review.
+  group('SECURITY: whitespace/control-char scheme obfuscation (FIXED R19)', () {
+    test('a tab inside a javascript scheme no longer defeats the block-list', () {
+      // `java\tscript:` — the scheme is now sanitized (control/whitespace
+      // stripped) BEFORE block-list matching, so it resolves to `javascript`
+      // and is blocked. Browsers/OS launchers strip \t/\n/\r from schemes, so
+      // this string would actually run javascript: — it MUST be blocked.
       final r = h.resolve(_e('java\tscript:alert(document.cookie)'));
-      expect(r.policy, UrlOpenPolicy.autoOpen,
-          reason: 'CURRENT UNSAFE behaviour pinned; must become blocked/confirmFirst after fix');
+      expect(r.policy, UrlOpenPolicy.blocked,
+          reason: 'control-char obfuscated javascript scheme must be blocked');
       // A trailing tab before the colon is the same class of bypass.
-      expect(h.resolve(_e('javascript\t:alert(1)')).policy, UrlOpenPolicy.autoOpen);
+      expect(h.resolve(_e('javascript\t:alert(1)')).policy,
+          UrlOpenPolicy.blocked);
+      // Newline/CR obfuscation of data: likewise blocked.
+      expect(h.resolve(_e('da\nta:text/html,<script>')).policy,
+          UrlOpenPolicy.blocked);
+      // A colon-bearing but non-scheme token never auto-opens (defaults to confirm).
+      expect(h.resolve(_e('weird scheme:payload')).policy,
+          UrlOpenPolicy.confirmFirst);
     });
   });
 }

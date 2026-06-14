@@ -96,22 +96,64 @@ class CustomUrlHandler {
     }
     effective = effective.trim();
 
-    final scheme = _classify(effective);
-    // Script/data URIs are hard-blocked regardless of how they classify.
-    final policy = isBlockedScheme(effective)
-        ? UrlOpenPolicy.blocked
-        : _policyFor(scheme);
+    final (scheme, policy) = _analyze(effective);
     return ResolvedUrl(value: effective, scheme: scheme, policy: policy);
   }
 
-  UrlScheme _classify(String url) {
-    if (url.isEmpty) return UrlScheme.none;
-    final schemeName = _schemeName(url);
-    if (schemeName == null) {
-      // No scheme → treat as an implicit https web link (KeePass/browser behaviour).
-      return UrlScheme.https;
+  static final RegExp _schemeGrammar = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*$');
+  static final RegExp _startsWithDigit = RegExp(r'^[0-9]');
+
+  /// Classifies [url] and assigns an open policy, hardened against scheme
+  /// obfuscation. The scheme is sanitized (ASCII control + whitespace removed)
+  /// BEFORE block-list matching — because browsers/OS launchers strip `\t\n\r`
+  /// from schemes, so `java\tscript:` really runs `javascript:`. A colon-bearing
+  /// string whose scheme isn't a clean RFC-3986 token never auto-opens.
+  (UrlScheme, UrlOpenPolicy) _analyze(String url) {
+    if (url.isEmpty) return (UrlScheme.none, UrlOpenPolicy.blocked);
+
+    final colon = url.indexOf(':');
+    if (colon <= 0) {
+      // No scheme → bare host → implicit https (browser/KeePass behaviour).
+      return (UrlScheme.https, UrlOpenPolicy.autoOpen);
     }
-    switch (schemeName) {
+
+    final rawScheme = url.substring(0, colon);
+    final rest = url.substring(colon + 1);
+    final sanitized = _sanitizeScheme(rawScheme);
+
+    // Block-list match on the SANITIZED scheme — catches `java\tscript`,
+    // `javascript\t`, mixed case, etc.
+    if (_blockedSchemes.contains(sanitized)) {
+      return (UrlScheme.unknown, UrlOpenPolicy.blocked);
+    }
+
+    // A scheme token containing control/whitespace/invalid chars is obfuscated
+    // or malformed: never auto-open it (and never fall through to implicit-https).
+    if (!_schemeGrammar.hasMatch(rawScheme)) {
+      return (UrlScheme.unknown, UrlOpenPolicy.confirmFirst);
+    }
+
+    // `example.com:8080/x` — colon introduces a port, not a scheme body.
+    if (rest.isNotEmpty && _startsWithDigit.hasMatch(rest) &&
+        !rest.startsWith('//')) {
+      return (UrlScheme.https, UrlOpenPolicy.autoOpen);
+    }
+
+    final scheme = _knownScheme(sanitized);
+    return (scheme, _policyFor(scheme));
+  }
+
+  /// Strips ASCII control characters and whitespace, then lowercases.
+  static String _sanitizeScheme(String raw) {
+    final sb = StringBuffer();
+    for (final u in raw.codeUnits) {
+      if (u > 0x20 && u != 0x7f) sb.writeCharCode(u);
+    }
+    return sb.toString().toLowerCase();
+  }
+
+  static UrlScheme _knownScheme(String name) {
+    switch (name) {
       case 'http':
         return UrlScheme.http;
       case 'https':
@@ -135,26 +177,6 @@ class CustomUrlHandler {
     }
   }
 
-  /// Extracts a lowercased scheme name (the part before `:`), or null when the
-  /// string has no scheme. Guards against treating a bare `host:port` as a
-  /// scheme by requiring the scheme to match the RFC 3986 grammar.
-  String? _schemeName(String url) {
-    final colon = url.indexOf(':');
-    if (colon <= 0) return null;
-    final candidate = url.substring(0, colon);
-    final valid = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*$').hasMatch(candidate);
-    if (!valid) return null;
-    // `example.com:8080/x` — the "scheme" is followed by digits (a port), not a
-    // URL body. Heuristic: a real scheme is followed by `//`, `mailto:`-style
-    // path, or a non-numeric char.
-    final rest = url.substring(colon + 1);
-    if (rest.isNotEmpty && RegExp(r'^[0-9]').hasMatch(rest) &&
-        !rest.startsWith('//')) {
-      return null;
-    }
-    return candidate.toLowerCase();
-  }
-
   UrlOpenPolicy _policyFor(UrlScheme scheme) {
     switch (scheme) {
       case UrlScheme.http:
@@ -174,10 +196,11 @@ class CustomUrlHandler {
     }
   }
 
-  /// True when [url]'s scheme is on the hard block-list (script/data URIs).
+  /// True when [url]'s scheme is on the hard block-list (script/data URIs),
+  /// evaluated after stripping control/whitespace obfuscation.
   static bool isBlockedScheme(String url) {
     final colon = url.indexOf(':');
     if (colon <= 0) return false;
-    return _blockedSchemes.contains(url.substring(0, colon).toLowerCase());
+    return _blockedSchemes.contains(_sanitizeScheme(url.substring(0, colon)));
   }
 }
