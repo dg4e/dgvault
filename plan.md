@@ -71,7 +71,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Duress PIN — open dummy database (Performer)
 - [ ] Duress PIN — delete all data (Performer)
 - [ ] App Lock — delete-all-on-fails policy (Performer)
-- [ ] Read-only mode (Composer interface + Performer impl) (shared)
+- [x] Read-only mode — data-layer write-guard repository (Composer)
 - [ ] Master password reminder scheduler (Performer)
 - [ ] Secure storage wrapping of keys via OS keystore (Performer)
 - [ ] Auth/lock state-machine unit tests (Critic)
@@ -85,8 +85,8 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic) — generator audit tests DONE; TOTP half blocked on impl
 
 ### Phase 4 — Security & Audit (Round 4–5)
-- [ ] Audit: find weaknesses (weak/reused/old passwords) (Performer)
-- [ ] Find-similar audit (Performer)
+- [x] Audit: find weaknesses (weak/reused/old passwords) (Performer)
+- [x] Find-similar audit (Performer)
 - [ ] Passkeys support (Performer)
 - [ ] Audit engine unit tests (Critic)
 

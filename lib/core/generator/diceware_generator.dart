@@ -2,13 +2,16 @@
 //
 // Pure Dart, no external packages. Generates passphrases by selecting words
 // uniformly at random from a wordlist using [Random.secure] (overridable for
-// tests). The default uses the EFF "large" wordlist (7776 words) when bundled
-// as an asset; for headless/core tests a wordlist is injected directly.
+// tests). [DicewareGenerator.standard] uses the embedded [kDefaultDicewareWords]
+// list so it works with no setup; a caller may inject any larger wordlist (e.g.
+// the EFF "large" 7776-word list parsed via [DicewareWordlist.parseEff]).
 //
-// Entropy per word = log2(wordlistSize). For the EFF large list that is
-// log2(7776) ≈ 12.925 bits/word, so a 6-word passphrase ≈ 77.5 bits.
+// Entropy per word = log2(wordlistSize): ~8 bits/word for the embedded list,
+// log2(7776) ≈ 12.925 bits/word for the full EFF list (6 words ≈ 77.5 bits).
 
 import 'dart:math';
+
+import 'diceware_wordlist.dart';
 
 /// Strategy for capitalizing words in the passphrase.
 enum DicewareCapitalization {
@@ -58,6 +61,11 @@ class DicewareGenerator {
       throw DicewareException('wordlist must not be empty');
     }
   }
+
+  /// Generator backed by the embedded [kDefaultDicewareWords] list — usable with
+  /// no asset setup. Inject a larger wordlist for higher per-word entropy.
+  factory DicewareGenerator.standard({Random? random}) =>
+      DicewareGenerator(wordlist: kDefaultDicewareWords, random: random);
 
   String generate(DicewareOptions options) {
     if (options.wordCount < 1) {
