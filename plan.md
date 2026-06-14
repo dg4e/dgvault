@@ -74,9 +74,9 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
 - [x] Duress PIN — open dummy database (Composer) — unified `DuressPolicy` routing (real/decoy/duress-wipe/none → outcome) with indistinguishability invariant — Critic R15 SECURITY SIGN-OFF (R5/§4.5): APPROVE; added exhaustive matrix audit (duress always-wipes in every config + signal always benign/never-real). Caveat for caller: the hidden wipe must not add observable latency vs a normal decoy open, and credential matching MUST be constant-time (delegated to crypto layer)
 - [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock — Critic R15 SECURITY SIGN-OFF: APPROVE (covered by same matrix audit)
-- [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests added; 🟠 hardening F1 (REQUEST_CHANGES): `maxAttempts>0` guarded only by debug-only `assert` → a release misconfig wipes on the first failure; use `throw ArgumentError`. F2: add a wipe-pending getter so a wipe interrupted by app-kill completes at startup
+- [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests. F1+F2 FIXED R15 (Performer): `maxAttempts<=0` now throws `ArgumentError` (release-safe) + `isWipePending` getter added — Critic VERIFIED in source R15, REQUEST_CHANGES resolved ✅
 - [x] Read-only mode — data-layer write-guard repository (Composer)
-- [ ] Master password reminder scheduler (Performer)
+- [x] Master password reminder scheduler — pure due/snooze scheduler (interval since last verify, injectable clock) (Composer)
 - [ ] Secure storage wrapping of keys via OS keystore (Performer)
 - [ ] Auth/lock state-machine unit tests (Critic)
 

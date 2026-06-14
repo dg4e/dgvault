@@ -49,7 +49,16 @@ class AppLockPolicy {
     required this.store,
     this.maxAttempts = 10,
     this.wipeOnExhaustion = true,
-  }) : assert(maxAttempts > 0, 'maxAttempts must be positive');
+  }) {
+    // A real throw, not a debug-only assert: with maxAttempts <= 0 the very
+    // first failure would satisfy the exhaustion check and trigger a wipe. An
+    // `assert` is stripped in release builds, so a misconfig would silently
+    // destroy data in production (Critic R14 F1). Fail loudly instead.
+    if (maxAttempts <= 0) {
+      throw ArgumentError.value(
+          maxAttempts, 'maxAttempts', 'must be > 0 (destructive guard)');
+    }
+  }
 
   final FailedAttemptStore store;
 
@@ -68,6 +77,13 @@ class AppLockPolicy {
   }
 
   bool get isLockedOut => store.failedCount >= maxAttempts;
+
+  /// True when a destructive wipe is owed but may not have completed — the
+  /// persisted counter has reached the limit and delete-on-fail is enabled.
+  /// Check this at startup: if a wipe was interrupted by app-kill mid-wipe, the
+  /// persistent counter still reflects exhaustion, so the wipe must be retried
+  /// to completion before the database is opened (Critic R14 F2).
+  bool get isWipePending => wipeOnExhaustion && store.failedCount >= maxAttempts;
 
   /// Record a wrong master password / PIN. Increments the persistent counter
   /// and reports whether the limit is now exhausted (and a wipe is due).

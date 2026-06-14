@@ -68,9 +68,43 @@ void main() {
       expect(p.isLockedOut, isTrue);
     });
 
-    test('rejects non-positive maxAttempts', () {
+    test('rejects non-positive maxAttempts with a real throw (not debug assert)', () {
+      // Must throw in release too — maxAttempts<=0 would wipe on first failure.
       expect(() => AppLockPolicy(store: InMemoryFailedAttemptStore(), maxAttempts: 0),
-          throwsA(isA<AssertionError>()));
+          throwsA(isA<ArgumentError>()));
+      expect(() => AppLockPolicy(store: InMemoryFailedAttemptStore(), maxAttempts: -1),
+          throwsA(isA<ArgumentError>()));
+    });
+
+    group('isWipePending (interrupted-wipe recovery)', () {
+      test('true once the persisted counter has reached the limit', () {
+        final store = InMemoryFailedAttemptStore();
+        final p = AppLockPolicy(store: store, maxAttempts: 3);
+        expect(p.isWipePending, isFalse);
+        p.recordFailure();
+        p.recordFailure();
+        expect(p.isWipePending, isFalse);
+        p.recordFailure(); // exhausts
+        expect(p.isWipePending, isTrue);
+        // Survives a restart: a fresh policy over the same store still owes the wipe.
+        expect(AppLockPolicy(store: store, maxAttempts: 3).isWipePending, isTrue);
+      });
+
+      test('false when delete-on-fail is disabled', () {
+        final store = InMemoryFailedAttemptStore()..failedCount = 99;
+        final p = AppLockPolicy(
+            store: store, maxAttempts: 3, wipeOnExhaustion: false);
+        expect(p.isWipePending, isFalse);
+      });
+
+      test('cleared after a successful unlock resets the counter', () {
+        final store = InMemoryFailedAttemptStore();
+        final p = AppLockPolicy(store: store, maxAttempts: 1);
+        p.recordFailure();
+        expect(p.isWipePending, isTrue);
+        p.recordSuccess();
+        expect(p.isWipePending, isFalse);
+      });
     });
   });
 }
