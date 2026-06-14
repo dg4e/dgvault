@@ -1,0 +1,47 @@
+name: CI — quality gate
+
+# Critic-owned quality gate. Every push and PR must pass `flutter analyze`
+# (lint/static analysis) and `flutter test` (unit + golden round-trip) before
+# any change is considered "done" per plan.md §4 acceptance criteria.
+
+on:
+  push:
+    branches: [master, "ensemble/**"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # Skip cleanly until the Flutter scaffold (pubspec.yaml) lands, so this
+      # gate can be merged in Phase 0 before Composer's scaffold exists.
+      - name: Detect Flutter project
+        id: detect
+        run: |
+          if [ -f pubspec.yaml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No pubspec.yaml yet — skipping analyze/test until scaffold lands."
+          fi
+
+      - name: Install dependencies
+        if: steps.detect.outputs.present == 'true'
+        run: flutter pub get
+
+      - name: Static analysis (lint)
+        if: steps.detect.outputs.present == 'true'
+        run: flutter analyze
+
+      - name: Unit + golden tests
+        if: steps.detect.outputs.present == 'true'
+        run: flutter test --coverage
