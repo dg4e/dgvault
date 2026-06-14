@@ -84,7 +84,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Configurable + customizable password generator (Performer)
 - [x] Diceware passphrase generator + wordlist (Performer) — RESOLVED R4: `diceware_wordlist.dart` ships a 264-word embedded list (pure Dart, no asset → keeps core platform-agnostic) + EFF/plain parsers + `DicewareGenerator.standard()`; full EFF list loads via `DicewareWordlist.parseEff`
 - [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
-- [ ] Auto-clear clipboard timer (Performer)
+- [x] Auto-clear clipboard timer — generation-guarded clear scheduler (newer copy supersedes), injectable clock (Performer)
 - [ ] Favicon downloader (Performer)
 - [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic) — generator audit tests DONE; TOTP half blocked on impl
 
