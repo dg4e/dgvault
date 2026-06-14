@@ -1,42 +1,21 @@
-// dgvault — KDBX4 outer binary header + VariantDictionary codec (structural).
+// dgvault — KDBX4 outer-header binary codec (crypto-free).
 //
-// Pure Dart byte (de)serialization of the *unencrypted* KDBX4 outer header:
-// file signatures, format version, and the TLV header fields (cipher UUID,
-// compression flags, master seed, encryption IV, KDF parameters as a
-// VariantDictionary, public custom data). This is the structural glue between
-// the KeePass XML inner codec and the crypto layer — it deliberately does NOT
-// perform any cryptography. The header SHA-256 / HMAC-SHA-256 integrity block
-// that follows the header in a real file, and the KDF/cipher transform, are the
-// crypto layer's responsibility (toolchain-gated) and are out of scope here.
+// Parses/serializes the unencrypted KDBX4 outer header: magic signature,
+// format version, and the type-length-value header fields (cipher id,
+// compression, master seed, encryption IV, KDF parameters as a
+// VariantDictionary). It deliberately stops at the header boundary — the
+// header SHA-256/HMAC integrity checks and the encrypted+HMAC'd block stream
+// are the crypto layer's job (computed over the exact header bytes this codec
+// reads/writes via [KdbxHeader.length] / [serialize]).
 //
-// All integers are little-endian, per the KDBX spec. Verifiable by round-trip
-// and against the well-known signature/version constants and KDF type codes.
+// This is the structural container the Argon2/AES-KDF and AES/ChaCha cipher
+// layers plug into. Pure binary, fully unit-testable.
 
-import 'dart:convert';
 import 'dart:typed_data';
 
-/// KDBX file magic. `signature1` is shared by all KeePass files; `signature2`
-/// identifies the KDBX (KeePass 2) family.
-const int kKdbxSignature1 = 0x9AA2D903;
-const int kKdbxSignature2 = 0xB54BFB67;
-
-/// Outer-header field identifiers (KDBX4).
-class KdbxHeaderField {
-  static const int endOfHeader = 0;
-  static const int comment = 1;
-  static const int cipherId = 2;
-  static const int compressionFlags = 3;
-  static const int masterSeed = 4;
-  static const int encryptionIv = 7;
-  static const int kdfParameters = 11;
-  static const int publicCustomData = 12;
-}
-
-/// Compression algorithms (CompressionFlags field).
-class KdbxCompression {
-  static const int none = 0;
-  static const int gzip = 1;
-}
+import '../model/database.dart';
+import '../model/kdf_params.dart';
+import 'variant_dictionary.dart';
 
 class KdbxFormatException implements Exception {
   KdbxFormatException(this.message);
@@ -45,326 +24,236 @@ class KdbxFormatException implements Exception {
   String toString() => 'KdbxFormatException: $message';
 }
 
-// ---------------------------------------------------------------------------
-// Little-endian byte cursor helpers.
-// ---------------------------------------------------------------------------
-
-class _ByteReader {
-  _ByteReader(this._bytes) : _data = ByteData.sublistView(_bytes);
-  final Uint8List _bytes;
-  final ByteData _data;
-  int _pos = 0;
-
-  int get position => _pos;
-  bool get atEnd => _pos >= _bytes.length;
-
-  int readUint8() {
-    _need(1);
-    return _data.getUint8(_pos++);
-  }
-
-  int readUint16() {
-    _need(2);
-    final v = _data.getUint16(_pos, Endian.little);
-    _pos += 2;
-    return v;
-  }
-
-  int readUint32() {
-    _need(4);
-    final v = _data.getUint32(_pos, Endian.little);
-    _pos += 4;
-    return v;
-  }
-
-  int readUint64() {
-    _need(8);
-    final v = _data.getUint64(_pos, Endian.little);
-    _pos += 8;
-    return v;
-  }
-
-  Uint8List readBytes(int n) {
-    _need(n);
-    final out = Uint8List.sublistView(_bytes, _pos, _pos + n);
-    _pos += n;
-    return Uint8List.fromList(out);
-  }
-
-  void _need(int n) {
-    if (_pos + n > _bytes.length) {
-      throw KdbxFormatException('unexpected end of data at $_pos (need $n)');
-    }
-  }
+/// Well-known 16-byte identifiers used in the header / KDF parameters.
+class KdbxUuids {
+  static final Uint8List aes256 = Uint8List.fromList([
+    0x31, 0xC1, 0xF2, 0xE6, 0xBF, 0x71, 0x43, 0x50, //
+    0xBE, 0x58, 0x05, 0x21, 0x6A, 0xFC, 0x5A, 0xFF,
+  ]);
+  static final Uint8List chacha20 = Uint8List.fromList([
+    0xD6, 0x03, 0x8A, 0x2B, 0x8B, 0x6F, 0x4C, 0xB5, //
+    0xA5, 0x24, 0x33, 0x9A, 0x31, 0xDB, 0xB5, 0x9A,
+  ]);
+  static final Uint8List aesKdf = Uint8List.fromList([
+    0xC9, 0xD9, 0xF3, 0x9A, 0x62, 0x8A, 0x44, 0x60, //
+    0xBF, 0x74, 0x0D, 0x08, 0xC1, 0x8A, 0x4F, 0xEA,
+  ]);
+  static final Uint8List argon2d = Uint8List.fromList([
+    0xEF, 0x63, 0x6D, 0xDF, 0x8C, 0x29, 0x44, 0x4B, //
+    0x91, 0xF7, 0xA9, 0xA4, 0x03, 0xE3, 0x0A, 0x0C,
+  ]);
+  static final Uint8List argon2id = Uint8List.fromList([
+    0x9E, 0x29, 0x8B, 0x19, 0x56, 0xDB, 0x47, 0x73, //
+    0xB2, 0x3D, 0xFC, 0x3E, 0xC6, 0xF0, 0xA1, 0xE6,
+  ]);
 }
 
-class _ByteWriter {
-  final BytesBuilder _b = BytesBuilder(copy: false);
-
-  void writeUint8(int v) => _b.addByte(v & 0xff);
-
-  void writeUint16(int v) {
-    final d = ByteData(2)..setUint16(0, v, Endian.little);
-    _b.add(d.buffer.asUint8List());
+bool _bytesEqual(Uint8List a, Uint8List b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
   }
-
-  void writeUint32(int v) {
-    final d = ByteData(4)..setUint32(0, v, Endian.little);
-    _b.add(d.buffer.asUint8List());
-  }
-
-  void writeUint64(int v) {
-    final d = ByteData(8)..setUint64(0, v, Endian.little);
-    _b.add(d.buffer.asUint8List());
-  }
-
-  void writeBytes(List<int> v) => _b.add(v);
-
-  Uint8List toBytes() => _b.toBytes();
+  return true;
 }
 
-// ---------------------------------------------------------------------------
-// VariantDictionary — the KDBX4 KDF-parameter container.
-// ---------------------------------------------------------------------------
-
-/// Value types in a KDBX VariantDictionary (the byte is the on-disk type tag).
-enum VdType {
-  uint32(0x04),
-  uint64(0x05),
-  boolean(0x08),
-  int32(0x0C),
-  int64(0x0D),
-  string(0x18),
-  bytes(0x42);
-
-  const VdType(this.code);
-  final int code;
-
-  static VdType fromCode(int code) =>
-      values.firstWhere((t) => t.code == code,
-          orElse: () => throw KdbxFormatException(
-              'unknown VariantDictionary type 0x${code.toRadixString(16)}'));
-}
-
-/// A typed value. [value] is `int` for the integer types, `bool` for boolean,
-/// `String` for string, and `Uint8List` for bytes.
-class VdValue {
-  VdValue(this.type, this.value);
-  VdValue.uint32(int v) : this(VdType.uint32, v);
-  VdValue.uint64(int v) : this(VdType.uint64, v);
-  VdValue.boolean(bool v) : this(VdType.boolean, v);
-  VdValue.string(String v) : this(VdType.string, v);
-  VdValue.bytes(Uint8List v) : this(VdType.bytes, v);
-
-  final VdType type;
-  final Object value;
-
-  int get asInt => value as int;
-  bool get asBool => value as bool;
-  String get asString => value as String;
-  Uint8List get asBytes => value as Uint8List;
-}
-
-/// KDBX VariantDictionary: an ordered map of typed values. Version is 0x0100.
-class VariantDictionary {
-  VariantDictionary([Map<String, VdValue>? entries])
-      : _entries = entries ?? <String, VdValue>{};
-
-  static const int version = 0x0100;
-
-  final Map<String, VdValue> _entries;
-
-  Map<String, VdValue> get entries => Map.unmodifiable(_entries);
-  VdValue? operator [](String key) => _entries[key];
-  void operator []=(String key, VdValue v) => _entries[key] = v;
-
-  Uint8List encode() {
-    final w = _ByteWriter()..writeUint16(version);
-    _entries.forEach((key, val) {
-      w.writeUint8(val.type.code);
-      final keyBytes = utf8.encode(key);
-      w.writeUint32(keyBytes.length);
-      w.writeBytes(keyBytes);
-      final valBytes = _encodeValue(val);
-      w.writeUint32(valBytes.length);
-      w.writeBytes(valBytes);
-    });
-    w.writeUint8(0); // end marker
-    return w.toBytes();
+/// Maps the KDBX4 `KdfParameters` VariantDictionary to/from [KdfParams].
+class KdfParameters {
+  /// Builds the VariantDictionary KeePass persists for [params] with [salt].
+  static VariantDictionary toVariantDictionary(
+      KdfParams params, Uint8List salt) {
+    final vd = VariantDictionary();
+    switch (params.algorithm) {
+      case KdfAlgorithm.argon2d:
+        vd.setBytes(r'$UUID', KdbxUuids.argon2d);
+      case KdfAlgorithm.argon2id:
+        vd.setBytes(r'$UUID', KdbxUuids.argon2id);
+      case KdfAlgorithm.aesKdf:
+        vd.setBytes(r'$UUID', KdbxUuids.aesKdf);
+    }
+    if (params.isArgon2) {
+      vd.setUInt64('I', params.iterations);
+      vd.setUInt64('M', (params.memoryKib ?? 0) * 1024); // KeePass stores BYTES
+      vd.setUInt32('P', params.parallelism ?? 1);
+      vd.setUInt32('V', params.version);
+      vd.setBytes('S', salt);
+    } else {
+      vd.setUInt64('R', params.iterations); // transform rounds
+      vd.setBytes('S', salt); // transform seed
+    }
+    return vd;
   }
 
-  static VariantDictionary decode(Uint8List bytes) {
-    final r = _ByteReader(bytes);
-    final ver = r.readUint16();
-    // Only the major version must match (high byte).
-    if ((ver >> 8) != (version >> 8)) {
-      throw KdbxFormatException(
-          'unsupported VariantDictionary version 0x${ver.toRadixString(16)}');
+  /// Parses a KDF VariantDictionary into [KdfParams] plus the raw salt/seed.
+  static (KdfParams, Uint8List) fromVariantDictionary(VariantDictionary vd) {
+    final uuid = vd.getBytes(r'$UUID');
+    if (uuid == null) {
+      throw KdbxFormatException('KdfParameters missing \$UUID');
     }
-    final out = <String, VdValue>{};
-    while (true) {
-      final typeCode = r.readUint8();
-      if (typeCode == 0) break; // end marker
-      final type = VdType.fromCode(typeCode);
-      final keyLen = r.readUint32();
-      final key = utf8.decode(r.readBytes(keyLen));
-      final valLen = r.readUint32();
-      final valBytes = r.readBytes(valLen);
-      out[key] = _decodeValue(type, valBytes);
+    final salt = vd.getBytes('S') ?? Uint8List(0);
+    if (_bytesEqual(uuid, KdbxUuids.aesKdf)) {
+      return (
+        KdfParams(
+          algorithm: KdfAlgorithm.aesKdf,
+          iterations: vd.getUInt64('R') ?? 1,
+        ),
+        salt,
+      );
     }
-    return VariantDictionary(out);
-  }
-
-  static Uint8List _encodeValue(VdValue v) {
-    switch (v.type) {
-      case VdType.uint32:
-      case VdType.int32:
-        return (ByteData(4)..setUint32(0, v.asInt & 0xFFFFFFFF, Endian.little))
-            .buffer
-            .asUint8List();
-      case VdType.uint64:
-      case VdType.int64:
-        return (ByteData(8)..setUint64(0, v.asInt, Endian.little))
-            .buffer
-            .asUint8List();
-      case VdType.boolean:
-        return Uint8List.fromList([v.asBool ? 1 : 0]);
-      case VdType.string:
-        return Uint8List.fromList(utf8.encode(v.asString));
-      case VdType.bytes:
-        return v.asBytes;
-    }
-  }
-
-  static VdValue _decodeValue(VdType type, Uint8List bytes) {
-    final d = ByteData.sublistView(bytes);
-    switch (type) {
-      case VdType.uint32:
-        return VdValue(type, d.getUint32(0, Endian.little));
-      case VdType.int32:
-        return VdValue(type, d.getInt32(0, Endian.little));
-      case VdType.uint64:
-        return VdValue(type, d.getUint64(0, Endian.little));
-      case VdType.int64:
-        return VdValue(type, d.getInt64(0, Endian.little));
-      case VdType.boolean:
-        return VdValue(type, bytes.isNotEmpty && bytes[0] != 0);
-      case VdType.string:
-        return VdValue(type, utf8.decode(bytes));
-      case VdType.bytes:
-        return VdValue(type, Uint8List.fromList(bytes));
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// KdbxHeader — signatures, version, and the outer TLV header fields.
-// ---------------------------------------------------------------------------
-
-class KdbxHeader {
-  KdbxHeader({
-    this.signature1 = kKdbxSignature1,
-    this.signature2 = kKdbxSignature2,
-    this.versionMajor = 4,
-    this.versionMinor = 0,
-    Map<int, Uint8List>? fields,
-  }) : fields = fields ?? <int, Uint8List>{};
-
-  int signature1;
-  int signature2;
-  int versionMajor;
-  int versionMinor;
-
-  /// Raw header fields keyed by [KdbxHeaderField] id (excludes end-of-header).
-  final Map<int, Uint8List> fields;
-
-  bool get isKdbx4 => versionMajor == 4;
-
-  // Typed convenience accessors over the raw fields.
-  Uint8List? get cipherId => fields[KdbxHeaderField.cipherId];
-  Uint8List? get masterSeed => fields[KdbxHeaderField.masterSeed];
-  Uint8List? get encryptionIv => fields[KdbxHeaderField.encryptionIv];
-
-  int? get compressionFlags {
-    final f = fields[KdbxHeaderField.compressionFlags];
-    if (f == null) return null;
-    return ByteData.sublistView(f).getUint32(0, Endian.little);
-  }
-
-  VariantDictionary? get kdfParameters {
-    final f = fields[KdbxHeaderField.kdfParameters];
-    return f == null ? null : VariantDictionary.decode(f);
-  }
-
-  void setCompressionFlags(int v) => fields[KdbxHeaderField.compressionFlags] =
-      (ByteData(4)..setUint32(0, v, Endian.little)).buffer.asUint8List();
-
-  void setKdfParameters(VariantDictionary vd) =>
-      fields[KdbxHeaderField.kdfParameters] = vd.encode();
-
-  /// Serialize signatures + version + TLV fields. KDBX4 uses a 4-byte length
-  /// prefix per field and terminates with an end-of-header field.
-  Uint8List encode() {
-    final w = _ByteWriter()
-      ..writeUint32(signature1)
-      ..writeUint32(signature2)
-      ..writeUint16(versionMinor)
-      ..writeUint16(versionMajor);
-    fields.forEach((id, data) {
-      w.writeUint8(id);
-      w.writeUint32(data.length);
-      w.writeBytes(data);
-    });
-    // End-of-header marker (KeePass writes 4 bytes of payload, conventionally
-    // \r\n\r\n); a single terminator field with that payload round-trips.
-    w.writeUint8(KdbxHeaderField.endOfHeader);
-    const eoh = [0x0d, 0x0a, 0x0d, 0x0a];
-    w.writeUint32(eoh.length);
-    w.writeBytes(eoh);
-    return w.toBytes();
-  }
-
-  /// Parse a KDBX4 header from [bytes]. Returns the header and the byte offset
-  /// immediately after the end-of-header field (where the encrypted payload /
-  /// integrity block begins).
-  static KdbxHeaderParseResult parse(Uint8List bytes) {
-    final r = _ByteReader(bytes);
-    final sig1 = r.readUint32();
-    final sig2 = r.readUint32();
-    if (sig1 != kKdbxSignature1 || sig2 != kKdbxSignature2) {
-      throw KdbxFormatException('not a KDBX file (bad signature)');
-    }
-    final minor = r.readUint16();
-    final major = r.readUint16();
-    if (major != 4) {
-      throw KdbxFormatException('unsupported KDBX major version $major');
-    }
-    final fields = <int, Uint8List>{};
-    while (true) {
-      final id = r.readUint8();
-      final len = r.readUint32();
-      final data = r.readBytes(len);
-      if (id == KdbxHeaderField.endOfHeader) break;
-      fields[id] = data;
-    }
-    return KdbxHeaderParseResult(
-      header: KdbxHeader(
-        signature1: sig1,
-        signature2: sig2,
-        versionMajor: major,
-        versionMinor: minor,
-        fields: fields,
+    final algo = _bytesEqual(uuid, KdbxUuids.argon2d)
+        ? KdfAlgorithm.argon2d
+        : KdfAlgorithm.argon2id;
+    final memBytes = vd.getUInt64('M') ?? 0;
+    return (
+      KdfParams(
+        algorithm: algo,
+        iterations: vd.getUInt64('I') ?? 1,
+        memoryKib: memBytes ~/ 1024,
+        parallelism: vd.getUInt32('P') ?? 1,
+        version: vd.getUInt32('V') ?? 0x13,
       ),
-      headerLength: r.position,
+      salt,
     );
   }
 }
 
-class KdbxHeaderParseResult {
-  KdbxHeaderParseResult({required this.header, required this.headerLength});
-  final KdbxHeader header;
+class KdbxHeader {
+  KdbxHeader({
+    required this.cipher,
+    required this.compressed,
+    required this.masterSeed,
+    required this.encryptionIv,
+    required this.kdfParameters,
+    this.publicCustomData,
+    this.versionMajor = 4,
+    this.versionMinor = 1,
+  });
 
-  /// Number of bytes consumed by the header (signatures..end-of-header). The
-  /// integrity hashes / encrypted payload begin here.
-  final int headerLength;
+  static const int sig1 = 0x9AA2D903;
+  static const int sig2 = 0xB54BFB67;
+
+  // Header field ids.
+  static const int _fEndOfHeader = 0;
+  static const int _fCipherId = 2;
+  static const int _fCompression = 3;
+  static const int _fMasterSeed = 4;
+  static const int _fEncryptionIv = 7;
+  static const int _fKdfParameters = 11;
+  static const int _fPublicCustomData = 12;
+
+  DatabaseCipher cipher;
+  bool compressed; // gzip when true
+  Uint8List masterSeed;
+  Uint8List encryptionIv;
+  VariantDictionary kdfParameters;
+  VariantDictionary? publicCustomData;
+  int versionMajor;
+  int versionMinor;
+
+  /// Number of bytes the serialized header occupies (set on read; the crypto
+  /// layer hashes exactly `fileBytes.sublist(0, length)`).
+  int length = 0;
+
+  KdfParams get kdf => KdfParameters.fromVariantDictionary(kdfParameters).$1;
+
+  Uint8List serialize() {
+    final out = BytesBuilder();
+    final sig = ByteData(12)
+      ..setUint32(0, sig1, Endian.little)
+      ..setUint32(4, sig2, Endian.little)
+      ..setUint16(8, versionMinor, Endian.little)
+      ..setUint16(10, versionMajor, Endian.little);
+    out.add(sig.buffer.asUint8List());
+
+    void field(int id, Uint8List data) {
+      out.addByte(id);
+      final len = ByteData(4)..setUint32(0, data.length, Endian.little);
+      out.add(len.buffer.asUint8List());
+      out.add(data);
+    }
+
+    field(_fCipherId, _cipherUuid(cipher));
+    final comp = ByteData(4)..setUint32(0, compressed ? 1 : 0, Endian.little);
+    field(_fCompression, comp.buffer.asUint8List());
+    field(_fMasterSeed, masterSeed);
+    field(_fEncryptionIv, encryptionIv);
+    field(_fKdfParameters, kdfParameters.serialize());
+    if (publicCustomData != null) {
+      field(_fPublicCustomData, publicCustomData!.serialize());
+    }
+    field(_fEndOfHeader, Uint8List.fromList([0x0D, 0x0A, 0x0D, 0x0A]));
+
+    final bytes = out.toBytes();
+    length = bytes.length;
+    return bytes;
+  }
+
+  Uint8List _cipherUuid(DatabaseCipher c) =>
+      c == DatabaseCipher.chacha20 ? KdbxUuids.chacha20 : KdbxUuids.aes256;
+
+  static KdbxHeader read(Uint8List bytes) {
+    final bd = ByteData.sublistView(bytes);
+    if (bytes.length < 12) {
+      throw KdbxFormatException('file too short for KDBX header');
+    }
+    if (bd.getUint32(0, Endian.little) != sig1 ||
+        bd.getUint32(4, Endian.little) != sig2) {
+      throw KdbxFormatException('bad KDBX magic signature');
+    }
+    final minor = bd.getUint16(8, Endian.little);
+    final major = bd.getUint16(10, Endian.little);
+    if (major != 4) {
+      throw KdbxFormatException('unsupported KDBX major version $major (need 4)');
+    }
+
+    var offset = 12;
+    DatabaseCipher? cipher;
+    var compressed = false;
+    Uint8List? masterSeed;
+    Uint8List? iv;
+    VariantDictionary? kdf;
+    VariantDictionary? publicCustom;
+
+    while (true) {
+      final id = bd.getUint8(offset);
+      offset += 1;
+      final len = bd.getUint32(offset, Endian.little);
+      offset += 4;
+      final data = bytes.sublist(offset, offset + len);
+      offset += len;
+
+      switch (id) {
+        case _fEndOfHeader:
+          final header = KdbxHeader(
+            cipher: cipher ?? DatabaseCipher.aes256,
+            compressed: compressed,
+            masterSeed: masterSeed ?? Uint8List(0),
+            encryptionIv: iv ?? Uint8List(0),
+            kdfParameters: kdf ?? VariantDictionary(),
+            publicCustomData: publicCustom,
+            versionMajor: major,
+            versionMinor: minor,
+          );
+          header.length = offset;
+          return header;
+        case _fCipherId:
+          cipher = _bytesEqual(data, KdbxUuids.chacha20)
+              ? DatabaseCipher.chacha20
+              : DatabaseCipher.aes256;
+        case _fCompression:
+          compressed =
+              ByteData.sublistView(data).getUint32(0, Endian.little) == 1;
+        case _fMasterSeed:
+          masterSeed = data;
+        case _fEncryptionIv:
+          iv = data;
+        case _fKdfParameters:
+          kdf = VariantDictionary.parse(data);
+        case _fPublicCustomData:
+          publicCustom = VariantDictionary.parse(data);
+        default:
+          // Unknown/ignored header field (forward-compatible).
+          break;
+      }
+    }
+  }
 }

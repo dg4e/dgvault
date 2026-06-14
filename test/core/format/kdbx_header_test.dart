@@ -1,102 +1,93 @@
 import 'dart:typed_data';
 
-import 'package:dgvault/core/format/kdbx_header.dart';
+import 'package:dgvault/core/core.dart';
 import 'package:test/test.dart';
 
-Uint8List _bytes(int n, [int fill = 0]) =>
-    Uint8List.fromList(List<int>.filled(n, fill));
+KdbxHeader _sampleHeader({
+  DatabaseCipher cipher = DatabaseCipher.aes256,
+  bool compressed = true,
+  KdfParams? kdf,
+}) {
+  final params = kdf ?? KdfParams.argon2idDefault();
+  final salt = Uint8List.fromList(List<int>.generate(32, (i) => i));
+  return KdbxHeader(
+    cipher: cipher,
+    compressed: compressed,
+    masterSeed: Uint8List.fromList(List<int>.generate(32, (i) => 255 - i)),
+    encryptionIv: Uint8List.fromList(List<int>.generate(16, (i) => i * 2)),
+    kdfParameters: KdfParameters.toVariantDictionary(params, salt),
+  );
+}
 
 void main() {
-  group('VariantDictionary', () {
-    test('round-trips a realistic Argon2 KDF parameter set', () {
-      final vd = VariantDictionary()
-        ..['\$UUID'] = VdValue.bytes(_bytes(16, 7))
-        ..['V'] = VdValue.uint32(0x13)
-        ..['I'] = VdValue.uint64(10) // iterations
-        ..['M'] = VdValue.uint64(67108864) // 64 MiB
-        ..['P'] = VdValue.uint32(4) // parallelism
-        ..['S'] = VdValue.bytes(_bytes(32, 9)); // salt
+  group('KdfParameters mapping', () {
+    test('argon2id round-trips params + salt', () {
+      final salt = Uint8List.fromList(List<int>.generate(16, (i) => i));
+      final vd =
+          KdfParameters.toVariantDictionary(KdfParams.argon2idDefault(), salt);
+      final (params, gotSalt) = KdfParameters.fromVariantDictionary(vd);
 
-      final decoded = VariantDictionary.decode(vd.encode());
-      expect(decoded['V']!.asInt, 0x13);
-      expect(decoded['I']!.asInt, 10);
-      expect(decoded['M']!.asInt, 67108864);
-      expect(decoded['P']!.asInt, 4);
-      expect(decoded['S']!.asBytes, _bytes(32, 9));
-      expect(decoded['\$UUID']!.type, VdType.bytes);
-      // types preserved exactly
-      expect(decoded['I']!.type, VdType.uint64);
-      expect(decoded['P']!.type, VdType.uint32);
+      expect(params.algorithm, KdfAlgorithm.argon2id);
+      expect(params.iterations, 3);
+      expect(params.memoryKib, 64 * 1024);
+      expect(params.parallelism, 4);
+      expect(gotSalt, salt);
+      // Memory is persisted in BYTES on the wire.
+      expect(vd.getUInt64('M'), 64 * 1024 * 1024);
     });
 
-    test('version header is 0x0100 (little-endian)', () {
-      final enc = VariantDictionary().encode();
-      expect([enc[0], enc[1]], [0x00, 0x01]);
-      expect(enc.last, 0x00, reason: 'end marker');
+    test('aes-kdf round-trips rounds + seed', () {
+      final seed = Uint8List.fromList(List<int>.filled(32, 7));
+      const aes = KdfParams(algorithm: KdfAlgorithm.aesKdf, iterations: 60000);
+      final vd = KdfParameters.toVariantDictionary(aes, seed);
+      final (params, gotSeed) = KdfParameters.fromVariantDictionary(vd);
+      expect(params.algorithm, KdfAlgorithm.aesKdf);
+      expect(params.iterations, 60000);
+      expect(gotSeed, seed);
     });
 
-    test('preserves bool and string types', () {
-      final vd = VariantDictionary()
-        ..['flag'] = VdValue.boolean(true)
-        ..['name'] = VdValue.string('héllo');
-      final d = VariantDictionary.decode(vd.encode());
-      expect(d['flag']!.asBool, isTrue);
-      expect(d['name']!.asString, 'héllo');
+    test(r'throws when $UUID is missing', () {
+      expect(() => KdfParameters.fromVariantDictionary(VariantDictionary()),
+          throwsA(isA<KdbxFormatException>()));
     });
   });
 
-  group('KdbxHeader', () {
-    KdbxHeader sample() {
-      final h = KdbxHeader()
-        ..fields[KdbxHeaderField.cipherId] = _bytes(16, 1)
-        ..fields[KdbxHeaderField.masterSeed] = _bytes(32, 2)
-        ..fields[KdbxHeaderField.encryptionIv] = _bytes(12, 3);
-      h.setCompressionFlags(KdbxCompression.gzip);
-      h.setKdfParameters(VariantDictionary()
-        ..['I'] = VdValue.uint64(10)
-        ..['S'] = VdValue.bytes(_bytes(32, 5)));
-      return h;
-    }
+  group('KdbxHeader binary round-trip', () {
+    test('serialize → read preserves all header fields (AES)', () {
+      final header = _sampleHeader();
+      final bytes = header.serialize();
+      final back = KdbxHeader.read(bytes);
 
-    test('encode → parse round-trips signatures, version, and fields', () {
-      final h = sample();
-      final encoded = h.encode();
-      final result = KdbxHeader.parse(encoded);
-      final p = result.header;
+      expect(back.versionMajor, 4);
+      expect(back.cipher, DatabaseCipher.aes256);
+      expect(back.compressed, isTrue);
+      expect(back.masterSeed, header.masterSeed);
+      expect(back.encryptionIv, header.encryptionIv);
+      expect(back.length, bytes.length);
 
-      expect(p.signature1, kKdbxSignature1);
-      expect(p.signature2, kKdbxSignature2);
-      expect(p.versionMajor, 4);
-      expect(p.isKdbx4, isTrue);
-      expect(p.cipherId, _bytes(16, 1));
-      expect(p.masterSeed, _bytes(32, 2));
-      expect(p.encryptionIv, _bytes(12, 3));
-      expect(p.compressionFlags, KdbxCompression.gzip);
-      expect(p.kdfParameters!['I']!.asInt, 10);
-      expect(p.kdfParameters!['S']!.asBytes, _bytes(32, 5));
+      final kdf = back.kdf;
+      expect(kdf.algorithm, KdfAlgorithm.argon2id);
+      expect(kdf.memoryKib, 64 * 1024);
     });
 
-    test('headerLength points just past the end-of-header field', () {
-      final encoded = sample().encode();
-      final result = KdbxHeader.parse(encoded);
-      expect(result.headerLength, encoded.length,
-          reason: 'crypto/integrity block would begin here');
+    test('preserves ChaCha20 cipher + no-compression flag', () {
+      final header =
+          _sampleHeader(cipher: DatabaseCipher.chacha20, compressed: false);
+      final back = KdbxHeader.read(header.serialize());
+      expect(back.cipher, DatabaseCipher.chacha20);
+      expect(back.compressed, isFalse);
     });
 
-    test('signature constant is written little-endian', () {
-      final encoded = sample().encode();
-      final sig1 = ByteData.sublistView(encoded).getUint32(0, Endian.little);
-      expect(sig1, kKdbxSignature1);
+    test('rejects a bad magic signature', () {
+      final bad = Uint8List(32); // all zeros
+      expect(() => KdbxHeader.read(bad), throwsA(isA<KdbxFormatException>()));
     });
 
-    test('parse rejects a non-KDBX signature', () {
-      final bad = _bytes(32);
-      expect(() => KdbxHeader.parse(bad), throwsA(isA<KdbxFormatException>()));
-    });
-
-    test('parse rejects unsupported major version', () {
-      final h = sample()..versionMajor = 3;
-      expect(() => KdbxHeader.parse(h.encode()),
+    test('rejects an unsupported major version', () {
+      final bytes = _sampleHeader().serialize();
+      // major version lives at offset 10 (little-endian uint16).
+      bytes[10] = 3;
+      expect(() => KdbxHeader.read(bytes),
           throwsA(isA<KdbxFormatException>()));
     });
   });
