@@ -99,10 +99,21 @@ class DatabaseRegistry {
   DatabaseDescriptor? operator [](String id) => _byId[id];
   bool contains(String id) => _byId.containsKey(id);
 
-  /// Registers (or replaces) a descriptor. The local-only invariant is enforced
-  /// by [DatabaseDescriptor]'s constructor.
-  void register(DatabaseDescriptor descriptor) =>
-      _byId[descriptor.id] = descriptor;
+  /// Registers (or replaces) a descriptor. Beyond the construct-time invariant,
+  /// this refuses to **downgrade** an existing local-only database: re-registering
+  /// the same id with `localOnly == false` (or any remote location) would
+  /// silently lift the local-only guarantee and make a once-local-only vault
+  /// eligible to sync out. Such a re-register is rejected.
+  void register(DatabaseDescriptor descriptor) {
+    final existing = _byId[descriptor.id];
+    if (existing != null && existing.localOnly && !descriptor.localOnly) {
+      throw LocalOnlyViolation(
+        're-registering local-only database "${existing.name}" as non-local-only '
+        'is not allowed (would lift the local-only guarantee)',
+      );
+    }
+    _byId[descriptor.id] = descriptor;
+  }
 
   bool unregister(String id) => _byId.remove(id) != null;
 

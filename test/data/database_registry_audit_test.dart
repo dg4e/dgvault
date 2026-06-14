@@ -25,20 +25,37 @@ void main() {
     expect(reg['x']!.location.isLocal, isTrue, reason: 'unchanged after rejection');
   });
 
-  test('🟠 GAP: re-registering a local-only id as non-local-only lifts the guard', () {
+  test('FIXED R20: re-registering a local-only id as non-local-only is rejected', () {
     final reg = DatabaseRegistry()
       ..register(DatabaseDescriptor(
           id: 'x', name: 'Vault', location: _local('/v.kdbx'), localOnly: true));
     expect(reg['x']!.localOnly, isTrue);
 
-    // Same id, now syncable+remote. The constructor doesn't object (localOnly is
-    // false here), and register() overwrites silently — the local-only promise on
-    // id 'x' is gone, and it becomes eligible to sync OUT.
-    reg.register(DatabaseDescriptor(
-        id: 'x', name: 'Vault', location: _remote(), localOnly: false));
+    // The downgrade attempt now throws instead of silently lifting the guarantee.
+    expect(
+      () => reg.register(DatabaseDescriptor(
+          id: 'x', name: 'Vault', location: _remote(), localOnly: false)),
+      throwsA(isA<LocalOnlyViolation>()),
+    );
 
-    expect(reg['x']!.localOnly, isFalse, reason: 'CURRENT behaviour pinned');
-    expect(reg.syncableDatabases.map((d) => d.id), contains('x'),
-        reason: 'a once-local-only db can now sync out — see review hardening rec');
+    // The original local-only descriptor is intact; it never becomes syncable.
+    expect(reg['x']!.localOnly, isTrue);
+    expect(reg.syncableDatabases.map((d) => d.id), isNot(contains('x')));
+  });
+
+  test('re-registering local-only as local-only (and upgrades) still work', () {
+    final reg = DatabaseRegistry()
+      ..register(DatabaseDescriptor(
+          id: 'x', name: 'V', location: _local('/a.kdbx'), localOnly: true));
+    // Same guarantee, new local path — allowed.
+    reg.register(DatabaseDescriptor(
+        id: 'x', name: 'V', location: _local('/b.kdbx'), localOnly: true));
+    expect(reg['x']!.location.identifier, '/b.kdbx');
+
+    // Upgrading a non-local-only id TO local-only is allowed (more restrictive).
+    reg.register(DatabaseDescriptor(id: 'y', name: 'Y', location: _local('/y.kdbx')));
+    reg.register(DatabaseDescriptor(
+        id: 'y', name: 'Y', location: _local('/y.kdbx'), localOnly: true));
+    expect(reg['y']!.localOnly, isTrue);
   });
 }
