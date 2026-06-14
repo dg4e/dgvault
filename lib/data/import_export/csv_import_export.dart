@@ -175,15 +175,43 @@ class CsvExporter {
 
   final CsvCodec codec;
 
-  /// KeePassXC-compatible export columns.
-  static const List<String> columns = [
-    'Group', 'Title', 'Username', 'Password', 'URL', 'Notes', 'TOTP',
+  /// Fixed leading columns. A `Tags` column and one column per distinct custom
+  /// field key (union across all entries) are appended so export→import is
+  /// lossless (fixes Critic R7 data-loss REQUEST_CHANGES).
+  static const List<String> baseColumns = [
+    'Group', 'Title', 'Username', 'Password', 'URL', 'Notes', 'TOTP', 'Tags',
   ];
 
+  /// Retained for callers/tests referencing the original fixed layout.
+  static const List<String> columns = baseColumns;
+
+  /// Header names that must not be reused as a custom-field column (would
+  /// produce a duplicate/ambiguous column).
+  static final Set<String> _reserved = {
+    'group', 'title', 'username', 'password', 'url', 'notes', 'totp', 'tags',
+  };
+
   /// Export every entry under [root] to a CSV string. Group paths are built from
-  /// the tree (the root group's own name is not included in the path).
+  /// the tree (the root group's own name is not included in the path). All
+  /// standard fields, the TOTP seed, tags, and every custom field are emitted.
   String export(Group root) {
-    final rows = <List<String>>[columns];
+    final entries = _allEntries(root).toList();
+
+    // Union of custom-field keys (non-standard, non-TOTP, non-reserved-name).
+    final customKeys = <String>{};
+    for (final e in entries) {
+      for (final f in e.fields.values) {
+        if (f.isCustom &&
+            f.key != kTotpFieldKey &&
+            !_reserved.contains(f.key.toLowerCase())) {
+          customKeys.add(f.key);
+        }
+      }
+    }
+    final customColumns = customKeys.toList()..sort();
+    final header = [...baseColumns, ...customColumns];
+
+    final rows = <List<String>>[header];
     void walk(Group group, String path) {
       for (final e in group.entries) {
         rows.add([
@@ -194,6 +222,8 @@ class CsvExporter {
           _reveal(e, Field.url),
           _reveal(e, Field.notes),
           _reveal(e, kTotpFieldKey),
+          e.tags.join(';'),
+          for (final k in customColumns) _reveal(e, k),
         ]);
       }
       for (final child in group.groups) {
@@ -203,6 +233,13 @@ class CsvExporter {
 
     walk(root, '');
     return codec.encode(rows);
+  }
+
+  Iterable<Entry> _allEntries(Group g) sync* {
+    yield* g.entries;
+    for (final child in g.groups) {
+      yield* _allEntries(child);
+    }
   }
 
   String _reveal(Entry e, String key) => e.fields[key]?.value.reveal() ?? '';
