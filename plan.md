@@ -57,7 +57,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] KDBX 4 reader/writer (XML inner format compatibility) (Performer)
 - [x] KDBX4 reader/writer pipeline orchestrator (header ⇄ injected body-cipher ⇄ injected compressor ⇄ XML codec ⇄ model) — completes the format structure; real Argon2/AES body delegated via `KdbxBodyCipher` interface (Composer)
 - [x] KeePass 2.x XML inner-format codec (model ⇄ XML, package:xml) — unblocks KDBX reader/writer & Critic golden round-trip (Composer); Critic adversarial round-trip audit added R11 (XML metachars, whitespace-under-pretty bug-probe, unicode+Protected) — APPROVE; flagged forward interop risk: real KeePass protected values are inner-stream-encrypted+base64, KDBX layer must apply/strip around this codec
-- [x] KDBX4 outer header + VariantDictionary binary codec (magic/version/TLV fields, KdfParameters ⇄ KdfParams; SHA-256/HMAC framing + cipher/KDF transform remain, toolchain-gated) (Composer + Performer) — COLLISION RESOLVED R11 (Composer): both implemented independently; kept Composer's split form (`variant_dictionary.dart` + `kdbx_header.dart`) to avoid a duplicate `VariantDictionary` class; Performer's combined file superseded
+- [x] KDBX4 outer header + VariantDictionary binary codec (magic/version/TLV fields, KdfParameters ⇄ KdfParams; SHA-256/HMAC framing + cipher/KDF transform remain, toolchain-gated) (Composer + Performer) — COLLISION RESOLVED R11 (Composer): both implemented independently; kept Composer's split form (`variant_dictionary.dart` + `kdbx_header.dart`) to avoid a duplicate `VariantDictionary` class; Performer's combined file superseded. Critic adversarial audit added R12 (VariantDictionary byte-stability for header HMAC, value edges, multibyte-key framing) — APPROVE; minor: Int32/Int64 are wire-decodable but lack typed get/set accessors
 - [ ] Argon2 KDF (GPU-resistant) integration + params (Performer)
 - [ ] AES-256 / ChaCha20 cipher layer (Performer)
 - [ ] Encrypted local database storage at rest (Performer)
@@ -84,7 +84,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Configurable + customizable password generator (Performer)
 - [x] Diceware passphrase generator + wordlist (Performer) — RESOLVED R4: `diceware_wordlist.dart` ships a 264-word embedded list (pure Dart, no asset → keeps core platform-agnostic) + EFF/plain parsers + `DicewareGenerator.standard()`; full EFF list loads via `DicewareWordlist.parseEff`
 - [ ] TOTP support (RFC 6238, QR import, Steam variant) (Performer)
-- [ ] Auto-clear clipboard timer (Performer)
+- [x] Auto-clear clipboard timer — generation-guarded clear scheduler (newer copy supersedes), injectable clock (Performer)
 - [ ] Favicon downloader (Performer)
 - [ ] Generator + TOTP unit tests (Steam + RFC test vectors) (Critic) — generator audit tests DONE; TOTP half blocked on impl
 
