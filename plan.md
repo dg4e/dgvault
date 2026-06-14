@@ -106,7 +106,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Import/Export 1Password + CSV (Performer)
 - [ ] Import/Export CSV encrypted (Performer)
 - [ ] Direct URL import + local-network-only import/export (Performer)
-- [ ] Import/export round-trip tests (Critic)
+- [x] Import/export round-trip tests (Critic) — ⚠ found export DROPS custom fields & tags (data loss); see review
 
 ### Phase 7 — UI & Entry Management (Round 6)
 - [x] Powerful search (all fields) — core search engine (Composer)
