@@ -72,8 +72,8 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] PIN code unlock (Performer)
 - [ ] Biometric unlock (Face ID / Touch ID via platform channel) (Performer)
 - [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
-- [x] Duress PIN — open dummy database (Composer) — unified `DuressPolicy` routing (real/decoy/duress-wipe/none → outcome) with indistinguishability invariant ⚠ Critic security sign-off PENDING R15 (R5 duress)
-- [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock ⚠ Critic security sign-off PENDING R15 (R5 duress)
+- [x] Duress PIN — open dummy database (Composer) — unified `DuressPolicy` routing (real/decoy/duress-wipe/none → outcome) with indistinguishability invariant — Critic R15 SECURITY SIGN-OFF (R5/§4.5): APPROVE; added exhaustive matrix audit (duress always-wipes in every config + signal always benign/never-real). Caveat for caller: the hidden wipe must not add observable latency vs a normal decoy open, and credential matching MUST be constant-time (delegated to crypto layer)
+- [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock — Critic R15 SECURITY SIGN-OFF: APPROVE (covered by same matrix audit)
 - [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests added; 🟠 hardening F1 (REQUEST_CHANGES): `maxAttempts>0` guarded only by debug-only `assert` → a release misconfig wipes on the first failure; use `throw ArgumentError`. F2: add a wipe-pending getter so a wipe interrupted by app-kill completes at startup
 - [x] Read-only mode — data-layer write-guard repository (Composer)
 - [ ] Master password reminder scheduler (Performer)
@@ -103,7 +103,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Local-only / local databases support (Performer)
 - [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
 - [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)
-- [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt). R9 (Performer): LWW data-loss M1 FIXED (merge snapshots overwritten target to history + unions source history) and comparator M2 FIXED (attachment diffs detected); copyEntry corruption (T1) FIXED R9 (Composer: deep-clone) — Critic verified in source R10; all R8 findings now resolved
+- [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt). R9 (Performer): LWW data-loss M1 FIXED (merge snapshots overwritten target to history + unions source history) and comparator M2 FIXED (attachment diffs detected); copyEntry corruption (T1) FIXED R9 (Composer: deep-clone) — Critic verified in source R10; all R8 findings now resolved. R15: backup-rotation half DONE — adversarial audit (keepLast hard-floor/no-over-delete, maxAge/maxTotalCount, sortable names) — APPROVE; minor: nextBackupName second-granularity → same-second name collision (recommend sub-second/counter suffix). This Critic task now COMPLETE
 
 ### Phase 6 — Import / Export (Round 5–6)
 - [x] Import/Export 1Password + CSV (Performer)
