@@ -61,7 +61,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] Argon2 KDF (GPU-resistant) integration + params (Performer)
 - [ ] AES-256 / ChaCha20 cipher layer (Performer)
 - [ ] Encrypted local database storage at rest (Performer)
-- [x] Key File support — key-file format parser (binary-32 / hex-64 / KeePass-2 XML / hashed-arbitrary → 32-byte key, injected SHA-256) feeding CompositeCredential (Composer); password→key hashing remains crypto-layer (Performer)
+- [x] Key File support — key-file format parser (binary-32 / hex-64 / KeePass-2 XML / hashed-arbitrary → 32-byte key, injected SHA-256) feeding CompositeCredential (Composer); password→key hashing remains crypto-layer (Performer) — Critic R14 SECURITY SIGN-OFF (§4.5): APPROVE — detection order correct, v2 hash-mismatch rejects tampered files, injected SHA-256 (no hand-rolled crypto), length-validated; minor: `_bytesEqual` non-constant-time but acceptable (integrity hash of attacker-held file)
 - [x] Entry History tracking — snapshot service + repository updateEntry wiring (Composer; Performer deferred duplicate)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [x] Tags (KeePass) model + Custom Fields + Attachments — tag index/rename/remove + custom-field + attachment-pool services (Performer)
@@ -74,7 +74,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
 - [ ] Duress PIN — open dummy database (Performer)
 - [ ] Duress PIN — delete all data (Performer)
-- [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer)
+- [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests added; 🟠 hardening F1 (REQUEST_CHANGES): `maxAttempts>0` guarded only by debug-only `assert` → a release misconfig wipes on the first failure; use `throw ArgumentError`. F2: add a wipe-pending getter so a wipe interrupted by app-kill completes at startup
 - [x] Read-only mode — data-layer write-guard repository (Composer)
 - [ ] Master password reminder scheduler (Performer)
 - [ ] Secure storage wrapping of keys via OS keystore (Performer)
