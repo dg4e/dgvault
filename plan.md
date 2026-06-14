@@ -74,7 +74,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
 - [ ] Duress PIN — open dummy database (Performer)
 - [ ] Duress PIN — delete all data (Performer)
-- [ ] App Lock — delete-all-on-fails policy (Performer)
+- [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer)
 - [x] Read-only mode — data-layer write-guard repository (Composer)
 - [ ] Master password reminder scheduler (Performer)
 - [ ] Secure storage wrapping of keys via OS keystore (Performer)
