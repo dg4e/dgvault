@@ -116,7 +116,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Custom order & sorting — core sort + manual reorder service (Composer); Critic adversarial audit added (descending-stability, purity, moveBefore edges) — APPROVE
 - [x] Custom icons + preset icon sets — custom-icon pool (add/dedupe/reference-scan/orphan-prune) + preset-icon validation (Performer)
 - [ ] Markdown notes rendering (Performer)
-- [ ] Custom URL handling + custom app icons (Performer)
+- [x] Custom URL handling — URL override precedence ({URL} embed) + placeholder resolution + scheme classification + safe-to-auto-open policy (Composer); custom app icons (platform/UI) remain (Performer)
 
 ### Phase 8 — Platform Integrations (Round 6–7)
 - [ ] AutoFill (Android/iOS) (Performer)
