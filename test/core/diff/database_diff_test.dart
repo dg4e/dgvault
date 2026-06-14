@@ -1,3 +1,4 @@
+import 'package:dgvault/core/model/attachment.dart';
 import 'package:dgvault/core/model/database.dart';
 import 'package:dgvault/core/model/entry.dart';
 import 'package:dgvault/core/model/field.dart';
@@ -131,6 +132,35 @@ void main() {
       final source = db(Group(uuid: 'r2', name: 'Root'));
       const DatabaseMerger().merge(target, source);
       expect(target.root.entries.any((x) => x.uuid == 'keep'), isTrue);
+    });
+
+    test('newer source snapshots the overwritten target to history (M1)', () {
+      final target = db(Group(uuid: 'r', name: 'Root', entries: [
+        e('1', title: 'Old', modified: DateTime.utc(2024)),
+      ]));
+      final source = db(Group(uuid: 'r2', name: 'Root', entries: [
+        e('1', title: 'New', modified: DateTime.utc(2026)),
+      ]));
+      const DatabaseMerger().merge(target, source);
+      final merged = target.root.entries.single;
+      expect(merged.title, 'New');
+      expect(merged.history.any((h) => h.title == 'Old'), isTrue,
+          reason: 'pre-merge version recoverable');
+    });
+  });
+
+  group('DatabaseComparator — attachments (M2)', () {
+    test('entry differing only in attachments is reported modified', () {
+      Entry withAtt(List<Attachment> a) =>
+          Entry(uuid: '1', fields: {
+            Field.title: Field(key: Field.title, value: InMemoryProtectedValue.plain('T')),
+          }, attachments: a);
+      final a = db(Group(uuid: 'r', name: 'Root', entries: [withAtt([])]));
+      final b = db(Group(uuid: 'r', name: 'Root', entries: [
+        withAtt([Attachment(id: 'b1', name: 'f.png', size: 10)]),
+      ]));
+      final d = const DatabaseComparator().compare(a, b);
+      expect(d.modifiedEntries.single.attachmentsChanged, isTrue);
     });
   });
 }
