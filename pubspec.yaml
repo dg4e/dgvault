@@ -1,0 +1,26 @@
+name: dgvault
+description: Cross-platform KeePass-compatible password manager (zero-knowledge).
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # KeePass kdbx parsing reference (KDBX 4.x).
+  kdbx: ^2.5.0
+  # Vetted crypto primitives (Argon2, AES, ChaCha20) — no hand-rolled crypto.
+  cryptography: ^2.7.0
+  pointycastle: ^3.9.1
+  # OS keystore wrapping for derived keys.
+  flutter_secure_storage: ^9.2.2
+  xml: ^6.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  test: ^1.25.0
+  flutter_lints: ^4.0.0
