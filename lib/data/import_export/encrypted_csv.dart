@@ -16,12 +16,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../crypto/cipher.dart';
-import '../crypto/key_derivation.dart';
-import '../crypto/secure_key.dart';
-import '../model/database.dart';
-import '../model/group.dart';
-import '../model/kdf_params.dart';
+import '../../core/crypto/cipher.dart';
+import '../../core/crypto/key_derivation.dart';
+import '../../core/crypto/secure_key.dart';
+import '../../core/model/group.dart';
+import '../../core/model/kdf_params.dart';
 import 'csv_import_export.dart';
 
 class EncryptedCsvException implements Exception {
@@ -91,7 +90,11 @@ class EncryptedCsv {
       throw EncryptedCsvException('unsupported container version $version');
     }
     r.u8(); // cipher algorithm index (informational; this.cipher is authoritative)
-    final kdfAlgo = KdfAlgorithm.values[r.u8()];
+    final kdfAlgoIndex = r.u8();
+    if (kdfAlgoIndex < 0 || kdfAlgoIndex >= KdfAlgorithm.values.length) {
+      throw EncryptedCsvException('unknown KDF algorithm index $kdfAlgoIndex');
+    }
+    final kdfAlgo = KdfAlgorithm.values[kdfAlgoIndex];
     final params = KdfParams(
       algorithm: kdfAlgo,
       iterations: r.u64(),

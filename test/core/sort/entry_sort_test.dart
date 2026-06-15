@@ -44,7 +44,7 @@ void main() {
       final asc =
           sorter.sorted(entries, const EntrySortSpec(EntrySortKey.title));
       expect(asc.first.uuid, 'hasTitle');
-      expect(asc.map((e) => e.uuid).sublist(1).toSet(), {'hasNone', 'blank'});
+      expect(asc.map((e) => e.uuid).skip(1).toSet(), {'hasNone', 'blank'});
 
       final desc = sorter.sorted(
           entries, const EntrySortSpec(EntrySortKey.title, ascending: false));

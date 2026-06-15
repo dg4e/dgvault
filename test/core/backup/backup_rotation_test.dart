@@ -9,12 +9,13 @@ void main() {
       BackupEntry(id: id, createdAt: now.subtract(Duration(days: daysAgo)));
 
   group('keepLast', () {
-    test('keeps the N most recent, deletes the rest (no other rules)', () {
+    test('keepLast alone is a floor, not a cap: nothing deleted without age/count rules', () {
+      // Safety semantics (Critic R15): keepLast only protects the N newest; it
+      // never triggers deletion on its own. Capping requires maxTotalCount.
       final entries = [old('a', 0), old('b', 1), old('c', 2), old('d', 3)];
       final r = const BackupRotator(policy: BackupRetentionPolicy(keepLast: 2));
-      final del = r.selectForDeletion(entries, now: now).map((e) => e.id).toSet();
-      expect(del, {'c', 'd'});
-      expect(r.retained(entries, now: now).map((e) => e.id), ['a', 'b']);
+      expect(r.selectForDeletion(entries, now: now), isEmpty);
+      expect(r.retained(entries, now: now).map((e) => e.id), ['a', 'b', 'c', 'd']);
     });
 
     test('keepLast protects recent snapshots even when maxAge would drop them', () {
@@ -67,7 +68,10 @@ void main() {
 
     test('unsorted input is handled newest-first', () {
       final entries = [old('mid', 2), old('new', 0), old('old', 5)];
-      final r = const BackupRotator(policy: BackupRetentionPolicy(keepLast: 1));
+      // keepLast=1 floor + a count cap of 1 so deletion actually fires; the
+      // point is that unsorted input is still resolved newest-first.
+      final r = const BackupRotator(
+          policy: BackupRetentionPolicy(keepLast: 1, maxTotalCount: 1));
       expect(r.retained(entries, now: now).map((e) => e.id).first, 'new');
       expect(r.selectForDeletion(entries, now: now).map((e) => e.id).toSet(),
           {'mid', 'old'});

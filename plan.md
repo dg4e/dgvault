@@ -3,6 +3,16 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
+> **Build status (R21, 2026-06-15):** ✅ First genuine green build —
+> `flutter test` **403 passing / 0 failing**, `flutter analyze` **0 errors**.
+> The 21-round "no toolchain here" disclaimer was **false**: the Flutter SDK is
+> present; `flutter pub get` was blocked by a dead `kdbx: ^2.5.0` constraint
+> (now `^2.4.2`; kdbx is unused). Running the suite for the first time surfaced 11
+> pre-existing failures (incl. a real XML whitespace data-corruption bug and a
+> non-compiling shipped encrypted-CSV feature), all now fixed. **Future rounds
+> MUST run `flutter test`/`analyze` — hand-tracing missed real defects.** See
+> `reviews/Critic-round-21.md`.
+
 ---
 
 ## 1. Architecture Decision Record (ADR)
@@ -107,7 +117,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 6 — Import / Export (Round 5–6)
 - [x] Import/Export 1Password + CSV (Performer)
-- [x] Import/Export CSV encrypted — versioned self-describing container (kdf params + salt + iv + ciphertext) over the CSV codec, using injected Cipher/KeyDerivation; real AEAD/Argon2 = crypto layer (Performer) ⚠ Critic review PENDING R21
+- [x] Import/Export CSV encrypted — versioned self-describing container (kdf params + salt + iv + ciphertext) over the CSV codec, using injected Cipher/KeyDerivation; real AEAD/Argon2 = crypto layer (Performer) — Critic R21 review: 🔴 REQUEST_CHANGES (did NOT compile: imported non-existent `csv_import_export.dart`; also a core→data layering violation) → FIXED R21 (Critic): relocated `lib/core/io/encrypted_csv.dart` → `lib/data/import_export/encrypted_csv.dart` (+ its test) so it sits in the right layer beside the CSV codec it wraps; corrupt-KDF-index now throws `EncryptedCsvException` not RangeError (+regression test). Security APPROVE (authenticated-decrypt contract holds, key zeroed in finally). ✅ 6/6 tests pass — VERIFIED BY EXECUTION
 - [x] Direct URL import + local-network-only import/export — URL validate/format-dispatch + local-network host classifier (loopback/RFC1918/link-local/ULA/mDNS) + local-only guard (Performer) — Critic R20 SECURITY review: APPROVE dotted-IP/FQDN classification, but 🔴 REQUEST_CHANGES: a dotless integer host (e.g. `134744072` == public 8.8.8.8, or `0x...`) hits the single-label-LAN rule → classified LOCAL → local-only guard ALLOWS it → data can leak to the public internet (HTTP stacks resolve integer hosts as IPs). Fix: parse a pure-integer/0x/0-prefixed host as an int IP and range-check, or deny — never auto-classify it local. Pinned in `network_import_audit_test.dart` — 🔴 FIXED R21 (Performer/finish): dotless host is now run through `_parseIntHost` (decimal / `0x`-hex / `0`-octal per inet_aton); if it parses as an integer it is decoded to a 32-bit IPv4 and range-checked via the shared `_isLocalOctets` (public/overflow → non-local), so only a non-numeric single-label name keeps the LAN default. Audit assertions flipped to expect DENY (integer 8.8.8.8 decimal/hex/octal non-local; loopback/192.168 integer encodings still local). R20 SECURITY REQUEST_CHANGES CLOSED ✅
 - [x] Import/export round-trip tests (Critic) — data-loss FIXED R8 (Performer): export now emits a Tags column + one column per custom field (union), lossless round-trip; Critic's pinning test updated to assert preservation
 

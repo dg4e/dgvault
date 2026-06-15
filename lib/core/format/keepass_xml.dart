@@ -69,7 +69,18 @@ class KeePassXml {
       });
       builder.element('Root', nest: () => _buildGroup(builder, db.root));
     });
-    return builder.buildDocument().toXmlString(pretty: pretty);
+    // Pretty-printing must not corrupt value content: the xml pretty writer
+    // normalizes (trims/collapses) whitespace inside text-only elements. KeePass
+    // values can carry significant leading/trailing/internal whitespace, so
+    // preserve whitespace verbatim for every leaf text element (Value, Name,
+    // Notes, Key, …) while still indenting the structural elements.
+    return builder.buildDocument().toXmlString(
+          pretty: pretty,
+          preserveWhitespace: (node) =>
+              node is XmlElement &&
+              node.children.isNotEmpty &&
+              node.children.every((c) => c is XmlText),
+        );
   }
 
   void _buildGroup(XmlBuilder builder, Group group) {

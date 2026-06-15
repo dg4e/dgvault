@@ -1,4 +1,5 @@
 import 'package:dgvault/core/core.dart';
+import 'package:dgvault/data/database_repository.dart';
 import 'package:test/test.dart';
 
 Entry _entry(String uuid, String password, {List<String>? tags}) {

@@ -65,15 +65,17 @@ void main() {
     test('uses a zero-padded UTC timestamp so lexical order = chronological', () {
       final earlier = const BackupRotator().nextBackupName('vault', DateTime.utc(2026, 1, 2, 3, 4, 5));
       final later = const BackupRotator().nextBackupName('vault', DateTime.utc(2026, 1, 2, 3, 4, 6));
-      expect(earlier, 'vault.20260102T030405.kdbx.bak');
+      expect(earlier, 'vault.20260102T030405000.kdbx.bak'); // ms resolution
       expect(earlier.compareTo(later) < 0, isTrue, reason: 'sortable by name');
     });
 
-    test('DOCUMENTED LIMITATION: second-granularity → same-second names collide', () {
-      // Two backups inside the same second mint identical names (would overwrite).
+    test('R15 FIX: millisecond granularity disambiguates same-second backups', () {
+      // The R15 minor (second-granularity collision) is fixed: ms resolution
+      // means two backups in the same second mint distinct, still-sortable names.
       final a = const BackupRotator().nextBackupName('v', DateTime.utc(2026, 1, 1, 0, 0, 0, 100));
       final b = const BackupRotator().nextBackupName('v', DateTime.utc(2026, 1, 1, 0, 0, 0, 900));
-      expect(a, equals(b), reason: 'flagged in review — recommend sub-second/counter suffix');
+      expect(a, isNot(b), reason: 'ms-resolved names no longer collide');
+      expect(a.compareTo(b) < 0, isTrue, reason: 'earlier ms sorts first');
     });
   });
 }

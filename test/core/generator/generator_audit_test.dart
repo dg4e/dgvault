@@ -103,7 +103,10 @@ void main() {
 
     test('includeNumber adds exactly one digit and does not change word count',
         () {
-      final g = DicewareGenerator(wordlist: words, random: Random(5));
+      // Digit-free wordlist so the only digit in the phrase is the appended one
+      // (the shared `words` fixture is w0..w15, whose names contain digits).
+      final alphaWords = List<String>.generate(16, (i) => String.fromCharCode(97 + i));
+      final g = DicewareGenerator(wordlist: alphaWords, random: Random(5));
       final phrase = g.generate(const DicewareOptions(
         wordCount: 7,
         separator: '-',

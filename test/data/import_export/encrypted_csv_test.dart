@@ -10,7 +10,7 @@ import 'package:dgvault/core/model/field.dart';
 import 'package:dgvault/core/model/group.dart';
 import 'package:dgvault/core/model/kdf_params.dart';
 import 'package:dgvault/core/model/protected_value.dart';
-import 'package:dgvault/core/io/encrypted_csv.dart';
+import 'package:dgvault/data/import_export/encrypted_csv.dart';
 import 'package:test/test.dart';
 
 // --- Test doubles: deterministic, NOT real crypto. They exercise the container
@@ -144,6 +144,18 @@ void main() {
     final codec = newCodec();
     final bogus = Uint8List.fromList(List.filled(64, 0));
     expect(() => codec.import(bogus, credential: cred('pw')),
+        throwsA(isA<EncryptedCsvException>()));
+  });
+
+  test('corrupt KDF-algorithm byte fails as a malformed container, not RangeError',
+      () async {
+    final codec = newCodec();
+    final container = await codec.export(sampleRoot(),
+        credential: cred('pw'), params: KdfParams.argon2idDefault(), salt: _salt, iv: _iv);
+    // Layout: magic(5) version(1) cipherAlgo(1) kdfAlgo(1) ... — byte 7 is the
+    // KDF-algorithm enum index. Force it out of range.
+    container[7] = 0xFF;
+    expect(() => codec.import(container, credential: cred('pw')),
         throwsA(isA<EncryptedCsvException>()));
   });
 

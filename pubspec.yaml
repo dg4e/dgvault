@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   # KeePass kdbx parsing reference (KDBX 4.x).
-  kdbx: ^2.5.0
+  kdbx: ^2.4.2
   # Vetted crypto primitives (Argon2, AES, ChaCha20) — no hand-rolled crypto.
   cryptography: ^2.7.0
   pointycastle: ^3.9.1

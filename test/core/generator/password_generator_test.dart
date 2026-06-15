@@ -11,8 +11,12 @@ void main() {
 
     test('produces the requested length', () {
       final g = gen();
+      // Isolate the length property: with the default requireEachSelectedClass
+      // on, length 1 cannot hold one of all 4 classes (correctly throws), so
+      // disable that constraint here to test length across the full range.
       for (final len in [1, 8, 20, 64, 200]) {
-        final pw = g.generate(PasswordOptions(length: len));
+        final pw =
+            g.generate(PasswordOptions(length: len, requireEachSelectedClass: false));
         expect(pw.length, len, reason: 'length $len');
       }
     });
