@@ -16,7 +16,6 @@
 // reflows text content CI will surface it (see reviews/Critic-round-11.md).
 
 import 'package:dgvault/core/core.dart';
-import 'package:dgvault/core/format/keepass_xml.dart';
 import 'package:test/test.dart';
 
 Database _dbWith(Entry e) =>
@@ -35,7 +34,7 @@ void main() {
     final e = Entry(uuid: 'e', fields: {
       Field.title: _f(Field.title, 'a<b>c&d"e\'f'),
       Field.password: _f(Field.password, 'p&<>"\'|', protect: true),
-    });
+    },);
     final back = _roundTrip(e);
     expect(back.fields[Field.title]!.value.reveal(), 'a<b>c&d"e\'f');
     expect(back.fields[Field.password]!.value.reveal(), 'p&<>"\'|');
@@ -45,12 +44,12 @@ void main() {
     final e = Entry(uuid: 'e', fields: {
       Field.notes: _f(Field.notes, '  leading/trailing  '),
       Field.userName: _f(Field.userName, 'line1\nline2\tindented'),
-    });
+    },);
 
     test('preserved with pretty: true (the default)', () {
       final back = _roundTrip(e, pretty: true);
       expect(back.fields[Field.notes]!.value.reveal(), '  leading/trailing  ',
-          reason: 'pretty-printing must not trim/reflow value whitespace');
+          reason: 'pretty-printing must not trim/reflow value whitespace',);
       expect(back.fields[Field.userName]!.value.reveal(), 'line1\nline2\tindented');
     });
 
@@ -67,7 +66,7 @@ void main() {
       Field.password: _f(Field.password, 'pw', protect: true),
       'Recovery': _f('Recovery', 'protected-custom', protect: true),
       'Plain': _f('Plain', 'visible'),
-    });
+    },);
     final back = _roundTrip(e);
     expect(back.fields[Field.title]!.value.reveal(), 'café — 日本語 — 🔐');
     expect(back.fields[Field.password]!.isProtected, isTrue);

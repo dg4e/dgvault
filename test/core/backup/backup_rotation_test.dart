@@ -13,14 +13,14 @@ void main() {
       // Safety semantics (Critic R15): keepLast only protects the N newest; it
       // never triggers deletion on its own. Capping requires maxTotalCount.
       final entries = [old('a', 0), old('b', 1), old('c', 2), old('d', 3)];
-      final r = const BackupRotator(policy: BackupRetentionPolicy(keepLast: 2));
+      const r = BackupRotator(policy: BackupRetentionPolicy(keepLast: 2));
       expect(r.selectForDeletion(entries, now: now), isEmpty);
       expect(r.retained(entries, now: now).map((e) => e.id), ['a', 'b', 'c', 'd']);
     });
 
     test('keepLast protects recent snapshots even when maxAge would drop them', () {
       final entries = [old('a', 400), old('b', 401)];
-      final r = const BackupRotator(
+      const r = BackupRotator(
         policy: BackupRetentionPolicy(keepLast: 2, maxAge: Duration(days: 30)),
       );
       // both are ancient, but keepLast=2 protects both
@@ -31,7 +31,7 @@ void main() {
   group('maxAge', () {
     test('deletes snapshots older than maxAge beyond keepLast', () {
       final entries = [old('a', 1), old('b', 10), old('c', 40), old('d', 80)];
-      final r = const BackupRotator(
+      const r = BackupRotator(
         policy: BackupRetentionPolicy(keepLast: 1, maxAge: Duration(days: 30)),
       );
       final del = r.selectForDeletion(entries, now: now).map((e) => e.id).toSet();
@@ -43,7 +43,7 @@ void main() {
   group('maxTotalCount', () {
     test('caps the total number retained', () {
       final entries = [old('a', 0), old('b', 1), old('c', 2), old('d', 3), old('e', 4)];
-      final r = const BackupRotator(
+      const r = BackupRotator(
         policy: BackupRetentionPolicy(keepLast: 1, maxTotalCount: 3),
       );
       final del = r.selectForDeletion(entries, now: now).map((e) => e.id).toSet();
@@ -70,11 +70,11 @@ void main() {
       final entries = [old('mid', 2), old('new', 0), old('old', 5)];
       // keepLast=1 floor + a count cap of 1 so deletion actually fires; the
       // point is that unsorted input is still resolved newest-first.
-      final r = const BackupRotator(
-          policy: BackupRetentionPolicy(keepLast: 1, maxTotalCount: 1));
+      const r = BackupRotator(
+          policy: BackupRetentionPolicy(keepLast: 1, maxTotalCount: 1),);
       expect(r.retained(entries, now: now).map((e) => e.id).first, 'new');
       expect(r.selectForDeletion(entries, now: now).map((e) => e.id).toSet(),
-          {'mid', 'old'});
+          {'mid', 'old'},);
     });
   });
 

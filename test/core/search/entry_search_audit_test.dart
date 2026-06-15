@@ -10,7 +10,6 @@
 // (see reviews/Critic-round-10.md).
 
 import 'package:dgvault/core/core.dart';
-import 'package:dgvault/core/search/entry_search.dart';
 import 'package:test/test.dart';
 
 Entry _e(
@@ -45,7 +44,7 @@ void main() {
 
     test('the protected VALUE does NOT match by default', () {
       expect(EntrySearch.search([e], const SearchQuery('ZZZ-SECRET')), isEmpty,
-          reason: 'protected custom value must be excluded without opt-in');
+          reason: 'protected custom value must be excluded without opt-in',);
     });
 
     test('the protected VALUE matches with searchProtected', () {
@@ -62,20 +61,20 @@ void main() {
     test('a term that exists only in the password blocks the match by default', () {
       // 'GitHub' is in title, but 'octocat' lives only in the protected password.
       expect(EntrySearch.search([e], const SearchQuery('GitHub octocat')), isEmpty,
-          reason: 'default search must not satisfy an AND term from a secret field');
+          reason: 'default search must not satisfy an AND term from a secret field',);
     });
 
     test('with allFields + searchProtected the same query matches', () {
       final r = EntrySearch.search(
         [e],
         const SearchQuery('GitHub octocat',
-            fields: SearchQuery.allFields, searchProtected: true),
+            fields: SearchQuery.allFields, searchProtected: true,),
       );
       expect(r.length, 1);
       expect(r.single.matchedFields, containsAll(<SearchField>{
         SearchField.title,
         SearchField.password,
-      }));
+      }),);
     });
   });
 }

@@ -52,7 +52,7 @@ void main() {
       expect(p.allows('http://nas.local/x'), isTrue);
       expect(p.allows('https://example.com/x'), isFalse);
       expect(() => p.enforce('https://example.com/x'),
-          throwsA(isA<LocalNetworkViolation>()));
+          throwsA(isA<LocalNetworkViolation>()),);
     });
 
     test('bare host (no scheme) is classified', () {
@@ -69,11 +69,11 @@ void main() {
 
     test('rejects disallowed scheme, missing scheme, missing host', () {
       expect(() => DirectImportUrl.validate('ftp://x/a'),
-          throwsA(isA<DirectImportException>()));
+          throwsA(isA<DirectImportException>()),);
       expect(() => DirectImportUrl.validate('notaurl'),
-          throwsA(isA<DirectImportException>()));
+          throwsA(isA<DirectImportException>()),);
       expect(() => DirectImportUrl.validate('https://'),
-          throwsA(isA<DirectImportException>()));
+          throwsA(isA<DirectImportException>()),);
     });
   });
 

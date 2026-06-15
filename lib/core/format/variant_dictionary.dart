@@ -88,7 +88,7 @@ class VariantDictionary {
     offset += 2;
     if ((version >> 8) != 0x01) {
       throw VariantDictionaryException(
-          'unsupported VariantDictionary version 0x${version.toRadixString(16)}');
+          'unsupported VariantDictionary version 0x${version.toRadixString(16)}',);
     }
     final vd = VariantDictionary();
     while (offset < bytes.length) {

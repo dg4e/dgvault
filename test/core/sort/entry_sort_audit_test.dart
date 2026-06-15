@@ -11,7 +11,6 @@
 // (see reviews/Critic-round-9.md).
 
 import 'package:dgvault/core/core.dart';
-import 'package:dgvault/core/sort/entry_sort.dart';
 import 'package:test/test.dart';
 
 Entry _e(String uuid, {String? title, DateTime? modified}) {
@@ -49,7 +48,7 @@ void main() {
           sorter.sorted([noDate, withDate], const EntrySortSpec(EntrySortKey.modified));
       expect(asc.last.uuid, 'n');
       final desc = sorter.sorted(
-          [withDate, noDate], const EntrySortSpec(EntrySortKey.modified, ascending: false));
+          [withDate, noDate], const EntrySortSpec(EntrySortKey.modified, ascending: false),);
       expect(desc.last.uuid, 'n', reason: 'blanks stay last even descending');
     });
   });

@@ -43,7 +43,7 @@ void main() {
         wordCount: 5,
         separator: '-',
         capitalization: DicewareCapitalization.firstLetterEachWord,
-      ));
+      ),);
       for (final w in phrase.split('-')) {
         // strip any trailing digit just in case (includeNumber is off here)
         expect(w[0], equals(w[0].toUpperCase()), reason: w);
@@ -56,7 +56,7 @@ void main() {
         wordCount: 4,
         separator: '-',
         capitalization: DicewareCapitalization.firstWordOnly,
-      ));
+      ),);
       final parts = phrase.split('-');
       expect(parts[0][0], equals(parts[0][0].toUpperCase()));
       for (var i = 1; i < parts.length; i++) {
@@ -70,14 +70,14 @@ void main() {
         wordCount: 5,
         separator: '-',
         includeNumber: true,
-      ));
+      ),);
       final digitCount = phrase.split('').where((c) => '0123456789'.contains(c)).length;
       expect(digitCount, 1);
     });
 
     test('entropy = wordCount * log2(uniqueWordlistSize)', () {
       final g = gen();
-      final opts = const DicewareOptions(wordCount: 6);
+      const opts = DicewareOptions(wordCount: 6);
       final expected = 6 * (log(words.toSet().length) / log(2));
       expect(g.estimateEntropyBits(opts), closeTo(expected, 1e-9));
     });

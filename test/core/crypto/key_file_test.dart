@@ -75,19 +75,19 @@ void main() {
       final xml = '<KeyFile><Meta><Version>2.0</Version></Meta>'
           '<Key><Data Hash="deadbeef">${_hex(key)}</Data></Key></KeyFile>';
       expect(() => _keyFile.parse(Uint8List.fromList(utf8.encode(xml))),
-          throwsA(isA<KeyFileException>()));
+          throwsA(isA<KeyFileException>()),);
     });
 
     test('malformed XML key file throws', () {
-      final xml = '<KeyFile><Key><Data>oops';
+      const xml = '<KeyFile><Key><Data>oops';
       expect(() => _keyFile.parse(Uint8List.fromList(utf8.encode(xml))),
-          throwsA(isA<KeyFileException>()));
+          throwsA(isA<KeyFileException>()),);
     });
 
     test('XML key file without <Data> throws', () {
-      final xml = '<KeyFile><Key></Key></KeyFile>';
+      const xml = '<KeyFile><Key></Key></KeyFile>';
       expect(() => _keyFile.parse(Uint8List.fromList(utf8.encode(xml))),
-          throwsA(isA<KeyFileException>()));
+          throwsA(isA<KeyFileException>()),);
     });
   });
 }

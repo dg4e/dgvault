@@ -27,10 +27,10 @@ void main() {
       final pw = g.generate(const PasswordOptions(
         length: 3000,
         customCharacterSet: 'XYZ',
-      ));
+      ),);
       seen.addAll(pw.split(''));
       expect(seen, equals({'X', 'Y', 'Z'}),
-          reason: 'a custom-set char was never produced — index range bug?');
+          reason: 'a custom-set char was never produced — index range bug?',);
     });
 
     test('customCharacterSet emptied by excludeAmbiguous throws (no silent empty pool)',
@@ -42,7 +42,7 @@ void main() {
           length: 16,
           customCharacterSet: 'Il1O0',
           excludeAmbiguous: true,
-        )),
+        ),),
         throwsA(isA<PasswordGenerationException>()),
         reason: 'an emptied pool must throw, not produce a degenerate password',
       );
@@ -54,7 +54,7 @@ void main() {
       final pw = g.generate(const PasswordOptions(
         length: 1,
         requireEachSelectedClass: false,
-      ));
+      ),);
       expect(pw.length, 1);
     });
 
@@ -67,7 +67,7 @@ void main() {
         useSymbols: false,
         extraCharacters: 'a', // already present in kLowercase
         requireEachSelectedClass: true,
-      ));
+      ),);
       expect(pw.length, 40);
       final allowed = kLowercase.split('').toSet();
       for (final ch in pw.split('')) {
@@ -98,7 +98,7 @@ void main() {
           g.generate(const DicewareOptions(wordCount: 6000, separator: ' '));
       final produced = phrase.split(' ').toSet();
       expect(produced, equals(words.toSet()),
-          reason: 'a wordlist entry (likely the last) was never selected');
+          reason: 'a wordlist entry (likely the last) was never selected',);
     });
 
     test('includeNumber adds exactly one digit and does not change word count',
@@ -111,7 +111,7 @@ void main() {
         wordCount: 7,
         separator: '-',
         includeNumber: true,
-      ));
+      ),);
       expect(phrase.split('-').length, 7, reason: 'word count must be stable');
       final digits = phrase.split('').where((c) => '0123456789'.contains(c));
       expect(digits.length, 1);

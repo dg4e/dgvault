@@ -22,7 +22,7 @@ class _StubKdf implements KeyDerivation {
 
   @override
   Future<SecureKey> deriveKey(
-      CompositeCredential c, KdfParams p, Uint8List salt) async {
+      CompositeCredential c, KdfParams p, Uint8List salt,) async {
     final pw = c.password ?? Uint8List(0);
     final key = Uint8List(32);
     for (var i = 0; i < 32; i++) {
@@ -65,14 +65,14 @@ class _StubCipher implements Cipher {
 
   @override
   Future<Uint8List> encrypt(
-      {required SecureKey key, required Uint8List iv, required Uint8List plaintext}) async {
+      {required SecureKey key, required Uint8List iv, required Uint8List plaintext,}) async {
     final core = _xor(plaintext, key.bytes(), iv);
     return Uint8List.fromList([...core, ..._tag(key.bytes(), iv, plaintext)]);
   }
 
   @override
   Future<Uint8List> decrypt(
-      {required SecureKey key, required Uint8List iv, required Uint8List ciphertext}) async {
+      {required SecureKey key, required Uint8List iv, required Uint8List ciphertext,}) async {
     if (ciphertext.length < 8) throw StateError('truncated');
     final core = Uint8List.sublistView(ciphertext, 0, ciphertext.length - 8);
     final tag = Uint8List.sublistView(ciphertext, ciphertext.length - 8);
@@ -88,7 +88,7 @@ class _StubCipher implements Cipher {
 
   @override
   Stream<Uint8List> decryptStream(
-          {required SecureKey key, required Uint8List iv, required Stream<List<int>> ciphertext}) =>
+          {required SecureKey key, required Uint8List iv, required Stream<List<int>> ciphertext,}) =>
       throw UnimplementedError();
 }
 
@@ -102,8 +102,8 @@ Group sampleRoot() => Group(uuid: 'r', name: 'Root', entries: [
         Field.title: Field(key: Field.title, value: InMemoryProtectedValue.plain('Acme')),
         Field.userName: Field(key: Field.userName, value: InMemoryProtectedValue.plain('alice')),
         Field.password: Field(key: Field.password, value: InMemoryProtectedValue('s3cret')),
-      }),
-    ]);
+      },),
+    ],);
 
 final _salt = Uint8List.fromList(List.generate(16, (i) => i));
 final _iv = Uint8List.fromList(List.generate(16, (i) => 255 - i));
@@ -115,7 +115,7 @@ void main() {
         credential: cred('correct horse'),
         params: KdfParams.argon2idDefault(),
         salt: _salt,
-        iv: _iv);
+        iv: _iv,);
     final result = await codec.import(container, credential: cred('correct horse'));
     final e = result.root.entries.single;
     expect(e.title, 'Acme');
@@ -126,37 +126,37 @@ void main() {
   test('wrong password fails decryption (authenticated)', () async {
     final codec = newCodec();
     final container = await codec.export(sampleRoot(),
-        credential: cred('right'), params: KdfParams.argon2idDefault(), salt: _salt, iv: _iv);
+        credential: cred('right'), params: KdfParams.argon2idDefault(), salt: _salt, iv: _iv,);
     expect(() => codec.import(container, credential: cred('wrong')),
-        throwsA(isA<StateError>()));
+        throwsA(isA<StateError>()),);
   });
 
   test('tampered ciphertext fails decryption', () async {
     final codec = newCodec();
     final container = await codec.export(sampleRoot(),
-        credential: cred('pw'), params: KdfParams.argon2idDefault(), salt: _salt, iv: _iv);
+        credential: cred('pw'), params: KdfParams.argon2idDefault(), salt: _salt, iv: _iv,);
     container[container.length - 1] ^= 0xFF; // flip a ciphertext/tag byte
     expect(() => codec.import(container, credential: cred('pw')),
-        throwsA(isA<StateError>()));
+        throwsA(isA<StateError>()),);
   });
 
   test('bad magic is rejected as a malformed container', () async {
     final codec = newCodec();
     final bogus = Uint8List.fromList(List.filled(64, 0));
     expect(() => codec.import(bogus, credential: cred('pw')),
-        throwsA(isA<EncryptedCsvException>()));
+        throwsA(isA<EncryptedCsvException>()),);
   });
 
   test('corrupt KDF-algorithm byte fails as a malformed container, not RangeError',
       () async {
     final codec = newCodec();
     final container = await codec.export(sampleRoot(),
-        credential: cred('pw'), params: KdfParams.argon2idDefault(), salt: _salt, iv: _iv);
+        credential: cred('pw'), params: KdfParams.argon2idDefault(), salt: _salt, iv: _iv,);
     // Layout: magic(5) version(1) cipherAlgo(1) kdfAlgo(1) ... — byte 7 is the
     // KDF-algorithm enum index. Force it out of range.
     container[7] = 0xFF;
     expect(() => codec.import(container, credential: cred('pw')),
-        throwsA(isA<EncryptedCsvException>()));
+        throwsA(isA<EncryptedCsvException>()),);
   });
 
   test('non-default KDF params round-trip via the self-describing header', () async {
@@ -166,9 +166,9 @@ void main() {
         iterations: 7,
         memoryKib: 32768,
         parallelism: 2,
-        version: 0x13);
+        version: 0x13,);
     final container = await codec.export(sampleRoot(),
-        credential: cred('pw'), params: params, salt: _salt, iv: _iv);
+        credential: cred('pw'), params: params, salt: _salt, iv: _iv,);
     // No params passed to import → must be read back from the container.
     final result = await codec.import(container, credential: cred('pw'));
     expect(result.root.entries.single.title, 'Acme');

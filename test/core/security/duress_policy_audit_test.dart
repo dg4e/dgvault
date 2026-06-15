@@ -23,7 +23,7 @@ void main() {
   test('a duress secret wipes the real data in EVERY configuration', () {
     for (final p in configs) {
       expect(p.resolve(CredentialMatch.duress).wipeRealData, isTrue,
-          reason: 'trigger=${p.trigger} hasDecoy=${p.hasDecoy}: wipe must always fire');
+          reason: 'trigger=${p.trigger} hasDecoy=${p.hasDecoy}: wipe must always fire',);
     }
   });
 
@@ -32,7 +32,7 @@ void main() {
     for (final p in configs) {
       final s = p.resolve(CredentialMatch.duress).signal;
       expect(s, isNot(ObservableSignal.openedReal),
-          reason: 'duress must never be observably a real unlock');
+          reason: 'duress must never be observably a real unlock',);
       expect(benign.contains(s), isTrue, reason: 'trigger=${p.trigger} hasDecoy=${p.hasDecoy}');
     }
   });
@@ -51,7 +51,7 @@ void main() {
       const DuressPolicy(trigger: DuressTrigger.openDecoy, hasDecoy: false),
     ]) {
       expect(p.resolve(CredentialMatch.duress).signal,
-          const DuressPolicy().resolve(CredentialMatch.none).signal);
+          const DuressPolicy().resolve(CredentialMatch.none).signal,);
     }
   });
 

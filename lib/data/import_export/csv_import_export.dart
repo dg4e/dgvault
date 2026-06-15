@@ -116,7 +116,7 @@ class CsvImporter {
           tags.addAll(value
               .split(RegExp(r'[;,]'))
               .map((t) => t.trim())
-              .where((t) => t.isNotEmpty));
+              .where((t) => t.isNotEmpty),);
           continue;
         }
         if (_isTotpHeader(header)) {
@@ -156,7 +156,7 @@ class CsvImporter {
     var current = root;
     for (final segment in path.split('/').map((s) => s.trim())) {
       if (segment.isEmpty) continue;
-      var child = current.groups.firstWhere(
+      final child = current.groups.firstWhere(
         (g) => g.name == segment,
         orElse: () {
           final g = Group(uuid: _randomUuid(_rng), name: segment);

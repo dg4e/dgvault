@@ -45,7 +45,7 @@ class KeePassXml {
           _textEl(builder, 'DatabaseDescription', db.meta.description!);
         }
         _textEl(builder, 'RecycleBinEnabled',
-            db.meta.recycleBinEnabled ? _true : _false);
+            db.meta.recycleBinEnabled ? _true : _false,);
         builder.element('Binaries', nest: () {
           for (final bin in db.binaryPool) {
             builder.element('Binary', nest: () {
@@ -53,22 +53,22 @@ class KeePassXml {
               if (bin.inlineData != null) {
                 builder.text(base64.encode(bin.inlineData!));
               }
-            });
+            },);
           }
-        });
+        },);
         if (db.meta.customData.isNotEmpty) {
           builder.element('CustomData', nest: () {
             db.meta.customData.forEach((k, v) {
               builder.element('Item', nest: () {
                 _textEl(builder, 'Key', k);
                 _textEl(builder, 'Value', v);
-              });
+              },);
             });
-          });
+          },);
         }
-      });
+      },);
       builder.element('Root', nest: () => _buildGroup(builder, db.root));
-    });
+    },);
     // Pretty-printing must not corrupt value content: the xml pretty writer
     // normalizes (trims/collapses) whitespace inside text-only elements. KeePass
     // values can carry significant leading/trailing/internal whitespace, so
@@ -98,7 +98,7 @@ class KeePassXml {
       for (final child in group.groups) {
         _buildGroup(builder, child);
       }
-    });
+    },);
   }
 
   void _buildEntry(XmlBuilder builder, Entry entry, {bool asHistory = false}) {
@@ -117,25 +117,25 @@ class KeePassXml {
         }
         if (entry.modified != null) {
           _textEl(builder, 'LastModificationTime',
-              entry.modified!.toIso8601String());
+              entry.modified!.toIso8601String(),);
         }
-      });
+      },);
       for (final field in entry.fields.values) {
         builder.element('String', nest: () {
           _textEl(builder, 'Key', field.key);
           builder.element('Value', nest: () {
             if (field.isProtected) builder.attribute('Protected', _true);
             builder.text(field.value.reveal());
-          });
-        });
+          },);
+        },);
       }
       for (final att in entry.attachments) {
         builder.element('Binary', nest: () {
           _textEl(builder, 'Key', att.name);
           builder.element('Value', nest: () {
             builder.attribute('Ref', att.id);
-          });
-        });
+          },);
+        },);
       }
       // History versions are flat (no nested history) — guarded by asHistory.
       if (!asHistory && entry.history.isNotEmpty) {
@@ -143,9 +143,9 @@ class KeePassXml {
           for (final h in entry.history) {
             _buildEntry(builder, h, asHistory: true);
           }
-        });
+        },);
       }
-    });
+    },);
   }
 
   void _textEl(XmlBuilder builder, String name, String value) {
@@ -205,7 +205,7 @@ class KeePassXml {
         name: '',
         size: data?.length ?? 0,
         inlineData: data,
-      ));
+      ),);
     }
     return out;
   }

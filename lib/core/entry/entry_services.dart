@@ -64,7 +64,7 @@ class AttachmentService {
         name: name,
         size: data.length,
         inlineData: data,
-      ));
+      ),);
     }
     // Entry-side reference is a pointer (no inline payload).
     final ref = Attachment(id: poolId, name: name, size: data.length);

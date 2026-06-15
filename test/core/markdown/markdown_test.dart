@@ -92,7 +92,7 @@ void main() {
           '- item [b](https://b.test)\n\n'
           '> quote https://c.test';
       expect(Markdown.extractLinks(src),
-          ['https://a.test', 'https://b.test', 'https://c.test']);
+          ['https://a.test', 'https://b.test', 'https://c.test'],);
     });
   });
 }

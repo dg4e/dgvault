@@ -8,9 +8,9 @@ Database _sample() {
     uuid: 'ENTRY-UUID-1',
     fields: {
       Field.title: Field(
-          key: Field.title, value: InMemoryProtectedValue.plain('GitHub')),
+          key: Field.title, value: InMemoryProtectedValue.plain('GitHub'),),
       Field.userName: Field(
-          key: Field.userName, value: InMemoryProtectedValue.plain('octocat')),
+          key: Field.userName, value: InMemoryProtectedValue.plain('octocat'),),
       Field.password:
           Field(key: Field.password, value: InMemoryProtectedValue('s3cr3t!')),
       'API Token':
@@ -29,7 +29,7 @@ Database _sample() {
       Field.password:
           Field(key: Field.password, value: InMemoryProtectedValue('old-pw')),
     },
-  ));
+  ),);
 
   final child = Group(uuid: 'G2', name: 'Servers', entries: [entry]);
   final root = Group(

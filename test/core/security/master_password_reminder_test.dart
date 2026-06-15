@@ -56,7 +56,7 @@ void main() {
   test('snooze shorter than remaining interval does not bring it forward', () {
     final state = ReminderState(lastVerified: t0); // due day 14
     final snoozed = reminder.snooze(state, t0.add(const Duration(days: 2)),
-        const Duration(days: 1)); // snooze to day 3 (< day 14)
+        const Duration(days: 1),); // snooze to day 3 (< day 14)
     // Interval-based due (day 14) still wins over the earlier snooze.
     expect(reminder.nextDueAt(snoozed, t0), t0.add(const Duration(days: 14)));
   });

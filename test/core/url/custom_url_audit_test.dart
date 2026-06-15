@@ -9,12 +9,11 @@
 // (see reviews/Critic-round-18.md).
 
 import 'package:dgvault/core/core.dart';
-import 'package:dgvault/core/url/custom_url.dart';
 import 'package:test/test.dart';
 
 Entry _e(String url) => Entry(uuid: 'e', fields: {
       Field.url: Field(key: Field.url, value: InMemoryProtectedValue.plain(url)),
-    });
+    },);
 
 void main() {
   const h = CustomUrlHandler();
@@ -51,16 +50,16 @@ void main() {
       // this string would actually run javascript: — it MUST be blocked.
       final r = h.resolve(_e('java\tscript:alert(document.cookie)'));
       expect(r.policy, UrlOpenPolicy.blocked,
-          reason: 'control-char obfuscated javascript scheme must be blocked');
+          reason: 'control-char obfuscated javascript scheme must be blocked',);
       // A trailing tab before the colon is the same class of bypass.
       expect(h.resolve(_e('javascript\t:alert(1)')).policy,
-          UrlOpenPolicy.blocked);
+          UrlOpenPolicy.blocked,);
       // Newline/CR obfuscation of data: likewise blocked.
       expect(h.resolve(_e('da\nta:text/html,<script>')).policy,
-          UrlOpenPolicy.blocked);
+          UrlOpenPolicy.blocked,);
       // A colon-bearing but non-scheme token never auto-opens (defaults to confirm).
       expect(h.resolve(_e('weird scheme:payload')).policy,
-          UrlOpenPolicy.confirmFirst);
+          UrlOpenPolicy.confirmFirst,);
     });
   });
 }

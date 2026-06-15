@@ -105,12 +105,12 @@ void main() {
 
     test('rejects a non-otpauth URI', () {
       expect(() => OtpConfig.fromUri('https://example.com'),
-          throwsFormatException);
+          throwsFormatException,);
     });
 
     test('rejects a missing secret', () {
       expect(() => OtpConfig.fromUri('otpauth://totp/x?issuer=y'),
-          throwsFormatException);
+          throwsFormatException,);
     });
   });
 }

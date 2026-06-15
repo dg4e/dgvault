@@ -92,7 +92,7 @@ void main() {
       final src = _db('src', entries: [e], readOnly: true);
       final dst = _db('dst');
       expect(() => transfer.moveEntry(src, e, dst, dst.root),
-          throwsA(isA<ReadOnlyDatabaseException>()));
+          throwsA(isA<ReadOnlyDatabaseException>()),);
     });
 
     test('rejects move when dest is read-only', () {
@@ -100,7 +100,7 @@ void main() {
       final src = _db('src', entries: [e]);
       final dst = _db('dst', readOnly: true);
       expect(() => transfer.moveEntry(src, e, dst, dst.root),
-          throwsA(isA<ReadOnlyDatabaseException>()));
+          throwsA(isA<ReadOnlyDatabaseException>()),);
     });
 
     test('rejects a UUID collision in the destination', () {
@@ -108,7 +108,7 @@ void main() {
       final src = _db('src', entries: [e]);
       final dst = _db('dst', entries: [_entry('dup')]);
       expect(() => transfer.moveEntry(src, e, dst, dst.root),
-          throwsStateError);
+          throwsStateError,);
     });
 
     test('throws when the entry is not in the source', () {
@@ -116,7 +116,7 @@ void main() {
       final src = _db('src');
       final dst = _db('dst');
       expect(() => transfer.moveEntry(src, orphan, dst, dst.root),
-          throwsStateError);
+          throwsStateError,);
     });
   });
 
@@ -138,7 +138,7 @@ void main() {
   test('copyEntry deep-clones — source ref untouched on id collision', () {
     final entry = _entry('e1', atts: [_bin('b1', name: 'mine.png', size: 10)]);
     final src = _db('src',
-        entries: [entry], pool: [_bin('b1', name: 'mine.png', size: 10)]);
+        entries: [entry], pool: [_bin('b1', name: 'mine.png', size: 10)],);
     // Dest already has a DIFFERENT binary under id 'b1' → forces a minted id.
     final dst = _db('dst', pool: [_bin('b1', name: 'other.png', size: 99)]);
 

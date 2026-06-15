@@ -9,7 +9,7 @@ void main() {
     test('is non-trivial, de-duplicated, and usable', () {
       expect(kDefaultDicewareWords.length, greaterThanOrEqualTo(256));
       expect(kDefaultDicewareWords.toSet().length, kDefaultDicewareWords.length,
-          reason: 'no duplicates');
+          reason: 'no duplicates',);
       expect(DicewareWordlist.isUsable(kDefaultDicewareWords), isTrue);
       for (final w in kDefaultDicewareWords) {
         expect(w, matches(RegExp(r'^[a-z]+$')), reason: w);
@@ -57,7 +57,7 @@ void main() {
 
     test('parsed EFF list drives the generator', () {
       final words = DicewareWordlist.parseEff(
-          '11111 alpha\n11112 bravo\n11113 charlie\n11114 delta\n');
+          '11111 alpha\n11112 bravo\n11113 charlie\n11114 delta\n',);
       final g = DicewareGenerator(wordlist: words, random: Random(3));
       final phrase = g.generate(const DicewareOptions(wordCount: 3, separator: ' '));
       for (final w in phrase.split(' ')) {

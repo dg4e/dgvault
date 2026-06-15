@@ -62,13 +62,13 @@ void main() {
       final a = repo.findEntry('a')!;
 
       expect(() => repo.addEntry(work, _e('x')),
-          throwsA(isA<ReadOnlyDatabaseException>()));
+          throwsA(isA<ReadOnlyDatabaseException>()),);
       expect(() => repo.moveEntry(a, personal),
-          throwsA(isA<ReadOnlyDatabaseException>()));
+          throwsA(isA<ReadOnlyDatabaseException>()),);
       expect(() => repo.deleteEntry(a),
-          throwsA(isA<ReadOnlyDatabaseException>()));
+          throwsA(isA<ReadOnlyDatabaseException>()),);
       expect(() => repo.addGroup(work, Group(uuid: 'g', name: 'G')),
-          throwsA(isA<ReadOnlyDatabaseException>()));
+          throwsA(isA<ReadOnlyDatabaseException>()),);
       // Tree is untouched after rejected writes.
       expect(work.entries.map((e) => e.uuid), ['a']);
     });

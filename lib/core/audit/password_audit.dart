@@ -166,7 +166,7 @@ class PasswordAuditor {
           entryUuid: e.uuid,
           entryTitle: _title(e),
           detail: 'Entry has no password set.',
-        ));
+        ),);
         continue;
       }
       final bits = estimatePasswordEntropyBits(pw);
@@ -181,7 +181,7 @@ class PasswordAuditor {
           detail: 'Estimated entropy ${bits.toStringAsFixed(1)} bits '
               '(< ${config.weakEntropyBits.toStringAsFixed(0)}).',
           metric: bits,
-        ));
+        ),);
       }
     }
     return out;
@@ -206,7 +206,7 @@ class PasswordAuditor {
           entryTitle: _title(e),
           detail: 'Password reused across ${group.length} entries.',
           relatedUuids: uuids.where((u) => u != e.uuid).toList(),
-        ));
+        ),);
       }
     }
     return out;
@@ -240,7 +240,7 @@ class PasswordAuditor {
             detail: detail,
             metric: sim,
             relatedUuids: [ej.uuid],
-          ));
+          ),);
           out.add(AuditFinding(
             issue: AuditIssue.similarPassword,
             severity: AuditSeverity.medium,
@@ -249,7 +249,7 @@ class PasswordAuditor {
             detail: detail,
             metric: sim,
             relatedUuids: [ei.uuid],
-          ));
+          ),);
         }
       }
     }
@@ -272,7 +272,7 @@ class PasswordAuditor {
           entryTitle: _title(e),
           detail: 'Password unchanged for ${age.inDays} days.',
           metric: age.inDays.toDouble(),
-        ));
+        ),);
       }
     }
     return out;

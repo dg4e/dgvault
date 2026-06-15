@@ -25,7 +25,7 @@ class BackupRetentionPolicy {
     this.maxTotalCount,
   })  : assert(keepLast >= 0),
         assert(maxTotalCount == null || maxTotalCount >= keepLast,
-            'maxTotalCount must be >= keepLast');
+            'maxTotalCount must be >= keepLast',);
 
   /// Always retain this many most-recent snapshots.
   final int keepLast;

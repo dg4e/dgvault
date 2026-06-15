@@ -17,7 +17,7 @@ PlaceholderResolver _resolverFor(Entry e) =>
     PlaceholderResolver(Database(
       meta: DatabaseMeta(name: 'T'),
       root: Group(uuid: 'r', name: 'Root', entries: [e]),
-    ));
+    ),);
 
 void main() {
   const handler = CustomUrlHandler();
@@ -49,9 +49,9 @@ void main() {
 
     test('script/data URIs are blocked', () {
       expect(handler.resolve(_entry('javascript:alert(1)')).policy,
-          UrlOpenPolicy.blocked);
+          UrlOpenPolicy.blocked,);
       expect(handler.resolve(_entry('data:text/html,<x>')).policy,
-          UrlOpenPolicy.blocked);
+          UrlOpenPolicy.blocked,);
       expect(CustomUrlHandler.isBlockedScheme('vbscript:msgbox'), isTrue);
     });
 
@@ -66,13 +66,13 @@ void main() {
   group('override precedence', () {
     test('override replaces the URL field', () {
       final r = handler.resolve(_entry('https://orig.com'),
-          override: 'https://override.com');
+          override: 'https://override.com',);
       expect(r.value, 'https://override.com');
     });
 
     test('{URL} token embeds the original URL inside the override', () {
       final r = handler.resolve(_entry('https://target.com'),
-          override: 'cmd://open {URL}');
+          override: 'cmd://open {URL}',);
       expect(r.value, 'cmd://open https://target.com');
       expect(r.scheme, UrlScheme.command);
       expect(r.policy, UrlOpenPolicy.confirmFirst);

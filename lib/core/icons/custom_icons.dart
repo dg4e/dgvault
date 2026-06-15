@@ -13,7 +13,6 @@
 import 'dart:typed_data';
 
 import '../model/database.dart';
-import '../model/entry.dart';
 import '../model/group.dart';
 
 /// Number of built-in KeePass preset icons (indices 0..68). This is the fixed

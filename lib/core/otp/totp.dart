@@ -48,7 +48,7 @@ class OtpConfig {
     final q = u.queryParameters;
     final secretParam = q['secret'];
     if (secretParam == null || secretParam.isEmpty) {
-      throw FormatException('otpauth URI missing secret');
+      throw const FormatException('otpauth URI missing secret');
     }
     final label = u.pathSegments.isNotEmpty ? u.pathSegments.last : '';
     final issuer = q['issuer'] ??

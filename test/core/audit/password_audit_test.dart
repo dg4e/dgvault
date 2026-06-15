@@ -5,7 +5,7 @@ import 'package:dgvault/core/audit/password_audit.dart';
 import 'package:test/test.dart';
 
 Entry pwEntry(String uuid, String? password,
-    {String title = 't', DateTime? modified}) {
+    {String title = 't', DateTime? modified,}) {
   final fields = <String, Field>{
     Field.title: Field(key: Field.title, value: InMemoryProtectedValue.plain(title)),
   };
@@ -35,7 +35,7 @@ void main() {
     test('similarity is 1 for identical, lower for edits', () {
       expect(passwordSimilarity('abc', 'abc'), 1.0);
       expect(passwordSimilarity('Summer2023!', 'Summer2024!'),
-          closeTo(1 - 1 / 11, 1e-9));
+          closeTo(1 - 1 / 11, 1e-9),);
     });
   });
 
@@ -62,7 +62,7 @@ void main() {
 
     test('does not flag a strong password', () {
       final f = auditor.findWeakOrEmpty(
-          [pwEntry('e1', 'Tr0ub4dour-&3-XtraLongPhrase!')]);
+          [pwEntry('e1', 'Tr0ub4dour-&3-XtraLongPhrase!')],);
       expect(f, isEmpty);
     });
   });
@@ -156,14 +156,14 @@ void main() {
         pwEntry('dup1', 'Repeated-9!'), // reused
         pwEntry('dup2', 'Repeated-9!'), // reused
         pwEntry('old', 'Tr0ub4dour-&3-XtraLong!',
-            modified: DateTime.utc(2020, 1, 1)), // old
-      ], now: now);
+            modified: DateTime.utc(2020, 1, 1),), // old
+      ], now: now,);
       final issues = findings.map((f) => f.issue).toSet();
       expect(issues, containsAll([
         AuditIssue.weakPassword,
         AuditIssue.reusedPassword,
         AuditIssue.oldPassword,
-      ]));
+      ]),);
     });
   });
 }

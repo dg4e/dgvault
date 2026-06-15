@@ -2,7 +2,7 @@ import 'package:dgvault/core/core.dart';
 import 'package:test/test.dart';
 
 Entry _entry(String uuid, Map<String, String> fields,
-    {Map<String, bool>? protect}) {
+    {Map<String, bool>? protect,}) {
   final map = <String, Field>{};
   fields.forEach((k, v) {
     final isProt = protect?[k] ?? (k == Field.password);
@@ -31,7 +31,7 @@ void main() {
       final r = PlaceholderResolver(_db([e]));
       expect(r.resolve('{USERNAME}@{TITLE}', e), 'octocat@GitHub');
       expect(r.resolve('login {USERNAME} / {PASSWORD}', e),
-          'login octocat / s3cret');
+          'login octocat / s3cret',);
       expect(r.resolve('{UUID}', e), 'u1');
     });
 
@@ -47,7 +47,7 @@ void main() {
       final e = _entry('u1', {
         Field.title: 'API',
         'Token': 'abc123',
-      }, protect: {'Token': true});
+      }, protect: {'Token': true},);
       final r = PlaceholderResolver(_db([e]));
       expect(r.resolve('Bearer {S:Token}', e), 'Bearer abc123');
       expect(r.resolve('{S:Missing}', e), '{S:Missing}');
@@ -121,7 +121,7 @@ void main() {
       expect(r.resolve('{URL:PASSWORD}', e), 'pw');
       expect(r.resolve('{URL:USERINFO}', e), 'user:pw');
       expect(r.resolve('{URL:RMVSCM}', e),
-          'user:pw@host.example:8443/path?q=1');
+          'user:pw@host.example:8443/path?q=1',);
     });
 
     test('{URL} (no component) is unaffected by the component pass', () {

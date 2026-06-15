@@ -23,7 +23,7 @@ Entry _entry(
 }) {
   final map = <String, Field>{};
   fields.forEach((k, v) => map[k] =
-      Field(key: k, value: InMemoryProtectedValue(v, isProtected: k == Field.password)));
+      Field(key: k, value: InMemoryProtectedValue(v, isProtected: k == Field.password)),);
   return Entry(uuid: uuid, fields: map, modified: modified, attachments: attachments, tags: tags);
 }
 
@@ -88,11 +88,11 @@ void main() {
       // target edited the username; source edited the password slightly later.
       final t = _db([
         _entry('e', {Field.userName: 'alice-edited', Field.password: 'orig'},
-            modified: DateTime.utc(2025, 1, 1)),
+            modified: DateTime.utc(2025, 1, 1),),
       ]);
       final s = _db([
         _entry('e', {Field.userName: 'alice', Field.password: 'src-edited'},
-            modified: DateTime.utc(2025, 1, 2)),
+            modified: DateTime.utc(2025, 1, 2),),
       ]);
       const DatabaseMerger().merge(t, s);
       final merged = t.root.entries.single;
@@ -104,7 +104,7 @@ void main() {
       expect(merged.history, isNotEmpty);
       expect(
         merged.history.any(
-            (h) => h.fields[Field.userName]?.value.reveal() == 'alice-edited'),
+            (h) => h.fields[Field.userName]?.value.reveal() == 'alice-edited',),
         isTrue,
         reason: 'pre-merge target snapshot must be recoverable',
       );
@@ -114,7 +114,7 @@ void main() {
   group('DatabaseTransfer.moveEntry — correctness', () {
     test('relinks binary into dest pool and prunes the source orphan', () {
       final e = _entry('e', {Field.title: 'X'},
-          attachments: [Attachment(id: 'b1', name: 'f.png', size: 10)]);
+          attachments: [Attachment(id: 'b1', name: 'f.png', size: 10)],);
       final source = _db([e], pool: [Attachment(id: 'b1', name: 'f.png', size: 10)]);
       final dest = _db(<Entry>[], pool: <Attachment>[]);
 
@@ -151,7 +151,7 @@ void main() {
       // Source binary 'b1'; dest already has a *different* binary under id 'b1',
       // forcing a fresh minted id on the dest side only.
       final e = _entry('e', {Field.title: 'X'},
-          attachments: [Attachment(id: 'b1', name: 'f.png', size: 10)]);
+          attachments: [Attachment(id: 'b1', name: 'f.png', size: 10)],);
       final source = _db([e], pool: [Attachment(id: 'b1', name: 'f.png', size: 10)]);
       final dest = _db(<Entry>[], pool: [Attachment(id: 'b1', name: 'other.png', size: 99)]);
 
@@ -159,11 +159,11 @@ void main() {
 
       // FIXED: the source entry's attachment ref is untouched by the copy.
       expect(source.root.entries.single.attachments.single.id, 'b1',
-          reason: 'source entry attachment ref must survive a copy unchanged');
+          reason: 'source entry attachment ref must survive a copy unchanged',);
       // FIXED: the two databases now hold distinct Entry objects.
       expect(identical(source.root.entries.single, dest.root.entries.single),
           isFalse,
-          reason: 'copy must deep-clone, not share one Entry across databases');
+          reason: 'copy must deep-clone, not share one Entry across databases',);
       // The dest copy carries the minted id (collision avoided).
       expect(dest.root.entries.single.attachments.single.id, isNot('b1'));
     });

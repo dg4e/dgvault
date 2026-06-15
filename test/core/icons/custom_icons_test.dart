@@ -80,7 +80,7 @@ void main() {
       ], groups: [
         Group(uuid: 'g', name: 'G', entries: [_entry('e2', customIcon: 'used-b')])
           ..customIconUuid = 'used-grp',
-      ]);
+      ],);
       final refs = const CustomIconService().referencedUuids(dbWith(root));
       expect(refs, {'used-a', 'used-b', 'used-grp'});
     });
@@ -88,7 +88,7 @@ void main() {
     test('orphans + pruneOrphans remove only unreferenced icons', () {
       final root = Group(uuid: 'r', name: 'Root', entries: [
         _entry('e1', customIcon: 'used'),
-      ]);
+      ],);
       final db = dbWith(root);
       final pool = CustomIconPool()
         ..add(CustomIcon(uuid: 'used', data: _bytes(2, 1)))

@@ -66,7 +66,7 @@ void main() {
 
   group('SecureKey', () {
     test('zeroes material on destroy', () {
-      final key = HeapSecureKey(Uint8ListOf([1, 2, 3, 4]));
+      final key = HeapSecureKey(uint8ListOf([1, 2, 3, 4]));
       expect(key.length, 4);
       key.destroy();
       expect(key.bytes, throwsStateError);
@@ -89,4 +89,4 @@ void main() {
 }
 
 /// Tiny helper so the test file needs no dart:typed_data import noise.
-Uint8List Uint8ListOf(List<int> xs) => Uint8List.fromList(xs);
+Uint8List uint8ListOf(List<int> xs) => Uint8List.fromList(xs);

@@ -29,11 +29,11 @@ void main() {
     final bytes1 = vd.serialize();
     final bytes2 = VariantDictionary.parse(bytes1).serialize();
     expect(bytes2, equals(bytes1),
-        reason: 'non-deterministic re-serialization would break header HMAC');
+        reason: 'non-deterministic re-serialization would break header HMAC',);
   });
 
   test('value edges round-trip (large u64, unicode, empties, bools)', () {
-    final big = 1 << 40; // 1,099,511,627,776 — well above uint32 range
+    const big = 1 << 40; // 1,099,511,627,776 — well above uint32 range
     final vd = VariantDictionary()
       ..setUInt64('big', big)
       ..setString('unicode', 'café — 日本語 — 🔐')

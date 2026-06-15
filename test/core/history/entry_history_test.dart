@@ -46,7 +46,7 @@ void main() {
       );
       EntryHistory.record(e); // captures v2
       expect(e.history.map((h) => h.fields[Field.password]!.value.reveal()),
-          ['v1', 'v2']);
+          ['v1', 'v2'],);
     });
 
     test('maxItems prunes the oldest', () {
@@ -62,7 +62,7 @@ void main() {
       expect(e.history.length, 3);
       // Oldest three (v0,v1,v2) dropped; newest three remain.
       expect(e.history.map((h) => h.fields[Field.password]!.value.reveal()),
-          ['v3', 'v4', 'v5']);
+          ['v3', 'v4', 'v5'],);
     });
 
     test('maxItems == 0 keeps no history', () {

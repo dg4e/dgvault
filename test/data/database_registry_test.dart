@@ -5,7 +5,7 @@ StorageLocation _local([String path = '/vault.kdbx']) =>
     StorageLocation(kind: StorageKind.localFile, identifier: path);
 
 StorageLocation _remote(
-        [StorageKind kind = StorageKind.dropbox, String id = 'db:/v.kdbx']) =>
+        [StorageKind kind = StorageKind.dropbox, String id = 'db:/v.kdbx',]) =>
     StorageLocation(kind: kind, identifier: id);
 
 DatabaseDescriptor _desc(
@@ -36,7 +36,7 @@ void main() {
     test('relocating a local-only db to a remote target is rejected', () {
       final reg = DatabaseRegistry()..register(_desc('a', localOnly: true));
       expect(() => reg.relocate('a', _remote()),
-          throwsA(isA<LocalOnlyViolation>()));
+          throwsA(isA<LocalOnlyViolation>()),);
       // Original location is untouched after the rejected relocate.
       expect(reg['a']!.location.isLocal, isTrue);
     });
@@ -56,7 +56,7 @@ void main() {
 
     test('localDatabases lists every locally-stored db', () {
       expect(reg.localDatabases.map((d) => d.id).toSet(),
-          {'localA', 'localB'});
+          {'localA', 'localB'},);
     });
 
     test('syncableDatabases excludes local-only and local-stored dbs', () {
@@ -85,14 +85,14 @@ void main() {
       final d = _desc('a', localOnly: true);
       expect(guard.isSyncAllowed(d), isFalse);
       expect(() => guard.ensureSyncAllowed(d),
-          throwsA(isA<LocalOnlyViolation>()));
+          throwsA(isA<LocalOnlyViolation>()),);
     });
 
     test('refuses a purely-local database (no remote target)', () {
       final d = _desc('b'); // local file, not local-only
       expect(guard.isSyncAllowed(d), isFalse);
       expect(() => guard.ensureSyncAllowed(d),
-          throwsA(isA<LocalOnlyViolation>()));
+          throwsA(isA<LocalOnlyViolation>()),);
     });
   });
 }

@@ -31,7 +31,7 @@ void main() {
     test('descending reverses present values', () {
       final entries = [_e('1', title: 'a'), _e('2', title: 'b')];
       final r = sorter.sorted(
-          entries, const EntrySortSpec(EntrySortKey.title, ascending: false));
+          entries, const EntrySortSpec(EntrySortKey.title, ascending: false),);
       expect(r.map((e) => e.uuid), ['2', '1']);
     });
 
@@ -47,7 +47,7 @@ void main() {
       expect(asc.map((e) => e.uuid).skip(1).toSet(), {'hasNone', 'blank'});
 
       final desc = sorter.sorted(
-          entries, const EntrySortSpec(EntrySortKey.title, ascending: false));
+          entries, const EntrySortSpec(EntrySortKey.title, ascending: false),);
       expect(desc.first.uuid, 'hasTitle'); // still first, blanks still last
     });
 
@@ -78,7 +78,7 @@ void main() {
         _e('a'),
         _e('b'),
         _e('c'),
-      ]);
+      ],);
       sorter.move(g, 0, 2); // a -> end
       expect(g.entries.map((e) => e.uuid), ['b', 'c', 'a']);
     });
@@ -112,7 +112,7 @@ void main() {
       final child = Group(uuid: 'c', name: 'Zeta', entries: [
         _e('z2', title: 'b'),
         _e('z1', title: 'a'),
-      ]);
+      ],);
       final other = Group(uuid: 'd', name: 'Alpha');
       final root = Group(uuid: 'r', name: 'Root', groups: [child, other]);
 

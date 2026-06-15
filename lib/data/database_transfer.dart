@@ -161,7 +161,7 @@ class DatabaseTransfer {
         name: binary.name,
         size: binary.size,
         inlineData: binary.inlineData,
-      ));
+      ),);
       return fresh;
     }
     dest.binaryPool.add(Attachment(
@@ -169,7 +169,7 @@ class DatabaseTransfer {
       name: binary.name,
       size: binary.size,
       inlineData: binary.inlineData,
-    ));
+    ),);
     return binary.id;
   }
 

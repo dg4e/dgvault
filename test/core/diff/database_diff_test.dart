@@ -8,7 +8,7 @@ import 'package:dgvault/core/diff/database_diff.dart';
 import 'package:test/test.dart';
 
 Entry e(String uuid,
-    {String? title, String? password, DateTime? modified, List<String>? tags}) {
+    {String? title, String? password, DateTime? modified, List<String>? tags,}) {
   final f = <String, Field>{};
   if (title != null) {
     f[Field.title] = Field(key: Field.title, value: InMemoryProtectedValue.plain(title));
@@ -49,11 +49,11 @@ void main() {
       final a = db(Group(uuid: 'r', name: 'Root', groups: [
         Group(uuid: 'g1', name: 'G1', entries: [moved]),
         Group(uuid: 'g2', name: 'G2'),
-      ]));
+      ],),);
       final b = db(Group(uuid: 'r', name: 'Root', groups: [
         Group(uuid: 'g1', name: 'G1'),
         Group(uuid: 'g2', name: 'G2', entries: [e('1', title: 'X')]),
-      ]));
+      ],),);
       final d = const DatabaseComparator().compare(a, b);
       final m = d.modifiedEntries.single;
       expect(m.moved, isTrue);
@@ -65,11 +65,11 @@ void main() {
       final a = db(Group(uuid: 'r', name: 'Root', groups: [
         Group(uuid: 'g1', name: 'Old Name'),
         Group(uuid: 'gone', name: 'Gone'),
-      ]));
+      ],),);
       final b = db(Group(uuid: 'r', name: 'Root', groups: [
         Group(uuid: 'g1', name: 'New Name'),
         Group(uuid: 'new', name: 'Fresh'),
-      ]));
+      ],),);
       final d = const DatabaseComparator().compare(a, b);
       expect(d.addedGroups, contains('new'));
       expect(d.removedGroups, contains('gone'));
@@ -96,7 +96,7 @@ void main() {
       final target = db(Group(uuid: 'r', name: 'Root'));
       final source = db(Group(uuid: 'r2', name: 'Root', groups: [
         Group(uuid: 'f', name: 'Folder', entries: [e('new', title: 'N')]),
-      ]));
+      ],),);
       final res = const DatabaseMerger().merge(target, source);
       expect(res.added, ['new']);
       final folder = target.root.groups.singleWhere((g) => g.name == 'Folder');
@@ -106,10 +106,10 @@ void main() {
     test('updates when source entry is newer', () {
       final target = db(Group(uuid: 'r', name: 'Root', entries: [
         e('1', title: 'Old', modified: DateTime.utc(2024)),
-      ]));
+      ],),);
       final source = db(Group(uuid: 'r2', name: 'Root', entries: [
         e('1', title: 'New', modified: DateTime.utc(2026)),
-      ]));
+      ],),);
       final res = const DatabaseMerger().merge(target, source);
       expect(res.updated, ['1']);
       expect(target.root.entries.single.title, 'New');
@@ -118,10 +118,10 @@ void main() {
     test('does not update when source entry is older', () {
       final target = db(Group(uuid: 'r', name: 'Root', entries: [
         e('1', title: 'Keep', modified: DateTime.utc(2026)),
-      ]));
+      ],),);
       final source = db(Group(uuid: 'r2', name: 'Root', entries: [
         e('1', title: 'Stale', modified: DateTime.utc(2024)),
-      ]));
+      ],),);
       final res = const DatabaseMerger().merge(target, source);
       expect(res.updated, isEmpty);
       expect(target.root.entries.single.title, 'Keep');
@@ -137,15 +137,15 @@ void main() {
     test('newer source snapshots the overwritten target to history (M1)', () {
       final target = db(Group(uuid: 'r', name: 'Root', entries: [
         e('1', title: 'Old', modified: DateTime.utc(2024)),
-      ]));
+      ],),);
       final source = db(Group(uuid: 'r2', name: 'Root', entries: [
         e('1', title: 'New', modified: DateTime.utc(2026)),
-      ]));
+      ],),);
       const DatabaseMerger().merge(target, source);
       final merged = target.root.entries.single;
       expect(merged.title, 'New');
       expect(merged.history.any((h) => h.title == 'Old'), isTrue,
-          reason: 'pre-merge version recoverable');
+          reason: 'pre-merge version recoverable',);
     });
   });
 
@@ -154,11 +154,11 @@ void main() {
       Entry withAtt(List<Attachment> a) =>
           Entry(uuid: '1', fields: {
             Field.title: Field(key: Field.title, value: InMemoryProtectedValue.plain('T')),
-          }, attachments: a);
+          }, attachments: a,);
       final a = db(Group(uuid: 'r', name: 'Root', entries: [withAtt([])]));
       final b = db(Group(uuid: 'r', name: 'Root', entries: [
         withAtt([Attachment(id: 'b1', name: 'f.png', size: 10)]),
-      ]));
+      ],),);
       final d = const DatabaseComparator().compare(a, b);
       expect(d.modifiedEntries.single.attachmentsChanged, isTrue);
     });

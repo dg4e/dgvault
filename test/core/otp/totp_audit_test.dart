@@ -18,7 +18,7 @@ import 'package:dgvault/core/otp/totp.dart';
 import 'package:test/test.dart';
 
 Uint8List _hex(String h) => Uint8List.fromList(
-    [for (var i = 0; i < h.length; i += 2) int.parse(h.substring(i, i + 2), radix: 16)]);
+    [for (var i = 0; i < h.length; i += 2) int.parse(h.substring(i, i + 2), radix: 16)],);
 
 /// Returns a fixed digest regardless of inputs — lets us drive the pure
 /// truncation/encoding path with a published HMAC value (no real HMAC needed).

@@ -25,7 +25,7 @@ void main() {
       e.setCustomField('Security Question', 'first pet');
       e.setCustomField('Recovery Code', 'ABCD', protect: true);
       expect(e.customFields().map((f) => f.key).toSet(),
-          {'Security Question', 'Recovery Code'});
+          {'Security Question', 'Recovery Code'},);
       expect(e.fields['Recovery Code']!.isProtected, isTrue);
       expect(e.removeCustomField('Security Question'), isTrue);
       expect(e.removeCustomField('Security Question'), isFalse);
@@ -34,7 +34,7 @@ void main() {
     test('standard keys are rejected by custom-field ops', () {
       final e = titled('e', 'X');
       expect(() => e.setCustomField(Field.password, 'p'),
-          throwsA(isA<ArgumentError>()));
+          throwsA(isA<ArgumentError>()),);
       expect(e.removeCustomField(Field.title), isFalse);
       expect(e.fields.containsKey(Field.title), isTrue);
     });
@@ -87,7 +87,7 @@ void main() {
       e2.attachments.add(ref);
       expect(svc.detach(db, e1, 'shared-1'), isTrue);
       expect(db.binaryPool.any((b) => b.id == 'shared-1'), isTrue,
-          reason: 'still referenced by e2 → not pruned');
+          reason: 'still referenced by e2 → not pruned',);
     });
 
     test('orphans lists unreferenced pooled binaries', () {

@@ -60,7 +60,7 @@ bool _bytesEqual(Uint8List a, Uint8List b) {
 class KdfParameters {
   /// Builds the VariantDictionary KeePass persists for [params] with [salt].
   static VariantDictionary toVariantDictionary(
-      KdfParams params, Uint8List salt) {
+      KdfParams params, Uint8List salt,) {
     final vd = VariantDictionary();
     switch (params.algorithm) {
       case KdfAlgorithm.argon2d:

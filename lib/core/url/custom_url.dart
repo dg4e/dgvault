@@ -65,15 +65,6 @@ class CustomUrlHandler {
     'data',
     'vbscript',
   };
-  static const Set<String> _autoOpenSchemes = {
-    'http',
-    'https',
-    'mailto',
-    'ssh',
-    'sftp',
-    'ftp',
-  };
-
   /// Resolves the effective URL for [entry].
   ///
   /// [override] (if non-empty) replaces the URL field; `{URL}` inside it is

@@ -75,10 +75,10 @@ void main() {
       final root = Group(uuid: 'r', name: 'Root', groups: [
         Group(uuid: 'g', name: 'Bank', entries: [
           _entry('e1', title: 'ACME', username: 'alice', password: 's3cret'),
-        ]),
+        ],),
       ], entries: [
         _entry('e2', title: 'Top'),
-      ]);
+      ],);
       final out = const CsvExporter().export(root);
       final rows = const CsvCodec().decode(out);
       expect(rows.first, CsvExporter.columns);
@@ -108,7 +108,7 @@ void main() {
 }
 
 Entry _entry(String uuid,
-    {String? title, String? username, String? password}) {
+    {String? title, String? username, String? password,}) {
   final f = <String, Field>{};
   void put(String k, String? v) {
     if (v != null) f[k] = Field(key: k, value: InMemoryProtectedValue(v));

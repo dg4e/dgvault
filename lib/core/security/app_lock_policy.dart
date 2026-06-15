@@ -56,7 +56,7 @@ class AppLockPolicy {
     // destroy data in production (Critic R14 F1). Fail loudly instead.
     if (maxAttempts <= 0) {
       throw ArgumentError.value(
-          maxAttempts, 'maxAttempts', 'must be > 0 (destructive guard)');
+          maxAttempts, 'maxAttempts', 'must be > 0 (destructive guard)',);
     }
   }
 

@@ -48,7 +48,7 @@ void main() {
 
     test(r'throws when $UUID is missing', () {
       expect(() => KdfParameters.fromVariantDictionary(VariantDictionary()),
-          throwsA(isA<KdbxFormatException>()));
+          throwsA(isA<KdbxFormatException>()),);
     });
   });
 
@@ -88,7 +88,7 @@ void main() {
       // major version lives at offset 10 (little-endian uint16).
       bytes[10] = 3;
       expect(() => KdbxHeader.read(bytes),
-          throwsA(isA<KdbxFormatException>()));
+          throwsA(isA<KdbxFormatException>()),);
     });
   });
 }

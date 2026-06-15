@@ -37,7 +37,7 @@ void main() {
         Field.userName: _f(Field.userName, 'bob@example.com'),
         Field.password: _f(Field.password, 'p"a\nss,1'),
         Field.notes: _f(Field.notes, 'héllo\nwörld — ☂'),
-      });
+      },);
       final imported = _roundTrip(_rootWith(e)).root.entries.single;
       expect(imported.fields[Field.title]!.value.reveal(), 'Acme, Inc.');
       expect(imported.fields[Field.userName]!.value.reveal(), 'bob@example.com');
@@ -49,7 +49,7 @@ void main() {
       final e = Entry(uuid: 'e', fields: {
         Field.title: _f(Field.title, 'X'),
         Field.password: _f(Field.password, 'secret'),
-      });
+      },);
       final imported = _roundTrip(_rootWith(e)).root.entries.single;
       expect(imported.fields[Field.password]!.isProtected, isTrue);
     });
@@ -74,10 +74,10 @@ void main() {
       final e = Entry(uuid: 'e', fields: {
         Field.title: _f(Field.title, 'X'),
         kTotpFieldKey: _f(kTotpFieldKey, 'otpauth://totp/x?secret=ABC123', protect: true),
-      });
+      },);
       final imported = _roundTrip(_rootWith(e)).root.entries.single;
       expect(imported.fields[kTotpFieldKey]!.value.reveal(),
-          'otpauth://totp/x?secret=ABC123');
+          'otpauth://totp/x?secret=ABC123',);
     });
   });
 
@@ -89,10 +89,10 @@ void main() {
         Field.title: _f(Field.title, 'Bank'),
         'Security Question': _f('Security Question', 'first pet', protect: false),
         'Recovery Code': _f('Recovery Code', 'ABCD-EFGH', protect: false),
-      });
+      },);
       final csv = const CsvExporter().export(_rootWith(e));
       expect(csv.contains('Security Question'), isTrue,
-          reason: 'custom field must appear as a column header');
+          reason: 'custom field must appear as a column header',);
       final imported = CsvImporter(random: Random(1)).import(csv).root.entries.single;
       expect(imported.fields['Security Question']!.value.reveal(), 'first pet');
       expect(imported.fields['Recovery Code']!.value.reveal(), 'ABCD-EFGH');

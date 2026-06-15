@@ -62,7 +62,7 @@ class KeyFile {
     // 3. Exactly 64 hex characters → decode to 32 bytes.
     if (bytes.length == 64 && _isAllHex(bytes)) {
       return ParsedKeyFile(
-          _hexDecode(ascii.decode(bytes)), KeyFileFormat.hex64);
+          _hexDecode(ascii.decode(bytes)), KeyFileFormat.hex64,);
     }
     // 4. Fallback: SHA-256 of the whole file.
     return ParsedKeyFile(_hash32(bytes), KeyFileFormat.hashed);

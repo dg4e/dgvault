@@ -20,7 +20,7 @@ void main() {
 
     test('preserves explicit port', () {
       expect(r.originOf('http://host.local:8080/x').toString(),
-          'http://host.local:8080');
+          'http://host.local:8080',);
     });
 
     test('non-web schemes yield no candidates', () {

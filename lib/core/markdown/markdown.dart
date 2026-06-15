@@ -208,7 +208,7 @@ class Markdown {
             out.add(MdLink(
               text: text.substring(i + 1, close),
               href: text.substring(close + 2, paren),
-            ));
+            ),);
             i = paren + 1;
             continue;
           }

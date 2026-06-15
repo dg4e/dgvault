@@ -62,7 +62,7 @@ Database _rich() {
   // a prior version in history
   entry.history.add(Entry(uuid: 'E1', fields: {
     Field.password: Field(key: Field.password, value: InMemoryProtectedValue('old-pass')),
-  }));
+  },),);
 
   final sub = Group(uuid: 'G2', name: 'Sub Wörk', entries: [entry]);
   final root = Group(uuid: 'R', name: 'Root');
@@ -113,7 +113,7 @@ void main() {
     for (var i = 0; i < 50; i++) {
       root.entries.add(Entry(uuid: 'E$i', fields: {
         Field.title: Field(key: Field.title, value: InMemoryProtectedValue.plain('entry-$i')),
-      }));
+      },),);
     }
     final db = Database(meta: DatabaseMeta(name: 'Big'), root: root);
     final codec = KdbxCodec(bodyCipher: const _XorCipher());

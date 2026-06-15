@@ -18,12 +18,12 @@ class _XorBodyCipher implements KdbxBodyCipher {
 
   @override
   Future<Uint8List> encryptBody(
-          KdbxHeader h, Uint8List inner, CompositeCredential c) async =>
+          KdbxHeader h, Uint8List inner, CompositeCredential c,) async =>
       _xor(inner, _key(c));
 
   @override
   Future<Uint8List> decryptBody(
-          KdbxHeader h, Uint8List body, CompositeCredential c) async =>
+          KdbxHeader h, Uint8List body, CompositeCredential c,) async =>
       _xor(body, _key(c));
 }
 
@@ -59,7 +59,7 @@ Database _db() {
     uuid: 'E1',
     fields: {
       Field.title: Field(
-          key: Field.title, value: InMemoryProtectedValue.plain('GitHub')),
+          key: Field.title, value: InMemoryProtectedValue.plain('GitHub'),),
       Field.password:
           Field(key: Field.password, value: InMemoryProtectedValue('p@ss')),
     },
@@ -105,7 +105,7 @@ void main() {
     final bytes = await codec.write(_db(), _header(compressed: true), cred);
     final back = await codec.read(bytes, cred);
     expect(back.root.entries.single.fields[Field.title]!.value.reveal(),
-        'GitHub');
+        'GitHub',);
   });
 
   test('a wrong credential fails to recover valid XML', () async {

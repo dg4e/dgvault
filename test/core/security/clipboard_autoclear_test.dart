@@ -46,7 +46,7 @@ void main() {
       final copy = c.copy(t0);
       expect(copy.remaining(t0), const Duration(seconds: 30));
       expect(copy.remaining(t0.add(const Duration(seconds: 10))),
-          const Duration(seconds: 20));
+          const Duration(seconds: 20),);
       expect(copy.remaining(t0.add(const Duration(seconds: 45))), Duration.zero);
     });
 

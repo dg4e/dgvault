@@ -28,7 +28,7 @@ void main() {
       ..setUInt32('a', 2)
       ..setUInt32('m', 3);
     expect(VariantDictionary.parse(vd.serialize()).keys.toList(),
-        ['z', 'a', 'm']);
+        ['z', 'a', 'm'],);
   });
 
   test('absent keys return null', () {
@@ -40,6 +40,6 @@ void main() {
   test('rejects an unsupported dictionary version', () {
     final bad = Uint8List.fromList([0x00, 0x99, 0x00]); // version 0x9900
     expect(() => VariantDictionary.parse(bad),
-        throwsA(isA<VariantDictionaryException>()));
+        throwsA(isA<VariantDictionaryException>()),);
   });
 }

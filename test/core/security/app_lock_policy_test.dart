@@ -71,9 +71,9 @@ void main() {
     test('rejects non-positive maxAttempts with a real throw (not debug assert)', () {
       // Must throw in release too — maxAttempts<=0 would wipe on first failure.
       expect(() => AppLockPolicy(store: InMemoryFailedAttemptStore(), maxAttempts: 0),
-          throwsA(isA<ArgumentError>()));
+          throwsA(isA<ArgumentError>()),);
       expect(() => AppLockPolicy(store: InMemoryFailedAttemptStore(), maxAttempts: -1),
-          throwsA(isA<ArgumentError>()));
+          throwsA(isA<ArgumentError>()),);
     });
 
     group('isWipePending (interrupted-wipe recovery)', () {
@@ -93,7 +93,7 @@ void main() {
       test('false when delete-on-fail is disabled', () {
         final store = InMemoryFailedAttemptStore()..failedCount = 99;
         final p = AppLockPolicy(
-            store: store, maxAttempts: 3, wipeOnExhaustion: false);
+            store: store, maxAttempts: 3, wipeOnExhaustion: false,);
         expect(p.isWipePending, isFalse);
       });
 

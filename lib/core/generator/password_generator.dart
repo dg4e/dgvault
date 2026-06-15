@@ -147,7 +147,7 @@ class PasswordGenerator {
     final classes = _activeClasses(options);
     if (classes.isEmpty) {
       throw PasswordGenerationException(
-          'no characters available — enable a class or provide a custom set');
+          'no characters available — enable a class or provide a custom set',);
     }
 
     final pool = classes.join();

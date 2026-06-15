@@ -42,16 +42,16 @@ void main() {
 
     test('matches across title/username/url', () {
       expect(EntrySearch.search(entries, const SearchQuery('octocat'))
-          .map((m) => m.entry.uuid), ['a']);
+          .map((m) => m.entry.uuid), ['a'],);
       expect(EntrySearch.search(entries, const SearchQuery('github.com'))
-          .map((m) => m.entry.uuid), ['a']);
+          .map((m) => m.entry.uuid), ['a'],);
     });
 
     test('matches notes and tags', () {
       expect(EntrySearch.search(entries, const SearchQuery('recovery'))
-          .map((m) => m.entry.uuid).toSet(), {'b', 'c'});
+          .map((m) => m.entry.uuid).toSet(), {'b', 'c'},);
       expect(EntrySearch.search(entries, const SearchQuery('finance'))
-          .map((m) => m.entry.uuid), ['b']);
+          .map((m) => m.entry.uuid), ['b'],);
     });
 
     test('matches custom fields and reports matched field', () {
@@ -75,7 +75,7 @@ void main() {
       final pw = EntrySearch.search(
         entries,
         const SearchQuery('hunter2',
-            fields: SearchQuery.allFields, searchProtected: true),
+            fields: SearchQuery.allFields, searchProtected: true,),
       );
       expect(pw.map((m) => m.entry.uuid), ['a']);
 
@@ -95,18 +95,18 @@ void main() {
 
     test('all terms must match (across any fields)', () {
       expect(EntrySearch.search(entries, const SearchQuery('aws production'))
-          .map((m) => m.entry.uuid), ['a']);
+          .map((m) => m.entry.uuid), ['a'],);
       expect(EntrySearch.search(entries, const SearchQuery('aws admin'))
-          .map((m) => m.entry.uuid).toSet(), {'a', 'b'});
+          .map((m) => m.entry.uuid).toSet(), {'a', 'b'},);
       expect(EntrySearch.search(entries, const SearchQuery('aws nonexistent')),
-          isEmpty);
+          isEmpty,);
     });
 
     test('case sensitivity is configurable', () {
       expect(EntrySearch.search(entries, const SearchQuery('aws')).length, 2);
       expect(
         EntrySearch.search(
-            entries, const SearchQuery('aws', caseSensitive: true)),
+            entries, const SearchQuery('aws', caseSensitive: true),),
         isEmpty,
       );
     });

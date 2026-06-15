@@ -23,7 +23,7 @@ void main() {
 
     // 60s in — well beyond first.clearAt — the stale timer must stay inert.
     expect(c.shouldClear(first, t0.add(const Duration(seconds: 60))), isFalse,
-        reason: 'an old timer must not wipe the newer clipboard value');
+        reason: 'an old timer must not wipe the newer clipboard value',);
   });
 
   test('cancel() inerts a pending clear at and after its clearAt', () {

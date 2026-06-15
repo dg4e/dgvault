@@ -30,7 +30,7 @@ void main() {
   group('SECURITY: dotless integer-encoded public IP is NOT local', () {
     test('134744072 (== 8.8.8.8) classifies as non-local', () {
       expect(HostClassifier.isLocal('134744072'), isFalse,
-          reason: 'decimal-int public IP must be range-checked, not auto-local');
+          reason: 'decimal-int public IP must be range-checked, not auto-local',);
     });
 
     test('0x-hex / 0-octal public-IP encodings are non-local too', () {
@@ -60,7 +60,7 @@ void main() {
     test('end-to-end: local-only policy DENIES the integer-IP public host', () {
       const p = LocalOnlyPolicy(enabled: true);
       expect(p.allows('http://134744072/'), isFalse,
-          reason: 'bypass closed — resolves to public 8.8.8.8, must be denied');
+          reason: 'bypass closed — resolves to public 8.8.8.8, must be denied',);
       expect(p.allows('http://0x08080808/'), isFalse);
       // A normal public host is denied, confirming the guard otherwise works.
       expect(p.allows('https://example.com'), isFalse);

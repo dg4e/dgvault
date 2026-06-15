@@ -33,7 +33,7 @@ void main() {
       // visible, intentional change — see review recommendation.
       final findings = auditor.findWeakOrEmpty([_entry('u1', 'aaaaaaaaaaaaaa')]);
       expect(findings, isEmpty,
-          reason: 'upper-bound entropy ignores repetition (known limitation)');
+          reason: 'upper-bound entropy ignores repetition (known limitation)',);
     });
 
     test('a short password IS flagged weak', () {
@@ -73,7 +73,7 @@ void main() {
       for (final f in similar) {
         expect(f.issue, AuditIssue.similarPassword);
         expect(f.relatedUuids.length, 1,
-            reason: 'each finding names exactly its counterpart');
+            reason: 'each finding names exactly its counterpart',);
       }
       // u1 should be implicated with both u2 and u3 across its two findings.
       final u1Related = similar

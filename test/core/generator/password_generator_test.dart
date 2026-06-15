@@ -29,7 +29,7 @@ void main() {
         useUppercase: false,
         useDigits: true,
         useSymbols: false,
-      ));
+      ),);
       final allowed = (kLowercase + kDigits).split('').toSet();
       for (final ch in pw.split('')) {
         expect(allowed.contains(ch), isTrue, reason: 'unexpected char "$ch"');
@@ -53,7 +53,7 @@ void main() {
       final pw = g.generate(const PasswordOptions(
         length: 300,
         excludeAmbiguous: true,
-      ));
+      ),);
       for (final ch in kAmbiguousCharacters.split('')) {
         expect(pw.contains(ch), isFalse, reason: 'ambiguous "$ch" present');
       }
@@ -68,7 +68,7 @@ void main() {
         useUppercase: false,
         useDigits: false,
         useSymbols: false,
-      ));
+      ),);
       for (final ch in 'aeiou'.split('')) {
         expect(pw.contains(ch), isFalse);
       }
@@ -79,7 +79,7 @@ void main() {
       final pw = g.generate(const PasswordOptions(
         length: 50,
         customCharacterSet: 'ABC',
-      ));
+      ),);
       expect(RegExp(r'^[ABC]+$').hasMatch(pw), isTrue, reason: pw);
     });
 
@@ -92,8 +92,8 @@ void main() {
         useSymbols: false,
         extraCharacters: '€', // not in any built-in class
         requireEachSelectedClass: false,
-      ));
-      final allowed = (kLowercase + '€').split('').toSet();
+      ),);
+      final allowed = ('$kLowercase€').split('').toSet();
       for (final ch in pw.split('')) {
         expect(allowed.contains(ch), isTrue);
       }
@@ -107,7 +107,7 @@ void main() {
           useUppercase: false,
           useDigits: false,
           useSymbols: false,
-        )),
+        ),),
         throwsA(isA<PasswordGenerationException>()),
       );
     });

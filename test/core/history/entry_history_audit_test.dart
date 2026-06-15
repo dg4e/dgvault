@@ -16,7 +16,7 @@ import 'package:test/test.dart';
 Entry _entry(Map<String, String> fields, {DateTime? modified}) {
   final map = <String, Field>{};
   fields.forEach((k, v) =>
-      map[k] = Field(key: k, value: InMemoryProtectedValue(v, isProtected: k == Field.password)));
+      map[k] = Field(key: k, value: InMemoryProtectedValue(v, isProtected: k == Field.password)),);
   return Entry(uuid: 'u', fields: map, modified: modified);
 }
 
@@ -63,7 +63,7 @@ void main() {
       expect(e.title, 'old', reason: 'content is reverted');
       expect(e.modified, t2025,
           reason: 'restore does not roll back modified — flagged as a KeePass '
-              'fidelity gap in the review');
+              'fidelity gap in the review',);
     });
   });
 
@@ -94,7 +94,7 @@ void main() {
       );
       final repo = InMemoryDatabaseRepository(db);
       expect(() => repo.updateEntry(e, (x) => _setPw(x, 'v2')),
-          throwsA(isA<ReadOnlyDatabaseException>()));
+          throwsA(isA<ReadOnlyDatabaseException>()),);
       expect(_pw(e), 'v1');
       expect(e.history, isEmpty, reason: 'no snapshot taken when write rejected');
     });

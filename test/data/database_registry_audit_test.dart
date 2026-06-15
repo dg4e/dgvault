@@ -20,7 +20,7 @@ void main() {
   test('relocate protects local-only (baseline) — rejected to remote', () {
     final reg = DatabaseRegistry()
       ..register(DatabaseDescriptor(
-          id: 'x', name: 'Vault', location: _local('/v.kdbx'), localOnly: true));
+          id: 'x', name: 'Vault', location: _local('/v.kdbx'), localOnly: true,),);
     expect(() => reg.relocate('x', _remote()), throwsA(isA<LocalOnlyViolation>()));
     expect(reg['x']!.location.isLocal, isTrue, reason: 'unchanged after rejection');
   });
@@ -28,13 +28,13 @@ void main() {
   test('FIXED R20: re-registering a local-only id as non-local-only is rejected', () {
     final reg = DatabaseRegistry()
       ..register(DatabaseDescriptor(
-          id: 'x', name: 'Vault', location: _local('/v.kdbx'), localOnly: true));
+          id: 'x', name: 'Vault', location: _local('/v.kdbx'), localOnly: true,),);
     expect(reg['x']!.localOnly, isTrue);
 
     // The downgrade attempt now throws instead of silently lifting the guarantee.
     expect(
       () => reg.register(DatabaseDescriptor(
-          id: 'x', name: 'Vault', location: _remote(), localOnly: false)),
+          id: 'x', name: 'Vault', location: _remote(), localOnly: false,),),
       throwsA(isA<LocalOnlyViolation>()),
     );
 
@@ -46,16 +46,16 @@ void main() {
   test('re-registering local-only as local-only (and upgrades) still work', () {
     final reg = DatabaseRegistry()
       ..register(DatabaseDescriptor(
-          id: 'x', name: 'V', location: _local('/a.kdbx'), localOnly: true));
+          id: 'x', name: 'V', location: _local('/a.kdbx'), localOnly: true,),);
     // Same guarantee, new local path — allowed.
     reg.register(DatabaseDescriptor(
-        id: 'x', name: 'V', location: _local('/b.kdbx'), localOnly: true));
+        id: 'x', name: 'V', location: _local('/b.kdbx'), localOnly: true,),);
     expect(reg['x']!.location.identifier, '/b.kdbx');
 
     // Upgrading a non-local-only id TO local-only is allowed (more restrictive).
     reg.register(DatabaseDescriptor(id: 'y', name: 'Y', location: _local('/y.kdbx')));
     reg.register(DatabaseDescriptor(
-        id: 'y', name: 'Y', location: _local('/y.kdbx'), localOnly: true));
+        id: 'y', name: 'Y', location: _local('/y.kdbx'), localOnly: true,),);
     expect(reg['y']!.localOnly, isTrue);
   });
 }
