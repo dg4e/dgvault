@@ -19,13 +19,9 @@ import '../../model/database.dart';
 import '../cipher.dart';
 import '../secure_key.dart';
 
-/// Thrown when authenticated decryption fails (wrong key or tampered input).
-class CipherAuthenticationException implements Exception {
-  CipherAuthenticationException(this.message);
-  final String message;
-  @override
-  String toString() => 'CipherAuthenticationException: $message';
-}
+// CipherAuthenticationException is defined on the Cipher interface; re-export it
+// so existing importers of this impl keep seeing it.
+export '../cipher.dart' show CipherAuthenticationException;
 
 /// Shared AEAD orchestration over a pointycastle [pc.AEADCipher].
 abstract class _AeadCipher implements Cipher {

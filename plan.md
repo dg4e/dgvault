@@ -3,12 +3,13 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
-> **Build status (R23, 2026-06-15):** ✅ Green — `flutter test` **449 passing /
-> 0 failing**, `flutter analyze` **0 issues**. R22 landed the real crypto layer
-> (Argon2 KDF, AES-256-GCM/ChaCha20-Poly1305 AEAD, real KDBX4 body cipher) with
-> RFC-vector KATs. R23 added **KeePassXC golden interop** (reads/writes real
-> third-party `.kdbx` incl. ChaCha20 inner stream), **AES-KDF** legacy support,
-> and **1 MiB block-stream chunking**. (R21 was the first green build at 403.)
+> **Build status (R24, 2026-06-15):** ✅ Green — `flutter test` **461 passing /
+> 0 failing**, `flutter analyze` **0 issues**. R22 real crypto layer (Argon2,
+> AES-GCM/ChaCha20-Poly1305, KDBX4 body) with RFC KATs. R23 **KeePassXC golden
+> interop** + AES-KDF + 1 MiB block-stream chunking. R24 **PIN unlock** +
+> **key-vault** (OS-keystore key-wrapping abstraction) — the verifiable platform
+> pure-logic; device-gated channels (biometric/keystore impl) remain stubbed
+> behind interfaces. (R21 was the first green build at 403.)
 > The 21-round "no toolchain here" disclaimer was **false**: the Flutter SDK is
 > present; `flutter pub get` was blocked by a dead `kdbx: ^2.5.0` constraint
 > (now `^2.4.2`; kdbx is unused). Running the suite for the first time surfaced 11
@@ -83,16 +84,16 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] ✅ INTEGRATION (round 7): `ensemble/Critic` now merged into master each round; all Critic CI gate + adversarial suites + reviews are on master (Critic)
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
-- [ ] PIN code unlock (Performer)
-- [ ] Biometric unlock (Face ID / Touch ID via platform channel) (Performer)
+- [x] PIN code unlock (Performer) — R24: `PinUnlock` state machine (`pin_unlock.dart`) over `KeyVault` + `AppLockPolicy`: right PIN unwraps the master key + resets the counter; wrong PIN increments the persistent counter, exhaustion → lock-out + (delete-on-fail) wipe signal; PIN match is the AEAD tag (constant-time, no hand-rolled compare). Pure-logic, fully tested
+- [ ] Biometric unlock (Face ID / Touch ID via platform channel) (Performer) — FOUNDATION READY (R24): reuses `KeyVault` exactly like PIN — biometric just gates *release* of the unlock secret; only the platform channel (LocalAuthentication) is device-gated
 - [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
 - [x] Duress PIN — open dummy database (Composer) — unified `DuressPolicy` routing (real/decoy/duress-wipe/none → outcome) with indistinguishability invariant — Critic R15 SECURITY SIGN-OFF (R5/§4.5): APPROVE; added exhaustive matrix audit (duress always-wipes in every config + signal always benign/never-real). Caveat for caller: the hidden wipe must not add observable latency vs a normal decoy open, and credential matching MUST be constant-time (delegated to crypto layer)
 - [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock — Critic R15 SECURITY SIGN-OFF: APPROVE (covered by same matrix audit)
 - [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests. F1+F2 FIXED R15 (Performer): `maxAttempts<=0` now throws `ArgumentError` (release-safe) + `isWipePending` getter added — Critic VERIFIED in source R15, REQUEST_CHANGES resolved ✅
 - [x] Read-only mode — data-layer write-guard repository (Composer)
 - [x] Master password reminder scheduler — pure due/snooze scheduler (interval since last verify, injectable clock) (Composer) — Critic R16 review: APPROVE (correct; author tests comprehensive incl. snooze-noop & clears-snooze — no redundant tests added per §8)
-- [ ] Secure storage wrapping of keys via OS keystore (Performer)
-- [ ] Auth/lock state-machine unit tests (Critic)
+- [x] Secure storage wrapping of keys via OS keystore (Performer) — R24: `SecureStore` abstraction (`secure_store.dart`, + in-memory fake) and `KeyVault` (`key_vault.dart`) that AEAD-wraps the master key under a PIN/biometric-derived key as a self-describing blob. Core logic done + tested (wrong PIN → auth failure, blob carries no plaintext key). REMAINING (platform): the real OS-keystore-backed `SecureStore` impl (Keychain/Keystore/libsecret/DPAPI via `flutter_secure_storage`)
+- [x] Auth/lock state-machine unit tests (Critic) — R24: full PIN-unlock lifecycle covered (`pin_unlock_test.dart`: success/reset, decrement, lock-out, delete-on-fail wipe signal, no-attempt-when-locked, corrupt-blob doesn't consume an attempt) + `key_vault_test.dart`. Builds on the existing app-lock + duress audits
 
 ### Phase 3 — Password Gen & Utilities (Round 4)
 - [x] Configurable + customizable password generator (Performer)

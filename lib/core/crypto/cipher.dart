@@ -3,6 +3,16 @@ import 'dart:typed_data';
 import '../model/database.dart';
 import 'secure_key.dart';
 
+/// Thrown by [Cipher.decrypt] when authentication fails — a wrong key or any
+/// tampering. Defined on the interface so callers can catch it without
+/// depending on a concrete cipher implementation.
+class CipherAuthenticationException implements Exception {
+  CipherAuthenticationException(this.message);
+  final String message;
+  @override
+  String toString() => 'CipherAuthenticationException: $message';
+}
+
 /// Authenticated/streamed symmetric cipher for the outer database payload.
 ///
 /// Implementations wrap vetted AES-256 (CBC+HMAC per KDBX) and ChaCha20

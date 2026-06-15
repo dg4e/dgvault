@@ -15,8 +15,12 @@ export 'crypto/key_derivation.dart';
 export 'crypto/cipher.dart';
 export 'crypto/key_file.dart';
 
+export 'security/app_lock_policy.dart';
 export 'security/duress_policy.dart';
 export 'security/master_password_reminder.dart';
+export 'security/secure_store.dart';
+export 'security/key_vault.dart';
+export 'security/pin_unlock.dart';
 
 export 'otp/totp.dart';
 
