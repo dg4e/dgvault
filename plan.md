@@ -3,8 +3,10 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
-> **Build status (R21, 2026-06-15):** ✅ First genuine green build —
-> `flutter test` **403 passing / 0 failing**, `flutter analyze` **0 errors**.
+> **Build status (R22, 2026-06-15):** ✅ Green — `flutter test` **440 passing /
+> 0 failing**, `flutter analyze` **0 issues**. R22 landed the real crypto layer
+> (Argon2 KDF, AES-256-GCM/ChaCha20-Poly1305 AEAD, real KDBX4 body cipher) with
+> RFC-vector KATs. (R21 was the first genuine green build at 403 passing.)
 > The 21-round "no toolchain here" disclaimer was **false**: the Flutter SDK is
 > present; `flutter pub get` was blocked by a dead `kdbx: ^2.5.0` constraint
 > (now `^2.4.2`; kdbx is unused). Running the suite for the first time surfaced 11
@@ -64,18 +66,18 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Establish CI quality gate (analyze + test) and golden round-trip test harness/strategy (Critic)
 
 ### Phase 1 — KeePass Core (Rounds 2–3)
-- [ ] KDBX 4 reader/writer (XML inner format compatibility) (Performer)
+- [x] KDBX 4 reader/writer (XML inner format compatibility) (Performer) — R22: the `KdbxCodec` pipeline + `Kdbx4BodyCipher` now read/write real encrypted KDBX4 (Argon2 KDF, AES-256-CBC/ChaCha20 body, header HMAC, HMAC block stream, gzip). Self-consistent round-trip VERIFIED; remaining gap = byte-exact KeePassXC reference-fixture interop (needs a real `.kdbx` golden — see Critic golden item)
 - [x] KDBX4 reader/writer pipeline orchestrator (header ⇄ injected body-cipher ⇄ injected compressor ⇄ XML codec ⇄ model) — completes the format structure; real Argon2/AES body delegated via `KdbxBodyCipher` interface (Composer)
 - [x] KeePass 2.x XML inner-format codec (model ⇄ XML, package:xml) — unblocks KDBX reader/writer & Critic golden round-trip (Composer); Critic adversarial round-trip audit added R11 (XML metachars, whitespace-under-pretty bug-probe, unicode+Protected) — APPROVE; flagged forward interop risk: real KeePass protected values are inner-stream-encrypted+base64, KDBX layer must apply/strip around this codec
 - [x] KDBX4 outer header + VariantDictionary binary codec (magic/version/TLV fields, KdfParameters ⇄ KdfParams; SHA-256/HMAC framing + cipher/KDF transform remain, toolchain-gated) (Composer + Performer) — COLLISION RESOLVED R11 (Composer): both implemented independently; kept Composer's split form (`variant_dictionary.dart` + `kdbx_header.dart`) to avoid a duplicate `VariantDictionary` class; Performer's combined file superseded. Critic adversarial audit added R12 (VariantDictionary byte-stability for header HMAC, value edges, multibyte-key framing) — APPROVE; minor: Int32/Int64 are wire-decodable but lack typed get/set accessors
-- [ ] Argon2 KDF (GPU-resistant) integration + params (Performer)
-- [ ] AES-256 / ChaCha20 cipher layer (Performer)
-- [ ] Encrypted local database storage at rest (Performer)
+- [x] Argon2 KDF (GPU-resistant) integration + params (Performer) — R22: `Argon2KeyDerivation` (pointycastle Argon2d/id) building the KeePass composite key; VERIFIED against the RFC 9106 §5.3 KAT + cross-checked vs the `cryptography` package. `lib/core/crypto/impl/argon2_kdf.dart`
+- [x] AES-256 / ChaCha20 cipher layer (Performer) — R22: authenticated `Cipher` impls AES-256-GCM + ChaCha20-Poly1305 (`aead_cipher.dart`) VERIFIED vs RFC 8439 §2.8.2 KAT + `cryptography` cross-check; plus the KDBX-format AES-256-CBC/ChaCha20 body transform in the KDBX4 body cipher
+- [x] Encrypted local database storage at rest (Performer) — R22: `KdbxCodec.write/read` now produces/consumes a genuine encrypted KDBX4 body via `Kdbx4BodyCipher` (real Argon2→master-key, header SHA-256+HMAC, HMAC-SHA-256 block stream) + real gzip (`data/format/gzip_compressor.dart`). Round-trips for both ciphers with wrong-password + tamper rejection
 - [x] Key File support — key-file format parser (binary-32 / hex-64 / KeePass-2 XML / hashed-arbitrary → 32-byte key, injected SHA-256) feeding CompositeCredential (Composer); password→key hashing remains crypto-layer (Performer) — Critic R14 SECURITY SIGN-OFF (§4.5): APPROVE — detection order correct, v2 hash-mismatch rejects tampered files, injected SHA-256 (no hand-rolled crypto), length-validated; minor: `_bytesEqual` non-constant-time but acceptable (integrity hash of attacker-held file)
 - [x] Entry History tracking — snapshot service + repository updateEntry wiring (Composer; Performer deferred duplicate)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [x] Tags (KeePass) model + Custom Fields + Attachments — tag index/rename/remove + custom-field + attachment-pool services (Performer)
-- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history + XML-codec + VariantDictionary adversarial audits DONE; R13: full-pipeline end-to-end round-trip (rich db: nested groups/protected custom/history/unicode/metachars/whitespace) DONE with stub cipher; ONLY remaining = real Argon2/AES body + KeePassXC reference-fixture golden (toolchain-gated)
+- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history + XML-codec + VariantDictionary adversarial audits DONE; R13: full-pipeline end-to-end round-trip (rich db: nested groups/protected custom/history/unicode/metachars/whitespace) DONE with stub cipher; R22: real Argon2/AES body NOW DONE — full round-trip through real Argon2id + AES-256-CBC/ChaCha20 + HMAC block stream + gzip passes (`kdbx4_body_cipher_test.dart`). ONLY remaining = byte-exact KeePassXC reference-`.kdbx` golden fixture (need a real third-party file to diff against)
 - [x] ✅ INTEGRATION (round 7): `ensemble/Critic` now merged into master each round; all Critic CI gate + adversarial suites + reviews are on master (Critic)
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
