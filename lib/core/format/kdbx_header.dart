@@ -153,6 +153,12 @@ class KdbxHeader {
   /// layer hashes exactly `fileBytes.sublist(0, length)`).
   int length = 0;
 
+  /// The exact header bytes as read from the file (set by [read]). The KDBX4
+  /// header SHA-256 / HMAC must cover these original bytes — re-serializing can
+  /// differ from a third-party writer's byte layout. Null for a freshly-built
+  /// header (then [serialize] is authoritative).
+  Uint8List? headerBytes;
+
   KdfParams get kdf => KdfParameters.fromVariantDictionary(kdfParameters).$1;
 
   Uint8List serialize() {
@@ -234,6 +240,7 @@ class KdbxHeader {
             versionMinor: minor,
           );
           header.length = offset;
+          header.headerBytes = Uint8List.sublistView(bytes, 0, offset);
           return header;
         case _fCipherId:
           cipher = _bytesEqual(data, KdbxUuids.chacha20)

@@ -34,6 +34,7 @@ import '../../format/kdbx_file.dart';
 import '../../format/kdbx_header.dart';
 import '../../model/database.dart';
 import '../key_derivation.dart';
+import 'kdf_registry.dart';
 
 class KdbxIntegrityException implements Exception {
   KdbxIntegrityException(this.message);
@@ -43,9 +44,11 @@ class KdbxIntegrityException implements Exception {
 }
 
 class Kdbx4BodyCipher implements KdbxBodyCipher {
-  Kdbx4BodyCipher({required this.kdf});
+  Kdbx4BodyCipher({KeyDerivation? kdf})
+      : kdf = kdf ?? const DefaultKeyDerivation();
 
-  /// Argon2/AES-KDF implementation deriving the transformed key.
+  /// Argon2/AES-KDF implementation deriving the transformed key. Defaults to a
+  /// dispatcher that selects by the header's KDF algorithm.
   final KeyDerivation kdf;
 
   static const int _hashLen = 32;
@@ -58,7 +61,9 @@ class Kdbx4BodyCipher implements KdbxBodyCipher {
     CompositeCredential credential,
   ) async {
     final keys = await _deriveKeys(header, credential);
-    final headerBytes = header.serialize();
+    // Cover the ORIGINAL header bytes when reading a foreign file; fall back to
+    // serialize() for a header we are writing ourselves.
+    final headerBytes = header.headerBytes ?? header.serialize();
 
     final cipherText =
         _transform(true, header.cipher, keys.masterKey, header.encryptionIv, inner);
@@ -80,7 +85,9 @@ class Kdbx4BodyCipher implements KdbxBodyCipher {
       throw KdbxIntegrityException('body too short for KDBX4 header MAC');
     }
     final keys = await _deriveKeys(header, credential);
-    final headerBytes = header.serialize();
+    // Cover the ORIGINAL header bytes when reading a foreign file; fall back to
+    // serialize() for a header we are writing ourselves.
+    final headerBytes = header.headerBytes ?? header.serialize();
 
     final storedHash = Uint8List.sublistView(body, 0, _hashLen);
     if (!_constEq(storedHash, _sha256(headerBytes))) {
@@ -145,15 +152,23 @@ class Kdbx4BodyCipher implements KdbxBodyCipher {
 
   // ---- HMAC block stream --------------------------------------------------
 
+  /// KDBX block size (KeePass uses 1 MiB); large bodies stream as N blocks so
+  /// nothing must be held beyond one block at a time (R4: 250MB+ DBs).
+  static const int _blockSize = 1024 * 1024;
+
   Uint8List _writeBlockStream(Uint8List data, Uint8List hmacBase) {
     final out = BytesBuilder();
-    // Single data block (index 0) + terminating empty block (index 1). KDBX
-    // permits any block sizing; one block is spec-valid for our DB sizes.
-    if (data.isNotEmpty) {
-      _emitBlock(out, 0, data, hmacBase);
+    var index = 0;
+    var offset = 0;
+    while (offset < data.length) {
+      final end =
+          offset + _blockSize < data.length ? offset + _blockSize : data.length;
+      _emitBlock(out, index, Uint8List.sublistView(data, offset, end), hmacBase);
+      offset = end;
+      index++;
     }
-    final termIndex = data.isEmpty ? 0 : 1;
-    _emitBlock(out, termIndex, Uint8List(0), hmacBase);
+    // Terminating empty block at the next index.
+    _emitBlock(out, index, Uint8List(0), hmacBase);
     return out.toBytes();
   }
 

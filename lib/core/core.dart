@@ -32,4 +32,5 @@ export 'sort/entry_sort.dart';
 export 'format/keepass_xml.dart';
 export 'format/variant_dictionary.dart';
 export 'format/kdbx_header.dart';
+export 'format/kdbx_inner.dart';
 export 'format/kdbx_file.dart';

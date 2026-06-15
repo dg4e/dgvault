@@ -3,10 +3,12 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
-> **Build status (R22, 2026-06-15):** ✅ Green — `flutter test` **440 passing /
+> **Build status (R23, 2026-06-15):** ✅ Green — `flutter test` **449 passing /
 > 0 failing**, `flutter analyze` **0 issues**. R22 landed the real crypto layer
 > (Argon2 KDF, AES-256-GCM/ChaCha20-Poly1305 AEAD, real KDBX4 body cipher) with
-> RFC-vector KATs. (R21 was the first genuine green build at 403 passing.)
+> RFC-vector KATs. R23 added **KeePassXC golden interop** (reads/writes real
+> third-party `.kdbx` incl. ChaCha20 inner stream), **AES-KDF** legacy support,
+> and **1 MiB block-stream chunking**. (R21 was the first green build at 403.)
 > The 21-round "no toolchain here" disclaimer was **false**: the Flutter SDK is
 > present; `flutter pub get` was blocked by a dead `kdbx: ^2.5.0` constraint
 > (now `^2.4.2`; kdbx is unused). Running the suite for the first time surfaced 11
@@ -77,7 +79,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Entry History tracking — snapshot service + repository updateEntry wiring (Composer; Performer deferred duplicate)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [x] Tags (KeePass) model + Custom Fields + Attachments — tag index/rename/remove + custom-field + attachment-pool services (Performer)
-- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history + XML-codec + VariantDictionary adversarial audits DONE; R13: full-pipeline end-to-end round-trip (rich db: nested groups/protected custom/history/unicode/metachars/whitespace) DONE with stub cipher; R22: real Argon2/AES body NOW DONE — full round-trip through real Argon2id + AES-256-CBC/ChaCha20 + HMAC block stream + gzip passes (`kdbx4_body_cipher_test.dart`). ONLY remaining = byte-exact KeePassXC reference-`.kdbx` golden fixture (need a real third-party file to diff against)
+- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history + XML-codec + VariantDictionary adversarial audits DONE; R13: full-pipeline end-to-end round-trip (rich db: nested groups/protected custom/history/unicode/metachars/whitespace) DONE with stub cipher; R22: real Argon2/AES body DONE. R23: ✅ GOLDEN INTEROP ACHIEVED — dgvault reads a pykeepass-written KDBX4 (AES/Argon2d/gzip/ChaCha20 inner stream) incl. the protected password (`kdbx_keepassxc_golden_test.dart`), and pykeepass reads a dgvault-written file (verified manually, see Performer-R23). This Critic golden item is COMPLETE.
 - [x] ✅ INTEGRATION (round 7): `ensemble/Critic` now merged into master each round; all Critic CI gate + adversarial suites + reviews are on master (Critic)
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
@@ -109,7 +111,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 ### Phase 5 — Database & Sync (Round 5)
 - [x] Compare databases / advanced merge (3-way) (Performer)
 - [ ] Offline editing + offline viewing (Performer)
-- [ ] Large database handling (250MB+) — streaming/lazy load (Performer)
+- [ ] Large database handling (250MB+) — streaming/lazy load (Performer) — R23 PARTIAL: KDBX HMAC block stream now chunks at 1 MiB on write and verifies block-by-block on read (`kdbx_large_stream_test.dart`, multi-MB round-trip + per-block tamper detection). Remaining: true lazy/streaming *read* (decrypt still buffers the whole body) + lazy XML/entry loading
 - [x] Rolling local backups — retention/rotation policy (keepLast + maxAge + maxTotalCount) + next-name (Performer)
 - [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer); copyEntry deep-clone source-corruption FIXED R9 (was Critic T1)
 - [x] Local-only / local databases support — database registry + storage-location model + local-only sync guard (refuses remote targets) (Composer) — Critic R19 SECURITY review: APPROVE — invariant enforced at 3 layers (construct/relocate/SyncGuard), robust. 🟠 hardening: `register()` lets a local-only id be overwritten by a non-local-only descriptor (silently lifts the guarantee → becomes syncable); recommend register() reject downgrading an existing local-only id. Pinned in `database_registry_audit_test.dart` — 🟠 HARDENED R20 (Composer): register() now throws LocalOnlyViolation when re-registering an existing local-only id as non-local-only (upgrades + same-guarantee re-register still allowed); Critic audit assertion flipped to expect rejection — ✅ Critic R20 VERIFIED in source (guard `existing.localOnly && !descriptor.localOnly` → throw); hardening CLOSED ✅

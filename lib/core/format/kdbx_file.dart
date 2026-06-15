@@ -18,11 +18,13 @@
 // with no structural changes.
 
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import '../crypto/key_derivation.dart';
 import '../model/database.dart';
 import 'kdbx_header.dart';
+import 'kdbx_inner.dart';
 import 'keepass_xml.dart';
 
 /// Compresses/decompresses the inner XML payload (KDBX CompressionFlags).
@@ -80,10 +82,22 @@ class KdbxCodec {
   Future<Uint8List> write(
     Database db,
     KdbxHeader header,
-    CompositeCredential credential,
-  ) async {
-    final xmlString = _xml.encode(db);
-    var inner = Uint8List.fromList(utf8.encode(xmlString));
+    CompositeCredential credential, {
+    int innerStreamId = InnerStreamId.chaCha20,
+    Uint8List? innerStreamKey,
+  }) async {
+    // Protected values are encrypted with the inner random stream and prefixed
+    // by the inner header (KDBX4): payload = innerHeader ++ protected XML.
+    final streamKey = innerStreamKey ?? _randomBytes(64);
+    final stream = InnerRandomStream.fromId(innerStreamId, streamKey);
+    final protectedXml = protectXml(_xml.encode(db), stream);
+    final innerHeader =
+        KdbxInnerHeader(streamId: innerStreamId, streamKey: streamKey);
+
+    var inner = (BytesBuilder()
+          ..add(innerHeader.serialize())
+          ..add(utf8.encode(protectedXml)))
+        .toBytes();
     if (header.compressed) inner = _compressor.compress(inner);
     final body = await bodyCipher.encryptBody(header, inner, credential);
 
@@ -99,6 +113,18 @@ class KdbxCodec {
     final body = Uint8List.sublistView(bytes, header.length);
     var inner = await bodyCipher.decryptBody(header, body, credential);
     if (header.compressed) inner = _compressor.decompress(inner);
-    return _xml.decode(utf8.decode(inner));
+
+    final (innerHeader, xmlBytes) = KdbxInnerHeader.parse(inner);
+    var xml = utf8.decode(xmlBytes);
+    if (innerHeader.streamId != InnerStreamId.none) {
+      xml = unprotectXml(
+          xml, InnerRandomStream.fromId(innerHeader.streamId, innerHeader.streamKey),);
+    }
+    return _xml.decode(xml);
+  }
+
+  static Uint8List _randomBytes(int n) {
+    final rng = Random.secure();
+    return Uint8List.fromList(List.generate(n, (_) => rng.nextInt(256)));
   }
 }

@@ -23,6 +23,7 @@ import 'package:pointycastle/export.dart' as pc;
 import '../../model/kdf_params.dart';
 import '../key_derivation.dart';
 import '../secure_key.dart';
+import 'composite_key.dart';
 
 class Argon2KeyDerivation implements KeyDerivation {
   const Argon2KeyDerivation({this.keyLength = 32});
@@ -50,7 +51,7 @@ class Argon2KeyDerivation implements KeyDerivation {
       throw ArgumentError('invalid/under-strength Argon2 params');
     }
 
-    final composite = _compositeKey(credential);
+    final composite = keepassCompositeKey(credential);
 
     final type = params.algorithm == KdfAlgorithm.argon2d
         ? pc.Argon2Parameters.ARGON2_d
@@ -70,17 +71,4 @@ class Argon2KeyDerivation implements KeyDerivation {
     gen.deriveKey(composite, 0, out, 0);
     return HeapSecureKey(out);
   }
-
-  /// Builds the KeePass composite key from the available factors.
-  static Uint8List _compositeKey(CompositeCredential c) {
-    final parts = BytesBuilder();
-    if (c.password != null) parts.add(_sha256(c.password!));
-    if (c.keyFile != null) {
-      parts.add(c.keyFile!.length == 32 ? c.keyFile! : _sha256(c.keyFile!));
-    }
-    if (c.challengeResponse != null) parts.add(_sha256(c.challengeResponse!));
-    return _sha256(parts.toBytes());
-  }
-
-  static Uint8List _sha256(Uint8List data) => pc.SHA256Digest().process(data);
 }
