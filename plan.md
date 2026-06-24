@@ -3,13 +3,14 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
-> **Build status (R24, 2026-06-15):** ✅ Green — `flutter test` **461 passing /
-> 0 failing**, `flutter analyze` **0 issues**. R22 real crypto layer (Argon2,
-> AES-GCM/ChaCha20-Poly1305, KDBX4 body) with RFC KATs. R23 **KeePassXC golden
-> interop** + AES-KDF + 1 MiB block-stream chunking. R24 **PIN unlock** +
-> **key-vault** (OS-keystore key-wrapping abstraction) — the verifiable platform
-> pure-logic; device-gated channels (biometric/keystore impl) remain stubbed
-> behind interfaces. (R21 was the first green build at 403.)
+> **Build status (R25, 2026-06-23):** ✅ Green — `flutter test` **477 passing /
+> 0 failing**, `flutter analyze` **0 issues**. Real crypto layer (R22), KeePassXC
+> golden interop + AES-KDF (R23), PIN unlock + key-vault (R24). R25 adds the
+> **verifiable cores of the device-gated features**: YubiKey HMAC-SHA1 CR (RFC
+> 2202 KAT), cloud **SyncEngine** (convergence + LWW conflict via real KdbxCodec),
+> and **WebAuthn/passkey** RP-side verify (ES256, verified vs an independent
+> vector). The remaining device/OS/network adapters sit behind these interfaces.
+> (R21 was the first green build at 403.)
 > The 21-round "no toolchain here" disclaimer was **false**: the Flutter SDK is
 > present; `flutter pub get` was blocked by a dead `kdbx: ^2.5.0` constraint
 > (now `^2.4.2`; kdbx is unused). Running the suite for the first time surfaced 11
@@ -86,7 +87,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
 - [x] PIN code unlock (Performer) — R24: `PinUnlock` state machine (`pin_unlock.dart`) over `KeyVault` + `AppLockPolicy`: right PIN unwraps the master key + resets the counter; wrong PIN increments the persistent counter, exhaustion → lock-out + (delete-on-fail) wipe signal; PIN match is the AEAD tag (constant-time, no hand-rolled compare). Pure-logic, fully tested
 - [ ] Biometric unlock (Face ID / Touch ID via platform channel) (Performer) — FOUNDATION READY (R24): reuses `KeyVault` exactly like PIN — biometric just gates *release* of the unlock secret; only the platform channel (LocalAuthentication) is device-gated
-- [ ] YubiKey support incl. Secret Unlock (emergency) (Performer)
+- [ ] YubiKey support incl. Secret Unlock (emergency) (Performer) — CORE DONE (R25): `ChallengeResponse` factor + `SoftwareChallengeResponse` (HMAC-SHA1, KAT-verified vs RFC 2202) feeding `CompositeCredential.challengeResponse` (`challenge_response.dart`). REMAINING (device): the USB/NFC YubiKey transport implementing `ChallengeResponse`
 - [x] Duress PIN — open dummy database (Composer) — unified `DuressPolicy` routing (real/decoy/duress-wipe/none → outcome) with indistinguishability invariant — Critic R15 SECURITY SIGN-OFF (R5/§4.5): APPROVE; added exhaustive matrix audit (duress always-wipes in every config + signal always benign/never-real). Caveat for caller: the hidden wipe must not add observable latency vs a normal decoy open, and credential matching MUST be constant-time (delegated to crypto layer)
 - [x] Duress PIN — delete all data (Composer) — same `DuressPolicy`: duress secret triggers wipe-then-(decoy|fail), observably identical to a normal unlock — Critic R15 SECURITY SIGN-OFF: APPROVE (covered by same matrix audit)
 - [x] App Lock — delete-all-on-fails policy — persistent consecutive-failure counter + wipe trigger (Performer) — Critic R14 SECURITY SIGN-OFF (R5/§4.5): logic APPROVE + interrupted-wipe audit tests. F1+F2 FIXED R15 (Performer): `maxAttempts<=0` now throws `ArgumentError` (release-safe) + `isWipePending` getter added — Critic VERIFIED in source R15, REQUEST_CHANGES resolved ✅
@@ -106,7 +107,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 ### Phase 4 — Security & Audit (Round 4–5)
 - [x] Audit: find weaknesses (weak/reused/old passwords) (Performer)
 - [x] Find-similar audit (Performer)
-- [ ] Passkeys support (Performer)
+- [ ] Passkeys support (Performer) — RP-VERIFY CORE DONE (R25): `lib/core/webauthn/` — CBOR decoder, COSE key parse, authenticator-data parse, ES256 (P-256) assertion + registration ('none'/'packed-self') verification, VERIFIED against an independent python-generated vector (`webauthn_test.dart`). REMAINING (device): Secure-Enclave/platform-authenticator key creation+signing (the private-key side); EdDSA + x5c attestation-chain validation are follow-ups
 - [x] Audit engine unit tests — adversarial coverage beyond author tests (Critic)
 
 ### Phase 5 — Database & Sync (Round 5)
@@ -116,8 +117,8 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Rolling local backups — retention/rotation policy (keepLast + maxAge + maxTotalCount) + next-name (Performer)
 - [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer); copyEntry deep-clone source-corruption FIXED R9 (was Critic T1)
 - [x] Local-only / local databases support — database registry + storage-location model + local-only sync guard (refuses remote targets) (Composer) — Critic R19 SECURITY review: APPROVE — invariant enforced at 3 layers (construct/relocate/SyncGuard), robust. 🟠 hardening: `register()` lets a local-only id be overwritten by a non-local-only descriptor (silently lifts the guarantee → becomes syncable); recommend register() reject downgrading an existing local-only id. Pinned in `database_registry_audit_test.dart` — 🟠 HARDENED R20 (Composer): register() now throws LocalOnlyViolation when re-registering an existing local-only id as non-local-only (upgrades + same-guarantee re-register still allowed); Critic audit assertion flipped to expect rejection — ✅ Critic R20 VERIFIED in source (guard `existing.localOnly && !descriptor.localOnly` → throw); hardening CLOSED ✅
-- [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer)
-- [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer)
+- [ ] Cloud sync: OneDrive, Google Drive, Dropbox, iCloud (Performer) — ENGINE DONE (R25): `lib/data/sync/` — `RemoteStorage` abstraction + `SyncEngine` (convergent pull→3-way-LWW-merge→push over the existing `DatabaseMerger`), tested two-device convergence + conflict resolution through the REAL `KdbxCodec` (`sync_engine_test.dart`). REMAINING (account/network): the concrete OneDrive/Drive/Dropbox/iCloud `RemoteStorage` adapters (OAuth + HTTP)
+- [ ] SFTP / WebDAV / Nextcloud / SharePoint native sync (Performer) — same `SyncEngine` (R25); REMAINING (network): the SFTP/WebDAV/Nextcloud/SharePoint `RemoteStorage` adapters
 - [x] Merge-conflict + backup-rotation unit tests (Critic) — merge + cross-DB transfer audits DONE (found copyEntry source-corruption + LWW data-loss); backup-rotation half blocked (rolling backups unbuilt). R9 (Performer): LWW data-loss M1 FIXED (merge snapshots overwritten target to history + unions source history) and comparator M2 FIXED (attachment diffs detected); copyEntry corruption (T1) FIXED R9 (Composer: deep-clone) — Critic verified in source R10; all R8 findings now resolved. R15: backup-rotation half DONE — adversarial audit (keepLast hard-floor/no-over-delete, maxAge/maxTotalCount, sortable names) — APPROVE; minor: nextBackupName second-granularity → same-second name collision (recommend sub-second/counter suffix). This Critic task now COMPLETE
 
 ### Phase 6 — Import / Export (Round 5–6)

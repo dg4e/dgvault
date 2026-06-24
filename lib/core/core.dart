@@ -21,6 +21,12 @@ export 'security/master_password_reminder.dart';
 export 'security/secure_store.dart';
 export 'security/key_vault.dart';
 export 'security/pin_unlock.dart';
+export 'security/challenge_response.dart';
+
+export 'webauthn/cbor.dart';
+export 'webauthn/cose_key.dart';
+export 'webauthn/authenticator_data.dart';
+export 'webauthn/webauthn.dart';
 
 export 'otp/totp.dart';
 
