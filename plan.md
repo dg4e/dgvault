@@ -3,14 +3,17 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
-> **Build status (R25, 2026-06-23):** ✅ Green — `flutter test` **477 passing /
-> 0 failing**, `flutter analyze` **0 issues**. Real crypto layer (R22), KeePassXC
-> golden interop + AES-KDF (R23), PIN unlock + key-vault (R24). R25 adds the
-> **verifiable cores of the device-gated features**: YubiKey HMAC-SHA1 CR (RFC
-> 2202 KAT), cloud **SyncEngine** (convergence + LWW conflict via real KdbxCodec),
-> and **WebAuthn/passkey** RP-side verify (ES256, verified vs an independent
-> vector). The remaining device/OS/network adapters sit behind these interfaces.
-> (R21 was the first green build at 403.)
+> **Build status (R26, 2026-06-23):** ✅ Green — `flutter test` **482 passing /
+> 0 failing**, `flutter analyze` **0 issues**, **and the macOS app builds**
+> (`flutter build macos` → `dgvault.app`). Real crypto (R22), KeePassXC interop +
+> AES-KDF (R23), PIN unlock + key-vault (R24), verifiable cores of the device
+> features — YubiKey CR / SyncEngine / WebAuthn (R25). **R26 wired the platform
+> layer**: device adapters (`flutter_secure_storage` SecureStore, `local_auth`
+> biometric gate, WebDAV RemoteStorage — MockClient-tested) + scaffolded the
+> native app host (android/ios/macos/linux/windows) with Face ID usage
+> descriptions + macOS network entitlement. Runtime behaviour (Face ID prompt,
+> Keychain persistence, live sync) still needs a device/CI; the code compiles into
+> a real app. (R21 was the first green build at 403.)
 > The 21-round "no toolchain here" disclaimer was **false**: the Flutter SDK is
 > present; `flutter pub get` was blocked by a dead `kdbx: ^2.5.0` constraint
 > (now `^2.4.2`; kdbx is unused). Running the suite for the first time surfaced 11
