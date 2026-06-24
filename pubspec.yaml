@@ -17,6 +17,10 @@ dependencies:
   pointycastle: ^3.9.1
   # OS keystore wrapping for derived keys.
   flutter_secure_storage: ^9.2.2
+  # Biometric / device-credential gate (Face ID / Touch ID / fingerprint).
+  local_auth: ^2.3.0
+  # HTTP client for network sync adapters (WebDAV, etc.).
+  http: ^1.2.0
   xml: ^6.5.0
 
 dev_dependencies:
