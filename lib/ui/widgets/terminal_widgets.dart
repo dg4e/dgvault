@@ -62,6 +62,8 @@ class TerminalPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
+      // The title straddles the top border (top: -8), so it must not be clipped.
+      clipBehavior: Clip.none,
       children: [
         Container(
           decoration: BoxDecoration(
