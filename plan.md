@@ -3,6 +3,14 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
+> **Build status (R27, 2026-06-25):** ✅ Green — `flutter test` **486 passing /
+> 0 failing**, `flutter analyze` **0 issues**, macOS app builds. **R27 added the
+> first real UI** (`lib/ui/`): a terminal/hacker design system + a vertical slice —
+> boot/unlock (PIN → KeyVault → real KDBX decrypt) → responsive vault master/detail
+> with live search → entry detail (reveal/copy) → password generator. Wired to the
+> real engine, widget-tested, and screenshot-verified on macOS. UI breadth (editing,
+> settings, groups tree, all platforms' chrome) is still to come.
+>
 > **Build status (R26, 2026-06-23):** ✅ Green — `flutter test` **482 passing /
 > 0 failing**, `flutter analyze` **0 issues**, **and the macOS app builds**
 > (`flutter build macos` → `dgvault.app`). Real crypto (R22), KeePassXC interop +
