@@ -15,6 +15,7 @@ import 'package:dgvault/core/core.dart';
 import 'package:dgvault/core/crypto/impl/argon2_kdf.dart';
 import 'package:dgvault/core/crypto/impl/kdbx3_reader.dart';
 import 'package:dgvault/core/crypto/impl/kdbx4_body_cipher.dart';
+import 'package:dgvault/core/crypto/impl/kdf_registry.dart';
 import 'package:dgvault/data/format/gzip_compressor.dart';
 
 enum VaultStatus { noVault, locked, unlocking, unlocked, saving }
@@ -240,11 +241,18 @@ class VaultController extends ChangeNotifier {
     _touch();
   }
 
+  /// History retention policy derived from the database meta (the limits the
+  /// user sets in Settings).
+  EntryHistoryPolicy get _historyPolicy => EntryHistoryPolicy(
+        maxItems: _db?.meta.historyMaxItems ?? 10,
+        maxSizeBytes: _db?.meta.historyMaxSize ?? 6 * 1024 * 1024,
+      );
+
   /// Apply [mutate] to [entry], snapshotting the prior version into History and
   /// bumping the modified time.
   void updateEntry(Entry entry, void Function(Entry draft) mutate) {
     if (_db == null) return;
-    EntryHistory.record(entry, policy: EntryHistoryPolicy.keepassDefault);
+    EntryHistory.record(entry, policy: _historyPolicy);
     mutate(entry);
     entry.modified = DateTime.now().toUtc();
     _touch();
@@ -272,9 +280,150 @@ class VaultController extends ChangeNotifier {
   /// snapshotted first, so it is itself undoable).
   void restoreHistory(Entry entry, int index) {
     if (_db == null) return;
-    EntryHistory.restore(entry, index);
+    EntryHistory.restore(entry, index, policy: _historyPolicy);
     entry.modified = DateTime.now().toUtc();
     _touch();
+  }
+
+  // ---- history limits -----------------------------------------------------
+
+  int get historyMaxItems => _db?.meta.historyMaxItems ?? 10;
+  int get historyMaxSize => _db?.meta.historyMaxSize ?? 6 * 1024 * 1024;
+
+  void setHistoryMaxItems(int value) {
+    final db = _db;
+    if (db == null) return;
+    db.meta.historyMaxItems = value;
+    _touch();
+  }
+
+  void setHistoryMaxSize(int bytes) {
+    final db = _db;
+    if (db == null) return;
+    db.meta.historyMaxSize = bytes;
+    _touch();
+  }
+
+  // ---- KDF (transform rounds) ---------------------------------------------
+
+  KdfParams? get _activeKdf => _header?.kdf;
+
+  /// Whether the active KDF is Argon2 (vs legacy AES-KDF transform rounds).
+  bool get kdfIsArgon2 => _activeKdf?.isArgon2 ?? true;
+
+  /// Current KDF iteration / transform-round count (applied on the next save).
+  int get kdfIterations => _activeKdf?.iterations ?? 0;
+
+  /// Set the KDF iteration count. Rebuilds the pending header (fresh seeds are
+  /// regenerated on save regardless), so the change takes effect on save().
+  void setKdfIterations(int iterations) {
+    final h = _header;
+    if (h == null || iterations < 1) return;
+    final cur = h.kdf;
+    final next = KdfParams(
+      algorithm: cur.algorithm,
+      iterations: iterations,
+      memoryKib: cur.memoryKib,
+      parallelism: cur.parallelism,
+      version: cur.version,
+    );
+    _header = _freshHeader(next, h.cipher);
+    _touch();
+  }
+
+  /// Measure the active KDF and return the iteration count that takes roughly
+  /// [target] to derive a key on this machine (KeePass-style benchmark). Does
+  /// not apply the result — the caller decides whether to accept it.
+  Future<int> benchmarkKdfIterations({
+    Duration target = const Duration(seconds: 1),
+  }) async {
+    final base = _activeKdf;
+    final cred = _cred ?? CompositeCredential(password: _b('benchmark'));
+    if (base == null) return kdfIterations;
+    // Probe with a fixed sample, time it, then scale to the target. Argon2 cost
+    // is dominated by memory*passes; a few passes give a stable per-pass time.
+    final probeIters = base.isArgon2 ? 4 : 50000;
+    final probe = base.isArgon2
+        ? KdfParams(
+            algorithm: base.algorithm,
+            iterations: probeIters,
+            memoryKib: base.memoryKib,
+            parallelism: base.parallelism,
+            version: base.version,
+          )
+        : KdfParams(algorithm: base.algorithm, iterations: probeIters);
+    const kdf = DefaultKeyDerivation();
+    final sw = Stopwatch()..start();
+    await kdf.deriveKey(cred, probe, _rand(32));
+    sw.stop();
+    final perIterUs = sw.elapsedMicroseconds / probeIters;
+    if (perIterUs <= 0) return kdfIterations;
+    final suggested = (target.inMicroseconds / perIterUs).round();
+    return suggested.clamp(1, base.isArgon2 ? 1000 : 100000000);
+  }
+
+  // ---- folders ------------------------------------------------------------
+
+  /// The parent group of [group] in the tree, or null for the root / not found.
+  Group? findParentOf(Group group) {
+    final db = _db;
+    if (db == null || identical(group, db.root)) return null;
+    Group? walk(Group g) {
+      if (g.groups.any((c) => identical(c, group))) return g;
+      for (final c in g.groups) {
+        final r = walk(c);
+        if (r != null) return r;
+      }
+      return null;
+    }
+
+    return walk(db.root);
+  }
+
+  /// Create a child folder named [name] under [parent] (defaults to root).
+  Group addGroup(String name, {Group? parent}) {
+    final db = _db;
+    if (db == null) throw StateError('no open database');
+    final g = Group(uuid: _uuid(), name: name.trim());
+    (parent ?? db.root).groups.add(g);
+    _touch();
+    return g;
+  }
+
+  /// Rename [group].
+  void renameGroup(Group group, String name) {
+    if (_db == null) return;
+    group.name = name.trim();
+    _touch();
+  }
+
+  /// Delete [group] and its subtree. With the recycle bin enabled (and the
+  /// group not already inside it) the subtree is moved to the Recycle Bin;
+  /// otherwise it is permanently removed. The root and the bin itself are never
+  /// trashed.
+  void deleteGroup(Group group) {
+    final db = _db;
+    if (db == null || identical(group, db.root)) return;
+    final parent = findParentOf(group);
+    if (parent == null) return;
+    parent.groups.remove(group);
+    final binUuid = db.meta.recycleBinUuid;
+    if (db.meta.recycleBinEnabled && group.uuid != binUuid) {
+      final bin = _ensureRecycleBin(db);
+      if (!identical(parent, bin) && !_isDescendant(group, bin)) {
+        bin.groups.add(group);
+      }
+    } else if (group.uuid == binUuid) {
+      db.meta.recycleBinUuid = null; // deleted the bin itself
+    }
+    _touch();
+  }
+
+  bool _isDescendant(Group ancestor, Group node) {
+    for (final c in ancestor.groups) {
+      if (identical(c, node) || _isDescendant(c, node)) return true;
+    }
+    return false;
   }
 
   Group _defaultAddGroup(Group root) {

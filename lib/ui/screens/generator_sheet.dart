@@ -107,6 +107,11 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
                   tooltip: 'Copy password',
                   onTap: () => copyWithFlash(context, _output, 'password'),
                 ),
+                _IconBtn(
+                  icon: Icons.close,
+                  tooltip: 'Close',
+                  onTap: () => Navigator.of(context).pop(),
+                ),
               ],
             ),
             const SizedBox(height: 12),

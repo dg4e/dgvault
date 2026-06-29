@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'package:dgvault/core/core.dart';
 
+import '../state/sorting.dart';
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
 import '../widgets/folder_tree.dart';
@@ -27,6 +28,8 @@ class _VaultScreenState extends State<VaultScreen> {
   String _query = '';
   Entry? _selected;
   Group? _group; // selected folder; null → root view (minus recycle bin)
+  EntrySort _entrySort = EntrySort.manual;
+  FolderSort _folderSort = FolderSort.manual;
 
   @override
   void initState() {
@@ -49,15 +52,19 @@ class _VaultScreenState extends State<VaultScreen> {
   /// otherwise the selected folder's entries. The root view excludes the
   /// Recycle Bin so trashed/old entries don't masquerade as duplicates.
   List<Entry> get _entries {
-    if (_query.isNotEmpty) return widget.controller.search(_query);
+    if (_query.isNotEmpty) return _entrySort.apply(widget.controller.search(_query));
     final root = widget.controller.rootGroup;
     if (root == null) return const [];
     final group = _group ?? root;
-    if (identical(group, root)) {
-      final rb = widget.controller.recycleBinUuid;
-      return root.entriesExcluding(rb == null ? const {} : {rb}).toList();
-    }
-    return group.allEntries.toList();
+    final raw = identical(group, root)
+        ? root
+            .entriesExcluding(
+                widget.controller.recycleBinUuid == null
+                    ? const {}
+                    : {widget.controller.recycleBinUuid!},)
+            .toList()
+        : group.allEntries.toList();
+    return _entrySort.apply(raw);
   }
 
   void _selectGroup(Group g) => setState(() {
@@ -72,11 +79,25 @@ class _VaultScreenState extends State<VaultScreen> {
       context: context,
       backgroundColor: TermColors.bg,
       builder: (_) => SizedBox(
-        height: 360,
+        height: 420,
         child: FolderTree(
           root: root,
           selected: _group ?? root,
           recycleBinUuid: widget.controller.recycleBinUuid,
+          sort: _folderSort,
+          onSortChanged: (s) => setState(() => _folderSort = s),
+          onAddFolder: (parent) {
+            Navigator.pop(context);
+            _addFolder(parent);
+          },
+          onRenameFolder: (g) {
+            Navigator.pop(context);
+            _renameFolder(g);
+          },
+          onDeleteFolder: (g) {
+            Navigator.pop(context);
+            _deleteFolder(g);
+          },
           onSelect: (g) {
             Navigator.pop(context);
             _selectGroup(g);
@@ -220,6 +241,119 @@ class _VaultScreenState extends State<VaultScreen> {
     }
   }
 
+  // ---- folder operations --------------------------------------------------
+
+  Future<void> _addFolder(Group parent) async {
+    final name = await _promptName(
+        title: 'NEW FOLDER',
+        hint: 'folder name',
+        label: 'CREATE',);
+    if (name == null || name.isEmpty) return;
+    final g = widget.controller.addGroup(name, parent: parent);
+    if (mounted) setState(() => _selectGroup(g));
+  }
+
+  Future<void> _renameFolder(Group g) async {
+    final name = await _promptName(
+        title: 'RENAME FOLDER',
+        hint: 'folder name',
+        label: 'RENAME',
+        initial: g.name,);
+    if (name == null || name.isEmpty) return;
+    widget.controller.renameGroup(g, name);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _deleteFolder(Group g) async {
+    final binned = widget.controller.recycleBinEnabled &&
+        g.uuid != widget.controller.recycleBinUuid;
+    final n = g.allEntries.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: TermColors.surface,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: TermColors.border),
+          borderRadius: BorderRadius.zero,
+        ),
+        title: Text('// DELETE FOLDER',
+            style: mono(size: 13, color: TermColors.red, letterSpacing: 1.5),),
+        content: Text(
+          binned
+              ? 'Move "${g.name}" and its $n entr${n == 1 ? "y" : "ies"} '
+                  'to the Recycle Bin?'
+              : 'Permanently delete "${g.name}" and its $n '
+                  'entr${n == 1 ? "y" : "ies"}? This cannot be undone.',
+          style: mono(size: 13, color: TermColors.text),
+        ),
+        actions: [
+          TermButton(
+            label: 'CANCEL',
+            color: TermColors.textDim,
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          const SizedBox(width: 8),
+          TermButton(
+            label: binned ? 'MOVE TO TRASH' : 'DELETE',
+            color: TermColors.red,
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    widget.controller.deleteGroup(g);
+    if (mounted) {
+      setState(() {
+        if (identical(_group, g)) _group = null; // back to All
+        _selected = null;
+      });
+    }
+  }
+
+  /// A single-line text prompt dialog (folder name). Returns the trimmed text,
+  /// or null if cancelled.
+  Future<String?> _promptName({
+    required String title,
+    required String hint,
+    required String label,
+    String initial = '',
+  }) {
+    final ctl = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: TermColors.surface,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: TermColors.border),
+          borderRadius: BorderRadius.zero,
+        ),
+        title: Text('// $title',
+            style:
+                mono(size: 13, color: TermColors.green, letterSpacing: 1.5),),
+        content: PromptField(
+          controller: ctl,
+          sigil: '›',
+          hint: hint,
+          autofocus: true,
+          onSubmitted: (_) => Navigator.pop(ctx, ctl.text.trim()),
+        ),
+        actions: [
+          TermButton(
+            label: 'CANCEL',
+            color: TermColors.textDim,
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          const SizedBox(width: 8),
+          TermButton(
+            label: label,
+            onPressed: () => Navigator.pop(ctx, ctl.text.trim()),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final wide = isWide(context);
@@ -272,13 +406,19 @@ class _VaultScreenState extends State<VaultScreen> {
                           children: [
                             if (root != null) ...[
                               SizedBox(
-                                width: 180,
+                                width: 200,
                                 child: FolderTree(
                                   root: root,
                                   selected: _group ?? root,
                                   recycleBinUuid:
                                       widget.controller.recycleBinUuid,
                                   onSelect: _selectGroup,
+                                  sort: _folderSort,
+                                  onSortChanged: (s) =>
+                                      setState(() => _folderSort = s),
+                                  onAddFolder: _addFolder,
+                                  onRenameFolder: _renameFolder,
+                                  onDeleteFolder: _deleteFolder,
                                 ),
                               ),
                               const VerticalDivider(
@@ -292,6 +432,9 @@ class _VaultScreenState extends State<VaultScreen> {
                                 entries: entries,
                                 selected: _selected,
                                 folderName: folderName,
+                                sort: _entrySort,
+                                onSortChanged: (s) =>
+                                    setState(() => _entrySort = s),
                                 onAdd: _addEntry,
                                 onQuery: (q) => setState(() => _query = q),
                                 onSelect: (e) => _onSelect(e, true),
@@ -320,6 +463,9 @@ class _VaultScreenState extends State<VaultScreen> {
                           entries: entries,
                           selected: null,
                           folderName: folderName,
+                          sort: _entrySort,
+                          onSortChanged: (s) =>
+                              setState(() => _entrySort = s),
                           onFolderTap: _pickFolder,
                           onAdd: _addEntry,
                           onQuery: (q) => setState(() => _query = q),
@@ -425,56 +571,230 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Vault settings sheet — currently the Recycle Bin toggle.
+/// Vault settings sheet: recycle bin, key-derivation rounds + benchmark, and
+/// entry-history limits.
 void _showSettings(BuildContext context, VaultController controller) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: TermColors.bg,
-    builder: (_) => SafeArea(
+    isScrollControlled: true,
+    builder: (_) => _SettingsSheet(controller: controller),
+  );
+}
+
+class _SettingsSheet extends StatefulWidget {
+  const _SettingsSheet({required this.controller});
+  final VaultController controller;
+  @override
+  State<_SettingsSheet> createState() => _SettingsSheetState();
+}
+
+class _SettingsSheetState extends State<_SettingsSheet> {
+  late final _rounds =
+      TextEditingController(text: '${widget.controller.kdfIterations}');
+  late final _histItems =
+      TextEditingController(text: '${widget.controller.historyMaxItems}');
+  late final _histSize = TextEditingController(
+      text: '${(widget.controller.historyMaxSize / (1024 * 1024)).round()}',);
+  bool _benchmarking = false;
+
+  @override
+  void dispose() {
+    _rounds.dispose();
+    _histItems.dispose();
+    _histSize.dispose();
+    super.dispose();
+  }
+
+  void _commitRounds() {
+    final v = int.tryParse(_rounds.text.trim());
+    if (v != null && v >= 1) widget.controller.setKdfIterations(v);
+  }
+
+  void _commitHistItems() {
+    final v = int.tryParse(_histItems.text.trim());
+    if (v != null) widget.controller.setHistoryMaxItems(v);
+  }
+
+  void _commitHistSize() {
+    final mib = int.tryParse(_histSize.text.trim());
+    if (mib != null) widget.controller.setHistoryMaxSize(mib * 1024 * 1024);
+  }
+
+  Future<void> _benchmark() async {
+    setState(() => _benchmarking = true);
+    final iters = await widget.controller.benchmarkKdfIterations();
+    if (!mounted) return;
+    widget.controller.setKdfIterations(iters);
+    setState(() {
+      _rounds.text = '$iters';
+      _benchmarking = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.controller;
+    final roundsLabel =
+        c.kdfIsArgon2 ? 'iterations (argon2 passes)' : 'transform rounds';
+    return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SectionLabel('vault settings'),
-            const SizedBox(height: 8),
-            StatefulBuilder(
-              builder: (ctx, setSheet) => Row(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: 20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(child: SectionLabel('vault settings')),
+                  InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child:
+                          Icon(Icons.close, size: 18, color: TermColors.textDim),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Recycle bin
+              Row(
+                children: [
+                  Expanded(
+                    child: _settingText(
+                      'Recycle Bin',
+                      'Deleted items move to the trash instead of being '
+                          'permanently erased.',
+                    ),
+                  ),
+                  Switch(
+                    value: c.recycleBinEnabled,
+                    activeThumbColor: TermColors.green,
+                    onChanged: (v) {
+                      c.setRecycleBinEnabled(v);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+              const _SettingsDivider(),
+
+              // Key derivation
+              const SectionLabel('key derivation'),
+              const SizedBox(height: 6),
+              Text(
+                'Higher $roundsLabel slow down brute-force guessing but make '
+                'unlocking take longer. Benchmark targets ~1s on this machine.',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Recycle Bin',
-                            style:
-                                mono(size: 14, color: TermColors.textBright),),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Deleted entries are moved to the trash instead of '
-                          'being permanently erased.',
-                          style: mono(size: 11, color: TermColors.textDim),
+                        SectionLabel(roundsLabel),
+                        PromptField(
+                          controller: _rounds,
+                          sigil: '#',
+                          onChanged: (_) => _commitRounds(),
+                          onSubmitted: (_) => _commitRounds(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  TermButton(
+                    label: 'BENCHMARK',
+                    tooltip: 'Find the rounds that take ~1 second here',
+                    busy: _benchmarking,
+                    onPressed: _benchmarking ? null : _benchmark,
+                  ),
+                ],
+              ),
+              const _SettingsDivider(),
+
+              // History
+              const SectionLabel('entry history'),
+              const SizedBox(height: 6),
+              Text(
+                'Limits on retained prior versions per entry. Use -1 for '
+                'unlimited.',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel('max items'),
+                        PromptField(
+                          controller: _histItems,
+                          sigil: '#',
+                          onChanged: (_) => _commitHistItems(),
+                          onSubmitted: (_) => _commitHistItems(),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Switch(
-                    value: controller.recycleBinEnabled,
-                    activeThumbColor: TermColors.green,
-                    onChanged: (v) {
-                      controller.setRecycleBinEnabled(v);
-                      setSheet(() {});
-                    },
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel('max size (MiB)'),
+                        PromptField(
+                          controller: _histSize,
+                          sigil: '#',
+                          onChanged: (_) => _commitHistSize(),
+                          onSubmitted: (_) => _commitHistSize(),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Changes are saved with the vault (⌘S).',
+                style: mono(size: 11, color: TermColors.textFaint),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _settingText(String title, String desc) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: mono(size: 14, color: TermColors.textBright)),
+          const SizedBox(height: 2),
+          Text(desc, style: mono(size: 11, color: TermColors.textDim)),
+        ],
+      );
+}
+
+class _SettingsDivider extends StatelessWidget {
+  const _SettingsDivider();
+  @override
+  Widget build(BuildContext context) => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Divider(height: 1, color: TermColors.border),
+      );
 }
 
 class _HeaderBtn extends StatelessWidget {
@@ -524,6 +844,8 @@ class _ListPane extends StatelessWidget {
     required this.onQuery,
     required this.onSelect,
     required this.folderName,
+    required this.sort,
+    required this.onSortChanged,
     this.onFolderTap,
     this.onAdd,
   });
@@ -533,6 +855,8 @@ class _ListPane extends StatelessWidget {
   final List<Entry> entries;
   final Entry? selected;
   final String folderName;
+  final EntrySort sort;
+  final ValueChanged<EntrySort> onSortChanged;
   final VoidCallback? onFolderTap; // non-null on narrow → opens the folder picker
   final VoidCallback? onAdd; // create a new entry in this folder
   final ValueChanged<String> onQuery;
@@ -562,13 +886,40 @@ class _ListPane extends StatelessWidget {
                 if (onFolderTap != null)
                   const Icon(Icons.expand_more,
                       size: 14, color: TermColors.textDim,),
+                Tooltip(
+                  message: 'Sort entries (${sort.label})',
+                  child: PopupMenuButton<EntrySort>(
+                    icon: const Icon(Icons.sort,
+                        size: 16, color: TermColors.textDim,),
+                    tooltip: '',
+                    padding: EdgeInsets.zero,
+                    splashRadius: 18,
+                    constraints: const BoxConstraints(),
+                    color: TermColors.surfaceAlt,
+                    onSelected: onSortChanged,
+                    itemBuilder: (_) => [
+                      for (final s in EntrySort.values)
+                        PopupMenuItem<EntrySort>(
+                          value: s,
+                          child: Text(
+                            '${s == sort ? "› " : "  "}${s.label}',
+                            style: mono(
+                                size: 12,
+                                color: s == sort
+                                    ? TermColors.green
+                                    : TermColors.text,),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
                 if (onAdd != null)
                   Tooltip(
                     message: 'New entry',
                     child: InkWell(
                       onTap: onAdd,
                       child: const Padding(
-                        padding: EdgeInsets.only(left: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 4),
                         child: Icon(Icons.add,
                             size: 18, color: TermColors.green,),
                       ),

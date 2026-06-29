@@ -13,6 +13,8 @@ class DatabaseMeta {
     this.generator = 'dgvault',
     this.recycleBinEnabled = true,
     this.recycleBinUuid,
+    this.historyMaxItems = 10,
+    this.historyMaxSize = 6 * 1024 * 1024,
     Map<String, String>? customData,
   }) : customData = customData ?? <String, String>{};
 
@@ -24,6 +26,14 @@ class DatabaseMeta {
   /// UUID of the Recycle Bin group (so the UI can keep trashed entries out of
   /// the normal view). Null/empty when there is no recycle bin.
   String? recycleBinUuid;
+
+  /// Max retained history versions per entry (KDBX HistoryMaxItems). A negative
+  /// value means unlimited. KeePass default is 10.
+  int historyMaxItems;
+
+  /// Max total history size per entry in bytes (KDBX HistoryMaxSize). A negative
+  /// value means unlimited. KeePass default is 6 MiB.
+  int historyMaxSize;
 
   /// Arbitrary plugin/app key-values stored in the database (e.g. read-only hint).
   final Map<String, String> customData;

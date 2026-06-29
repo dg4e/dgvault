@@ -49,6 +49,8 @@ class KeePassXml {
         if (db.meta.recycleBinUuid != null) {
           _textEl(builder, 'RecycleBinUUID', db.meta.recycleBinUuid!);
         }
+        _textEl(builder, 'HistoryMaxItems', '${db.meta.historyMaxItems}');
+        _textEl(builder, 'HistoryMaxSize', '${db.meta.historyMaxSize}');
         builder.element('Binaries', nest: () {
           for (final bin in db.binaryPool) {
             builder.element('Binary', nest: () {
@@ -192,6 +194,10 @@ class KeePassXml {
       }
     }
     final rbUuid = metaEl?.getElement('RecycleBinUUID')?.innerText;
+    final hMaxItems = int.tryParse(
+        metaEl?.getElement('HistoryMaxItems')?.innerText ?? '',);
+    final hMaxSize = int.tryParse(
+        metaEl?.getElement('HistoryMaxSize')?.innerText ?? '',);
     return DatabaseMeta(
       name: metaEl?.getElement('DatabaseName')?.innerText ?? 'Database',
       description: metaEl?.getElement('DatabaseDescription')?.innerText,
@@ -202,6 +208,8 @@ class KeePassXml {
       recycleBinUuid: (rbUuid == null || rbUuid.isEmpty || _isZeroUuid(rbUuid))
           ? null
           : rbUuid,
+      historyMaxItems: hMaxItems ?? 10,
+      historyMaxSize: hMaxSize ?? 6 * 1024 * 1024,
       customData: customData,
     );
   }

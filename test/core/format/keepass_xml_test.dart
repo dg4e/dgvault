@@ -61,6 +61,19 @@ void main() {
     expect(back.root.groups.single.name, 'Servers');
   });
 
+  test('round-trips history limits (defaults + custom)', () {
+    final back = codec.decode(codec.encode(_sample()));
+    expect(back.meta.historyMaxItems, 10); // defaults
+    expect(back.meta.historyMaxSize, 6 * 1024 * 1024);
+
+    final db = _sample();
+    db.meta.historyMaxItems = 25;
+    db.meta.historyMaxSize = 2 * 1024 * 1024;
+    final back2 = codec.decode(codec.encode(db));
+    expect(back2.meta.historyMaxItems, 25);
+    expect(back2.meta.historyMaxSize, 2 * 1024 * 1024);
+  });
+
   test('round-trips entry fields incl. protected + custom', () {
     final db = _sample();
     final back = codec.decode(codec.encode(db));

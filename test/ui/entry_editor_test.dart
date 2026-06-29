@@ -29,7 +29,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: EntryEditor(controller: c, group: personal),
-    ));
+    ),);
 
     await tester.enterText(find.byType(TextField).first, 'New Login');
     await tester.tap(find.text('[ SAVE ]'));
@@ -47,7 +47,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: EntryEditor(controller: c, entry: gh),
-    ));
+    ),);
 
     final titleField = find.byType(TextField).first;
     await tester.enterText(titleField, 'GitHub Renamed');
@@ -72,7 +72,7 @@ void main() {
       home: Scaffold(
         body: EntryDetailView(entry: gh, onRestore: (i) => restored = i),
       ),
-    ));
+    ),);
 
     expect(find.text('// HISTORY (1)'), findsOneWidget);
     // Expand the version row, then restore it.

@@ -103,6 +103,76 @@ void main() {
       expect(c.entryCount, 3);
     });
 
+    test('addGroup / renameGroup / findParentOf', () async {
+      final c = await _open();
+      final personal =
+          c.rootGroup!.groups.firstWhere((g) => g.name == 'Personal');
+
+      final sub = c.addGroup('Banking', parent: personal);
+      expect(personal.groups, contains(sub));
+      expect(c.findParentOf(sub), personal);
+      expect(c.isDirty, isTrue);
+
+      c.renameGroup(sub, 'Finance');
+      expect(sub.name, 'Finance');
+
+      // A top-level folder defaults to root.
+      final top = c.addGroup('Servers');
+      expect(c.findParentOf(top), c.rootGroup);
+    });
+
+    test('deleteGroup moves the subtree to the Recycle Bin when enabled',
+        () async {
+      final c = await _open();
+      final work = c.rootGroup!.groups.firstWhere((g) => g.name == 'Work');
+
+      c.deleteGroup(work);
+      expect(c.rootGroup!.groups, isNot(contains(work)));
+      final bin =
+          c.rootGroup!.groups.firstWhere((g) => g.uuid == c.recycleBinUuid);
+      expect(bin.groups, contains(work)); // relocated, entries preserved
+    });
+
+    test('deleteGroup permanently removes when recycle bin is disabled',
+        () async {
+      final c = await _open();
+      c.setRecycleBinEnabled(false);
+      final work = c.rootGroup!.groups.firstWhere((g) => g.name == 'Work');
+
+      c.deleteGroup(work);
+      expect(c.findParentOf(work), isNull);
+      expect(c.rootGroup!.groups.any((g) => g.name == 'Work'), isFalse);
+    });
+
+    test('setKdfIterations updates the pending header', () async {
+      final c = await _open();
+      c.setKdfIterations(7);
+      expect(c.kdfIterations, 7);
+      expect(c.isDirty, isTrue);
+    });
+
+    test('benchmarkKdfIterations returns a positive suggestion', () async {
+      final c = await _open();
+      final n = await c.benchmarkKdfIterations(
+          target: const Duration(milliseconds: 200),);
+      expect(n, greaterThanOrEqualTo(1));
+    }, timeout: const Timeout(Duration(minutes: 1)),);
+
+    test('history limits: maxItems caps snapshots and persists in meta',
+        () async {
+      final c = await _open();
+      c.setHistoryMaxItems(2);
+      expect(c.historyMaxItems, 2);
+      final e = _find(c, 'GitHub');
+
+      for (var i = 0; i < 5; i++) {
+        c.updateEntry(e, (d) => d.fields[Field.title] = Field(
+            key: Field.title,
+            value: InMemoryProtectedValue.plain('GitHub$i'),),);
+      }
+      expect(e.history.length, 2); // bounded by the policy
+    });
+
     test('deleteEntry creates the Recycle Bin if the vault has none', () async {
       final dir = await Directory.systemTemp.createTemp('dgvault_rb');
       addTearDown(() => dir.delete(recursive: true));
