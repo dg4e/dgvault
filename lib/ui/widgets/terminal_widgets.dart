@@ -339,7 +339,7 @@ Future<void> copyWithFlash(
         backgroundColor: TermColors.surfaceAlt,
         duration: const Duration(seconds: 2),
         content: Text(
-          '✓ copied $label to clipboard — auto-clears',
+          '✓ copied $label to clipboard',
           style: mono(size: 12, color: TermColors.green),
         ),
       ),
