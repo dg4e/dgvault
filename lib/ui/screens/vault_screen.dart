@@ -48,23 +48,42 @@ class _VaultScreenState extends State<VaultScreen> {
     super.dispose();
   }
 
-  /// Entries to show: search results (across the whole vault) when searching,
-  /// otherwise the selected folder's entries. The root view excludes the
-  /// Recycle Bin so trashed/old entries don't masquerade as duplicates.
+  /// Entries to show. Searching → results across the vault. The root/"All" view
+  /// aggregates every live entry (excluding the Recycle Bin). A selected folder
+  /// shows its own direct entries (drill into subfolders via the tree).
   List<Entry> get _entries {
-    if (_query.isNotEmpty) return _entrySort.apply(widget.controller.search(_query));
+    if (_query.isNotEmpty) {
+      return _entrySort.apply(widget.controller.search(_query));
+    }
     final root = widget.controller.rootGroup;
     if (root == null) return const [];
-    final group = _group ?? root;
-    final raw = identical(group, root)
+    final group = _group;
+    final raw = (group == null || identical(group, root))
         ? root
             .entriesExcluding(
                 widget.controller.recycleBinUuid == null
                     ? const {}
                     : {widget.controller.recycleBinUuid!},)
             .toList()
-        : group.allEntries.toList();
+        : group.entries.toList();
     return _entrySort.apply(raw);
+  }
+
+  /// The folder whose entries can be drag-reordered right now: a specific folder
+  /// is selected, sort is manual, and we're not searching. Otherwise null.
+  Group? get _reorderGroup {
+    if (_query.isNotEmpty || _entrySort != EntrySort.manual) return null;
+    final root = widget.controller.rootGroup;
+    final g = _group;
+    if (root == null || g == null || identical(g, root)) return null;
+    return g;
+  }
+
+  void _reorderEntries(int oldIndex, int newIndex) {
+    final g = _reorderGroup;
+    if (g == null) return;
+    widget.controller.reorderEntries(g, oldIndex, newIndex);
+    setState(() {});
   }
 
   void _selectGroup(Group g) => setState(() {
@@ -94,10 +113,15 @@ class _VaultScreenState extends State<VaultScreen> {
             Navigator.pop(context);
             _renameFolder(g);
           },
+          onMoveFolder: (g) {
+            Navigator.pop(context);
+            _moveFolder(g);
+          },
           onDeleteFolder: (g) {
             Navigator.pop(context);
             _deleteFolder(g);
           },
+          onReorder: _reorderFolders,
           onSelect: (g) {
             Navigator.pop(context);
             _selectGroup(g);
@@ -168,6 +192,7 @@ class _VaultScreenState extends State<VaultScreen> {
               entry: e,
               onEdit: () => _editEntry(e),
               onDelete: () => _deleteEntry(e, pop: true),
+              onMove: () => _moveEntry(e, pop: true),
               onRestore: (i) => _restoreHistory(e, i),
             ),
           ),
@@ -311,6 +336,101 @@ class _VaultScreenState extends State<VaultScreen> {
     }
   }
 
+  void _reorderFolders(Group parent, int oldIndex, int newIndex) {
+    widget.controller.reorderGroups(parent, oldIndex, newIndex);
+    setState(() {});
+  }
+
+  Future<void> _moveFolder(Group g) async {
+    final target = await _pickTargetFolder(
+      title: 'MOVE FOLDER TO',
+      enabled: (dest) => widget.controller.canMoveGroupInto(g, dest),
+    );
+    if (target == null) return;
+    widget.controller.moveGroup(g, target);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _moveEntry(Entry e, {bool pop = false}) async {
+    final owner = widget.controller.findGroupOf(e);
+    final target = await _pickTargetFolder(
+      title: 'MOVE ENTRY TO',
+      enabled: (dest) => !identical(dest, owner),
+    );
+    if (target == null) return;
+    widget.controller.moveEntry(e, target);
+    if (pop && mounted) Navigator.of(context).pop();
+    if (mounted) {
+      setState(() {
+        if (identical(_selected, e) && _reorderGroup == null) {
+          // It left the current view; drop the stale selection.
+          if (!_entries.contains(e)) _selected = null;
+        }
+      });
+    }
+  }
+
+  /// Show the folder tree as a picker and return the chosen group (or null).
+  /// [enabled] dims/disables invalid targets.
+  Future<Group?> _pickTargetFolder({
+    required String title,
+    bool Function(Group)? enabled,
+  }) {
+    final root = widget.controller.rootGroup;
+    if (root == null) return Future.value();
+    return showDialog<Group>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: TermColors.surface,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: TermColors.border),
+          borderRadius: BorderRadius.zero,
+        ),
+        child: SizedBox(
+          width: 360,
+          height: 440,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 8, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text('// $title',
+                          style: mono(
+                              size: 13,
+                              color: TermColors.green,
+                              letterSpacing: 1.5,),),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(ctx),
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(Icons.close,
+                            size: 18, color: TermColors.textDim,),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: FolderTree(
+                  root: root,
+                  selected: root,
+                  recycleBinUuid: widget.controller.recycleBinUuid,
+                  sort: _folderSort,
+                  selectableFilter: enabled,
+                  onSelect: (g) => Navigator.pop(ctx, g),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// A single-line text prompt dialog (folder name). Returns the trimmed text,
   /// or null if cancelled.
   Future<String?> _promptName({
@@ -418,7 +538,9 @@ class _VaultScreenState extends State<VaultScreen> {
                                       setState(() => _folderSort = s),
                                   onAddFolder: _addFolder,
                                   onRenameFolder: _renameFolder,
+                                  onMoveFolder: _moveFolder,
                                   onDeleteFolder: _deleteFolder,
+                                  onReorder: _reorderFolders,
                                 ),
                               ),
                               const VerticalDivider(
@@ -436,6 +558,8 @@ class _VaultScreenState extends State<VaultScreen> {
                                 onSortChanged: (s) =>
                                     setState(() => _entrySort = s),
                                 onAdd: _addEntry,
+                                onReorder:
+                                    _reorderGroup == null ? null : _reorderEntries,
                                 onQuery: (q) => setState(() => _query = q),
                                 onSelect: (e) => _onSelect(e, true),
                               ),
@@ -451,6 +575,7 @@ class _VaultScreenState extends State<VaultScreen> {
                                       entry: _selected!,
                                       onEdit: () => _editEntry(_selected!),
                                       onDelete: () => _deleteEntry(_selected!),
+                                      onMove: () => _moveEntry(_selected!),
                                       onRestore: (i) =>
                                           _restoreHistory(_selected!, i),
                                     ),
@@ -468,6 +593,8 @@ class _VaultScreenState extends State<VaultScreen> {
                               setState(() => _entrySort = s),
                           onFolderTap: _pickFolder,
                           onAdd: _addEntry,
+                          onReorder:
+                              _reorderGroup == null ? null : _reorderEntries,
                           onQuery: (q) => setState(() => _query = q),
                           onSelect: (e) => _onSelect(e, false),
                         ),
@@ -848,6 +975,7 @@ class _ListPane extends StatelessWidget {
     required this.onSortChanged,
     this.onFolderTap,
     this.onAdd,
+    this.onReorder,
   });
 
   final TextEditingController search;
@@ -859,6 +987,7 @@ class _ListPane extends StatelessWidget {
   final ValueChanged<EntrySort> onSortChanged;
   final VoidCallback? onFolderTap; // non-null on narrow → opens the folder picker
   final VoidCallback? onAdd; // create a new entry in this folder
+  final void Function(int oldIndex, int newIndex)? onReorder; // drag-to-reorder
   final ValueChanged<String> onQuery;
   final ValueChanged<Entry> onSelect;
 
@@ -949,32 +1078,60 @@ class _ListPane extends StatelessWidget {
                     style: mono(color: TermColors.textFaint),
                   ),
                 )
-              : ListView.builder(
-                  itemCount: entries.length,
-                  itemBuilder: (_, i) => _EntryRow(
-                    entry: entries[i],
-                    selected: entries[i] == selected,
-                    onTap: () => onSelect(entries[i]),
-                  ),
-                ),
+              : onReorder != null
+                  ? ReorderableListView.builder(
+                      buildDefaultDragHandles: false,
+                      itemCount: entries.length,
+                      // Pre-removal index convention matches reorderEntries.
+                      // ignore: deprecated_member_use
+                      onReorder: onReorder!,
+                      itemBuilder: (_, i) => _EntryRow(
+                        key: ValueKey('entry-${entries[i].uuid}'),
+                        entry: entries[i],
+                        selected: entries[i] == selected,
+                        reorderIndex: i,
+                        onTap: () => onSelect(entries[i]),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: entries.length,
+                      itemBuilder: (_, i) => _EntryRow(
+                        key: ValueKey('entry-${entries[i].uuid}'),
+                        entry: entries[i],
+                        selected: entries[i] == selected,
+                        onTap: () => onSelect(entries[i]),
+                      ),
+                    ),
         ),
       ],
     );
   }
 }
 
-class _EntryRow extends StatelessWidget {
+class _EntryRow extends StatefulWidget {
   const _EntryRow({
+    super.key,
     required this.entry,
     required this.selected,
     required this.onTap,
+    this.reorderIndex,
   });
   final Entry entry;
   final bool selected;
   final VoidCallback onTap;
+  final int? reorderIndex; // non-null when the list is drag-reorderable
+
+  @override
+  State<_EntryRow> createState() => _EntryRowState();
+}
+
+class _EntryRowState extends State<_EntryRow> {
+  bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
+    final entry = widget.entry;
+    final selected = widget.selected;
     final user = entry.fields[Field.userName]?.value.reveal() ?? '';
     final url = entry.fields[Field.url]?.value.reveal();
     final tip = [
@@ -982,60 +1139,74 @@ class _EntryRow extends StatelessWidget {
       if (user.isNotEmpty) 'user: $user',
       if (url != null && url.isNotEmpty) url,
     ].join('\n');
-    return Tooltip(
-      message: tip,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: selected ? TermColors.surfaceAlt : Colors.transparent,
-            border: Border(
-              left: BorderSide(
-                color: selected ? TermColors.green : Colors.transparent,
-                width: 2,
+    final showHandle = widget.reorderIndex != null && _hover;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: Tooltip(
+        message: tip,
+        child: InkWell(
+          onTap: widget.onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: selected ? TermColors.surfaceAlt : Colors.transparent,
+              border: Border(
+                left: BorderSide(
+                  color: selected ? TermColors.green : Colors.transparent,
+                  width: 2,
+                ),
+                bottom: const BorderSide(color: TermColors.border, width: 0.5),
               ),
-              bottom: const BorderSide(color: TermColors.border, width: 0.5),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Text(
-                selected ? '▸ ' : '  ',
-                style: mono(size: 13, color: TermColors.green),
-              ),
-              const Icon(
-                Icons.vpn_key_outlined,
-                size: 14,
-                color: TermColors.greenDim,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.title ?? '(untitled)',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: mono(size: 14, color: TermColors.textBright),
-                    ),
-                    if (user.isNotEmpty)
+            padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+            child: Row(
+              children: [
+                Text(
+                  selected ? '▸ ' : '  ',
+                  style: mono(size: 13, color: TermColors.green),
+                ),
+                const Icon(
+                  Icons.vpn_key_outlined,
+                  size: 14,
+                  color: TermColors.greenDim,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        user,
+                        entry.title ?? '(untitled)',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: mono(size: 11, color: TermColors.textDim),
+                        style: mono(size: 14, color: TermColors.textBright),
                       ),
-                  ],
+                      if (user.isNotEmpty)
+                        Text(
+                          user,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: mono(size: 11, color: TermColors.textDim),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (entry.tags.isNotEmpty)
-                Text(
-                  '#${entry.tags.first}',
-                  style: mono(size: 10, color: TermColors.magenta),
-                ),
-            ],
+                if (showHandle)
+                  ReorderableDragStartListener(
+                    index: widget.reorderIndex!,
+                    child: const Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child: Icon(Icons.drag_indicator,
+                          size: 16, color: TermColors.textDim,),
+                    ),
+                  )
+                else if (entry.tags.isNotEmpty)
+                  Text(
+                    '#${entry.tags.first}',
+                    style: mono(size: 10, color: TermColors.magenta),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

@@ -13,11 +13,13 @@ class EntryDetailView extends StatefulWidget {
     required this.entry,
     this.onEdit,
     this.onDelete,
+    this.onMove,
     this.onRestore,
   });
   final Entry entry;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onMove;
   final ValueChanged<int>? onRestore; // restore history[index]
 
   @override
@@ -67,6 +69,11 @@ class _EntryDetailViewState extends State<EntryDetailView> {
                 ),
               ),
             ),
+            if (widget.onMove != null)
+              _ActionBtn(
+                  icon: Icons.drive_file_move_outline,
+                  tooltip: 'Move to folder',
+                  onTap: widget.onMove!,),
             if (widget.onEdit != null)
               _ActionBtn(
                   icon: Icons.edit_outlined,

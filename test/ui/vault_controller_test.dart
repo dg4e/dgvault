@@ -144,6 +144,58 @@ void main() {
       expect(c.rootGroup!.groups.any((g) => g.name == 'Work'), isFalse);
     });
 
+    test('reorderEntries reorders a group\'s direct entries', () async {
+      final c = await _open();
+      final personal =
+          c.rootGroup!.groups.firstWhere((g) => g.name == 'Personal');
+      expect(personal.entries.map((e) => e.title), ['GitHub', 'Proton Mail']);
+
+      c.reorderEntries(personal, 0, 2); // move GitHub after Proton Mail
+      expect(personal.entries.map((e) => e.title), ['Proton Mail', 'GitHub']);
+      expect(c.isDirty, isTrue);
+    });
+
+    test('reorderGroups reorders child folders', () async {
+      final c = await _open();
+      final root = c.rootGroup!;
+      final names = root.groups.map((g) => g.name).toList();
+      expect(names.take(2), ['Personal', 'Work']);
+
+      c.reorderGroups(root, 0, 2); // Personal after Work
+      final after = root.groups.map((g) => g.name).toList();
+      expect(after.indexOf('Work'), lessThan(after.indexOf('Personal')));
+    });
+
+    test('moveEntry relocates an entry to another folder', () async {
+      final c = await _open();
+      final work = c.rootGroup!.groups.firstWhere((g) => g.name == 'Work');
+      final gh = _find(c, 'GitHub');
+
+      c.moveEntry(gh, work);
+      expect(c.findGroupOf(gh), work);
+      expect(work.entries.map((e) => e.title), contains('GitHub'));
+    });
+
+    test('moveGroup re-parents; refuses cycles and root', () async {
+      final c = await _open();
+      final root = c.rootGroup!;
+      final personal = root.groups.firstWhere((g) => g.name == 'Personal');
+      final work = root.groups.firstWhere((g) => g.name == 'Work');
+
+      c.moveGroup(work, personal);
+      expect(c.findParentOf(work), personal);
+      expect(root.groups, isNot(contains(work)));
+
+      // Refuse moving an ancestor into its own descendant.
+      expect(c.canMoveGroupInto(personal, work), isFalse);
+      c.moveGroup(personal, work);
+      expect(c.findParentOf(personal), root); // unchanged
+
+      // Refuse moving the root.
+      c.moveGroup(root, personal);
+      expect(identical(c.rootGroup, root), isTrue);
+    });
+
     test('setKdfIterations updates the pending header', () async {
       final c = await _open();
       c.setKdfIterations(7);

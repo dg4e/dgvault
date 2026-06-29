@@ -3,6 +3,7 @@
 import 'package:dgvault/ui/app.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:dgvault/ui/theme/terminal_theme.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -110,6 +111,25 @@ void main() {
 
     expect(find.text('https://github.com'), findsNothing);
     expect(find.text('https://proton.me'), findsOneWidget);
+  });
+
+  testWidgets('move-to relocates the selected entry via the folder picker',
+      (tester) async {
+    final c = await _unlocked(tester);
+    final gh = c.search('GitHub').first;
+    expect(c.findGroupOf(gh)!.name, 'Personal');
+
+    // GitHub is auto-selected in the wide detail pane → its Move action shows.
+    await tester.tap(find.byTooltip('Move to folder'));
+    await tester.pumpAndSettle();
+    expect(find.text('// MOVE ENTRY TO'), findsOneWidget);
+
+    // Choose 'Work' from the picker dialog (disambiguate from the sidebar).
+    await tester.tap(find.descendant(
+        of: find.byType(Dialog), matching: find.text('Work'),),);
+    await tester.pumpAndSettle();
+
+    expect(c.findGroupOf(gh)!.name, 'Work');
   });
 
   testWidgets('folder tree shows groups; Recycle Bin excluded from default view',

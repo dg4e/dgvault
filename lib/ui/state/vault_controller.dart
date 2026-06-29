@@ -276,6 +276,60 @@ class VaultController extends ChangeNotifier {
     _touch();
   }
 
+  /// Reorder [group]'s direct entries (drag-and-drop). [newIndex] follows the
+  /// Flutter ReorderableListView convention (index into the pre-removal list).
+  void reorderEntries(Group group, int oldIndex, int newIndex) {
+    if (_db == null) return;
+    if (oldIndex < 0 || oldIndex >= group.entries.length) return;
+    if (newIndex > oldIndex) newIndex -= 1;
+    final e = group.entries.removeAt(oldIndex);
+    group.entries.insert(newIndex.clamp(0, group.entries.length), e);
+    _touch();
+  }
+
+  /// Reorder [parent]'s child folders (already resolved sibling indices).
+  void reorderGroups(Group parent, int oldIndex, int newIndex) {
+    if (_db == null) return;
+    if (oldIndex < 0 || oldIndex >= parent.groups.length) return;
+    final g = parent.groups.removeAt(oldIndex);
+    parent.groups.insert(newIndex.clamp(0, parent.groups.length), g);
+    _touch();
+  }
+
+  /// Move [entry] into [target] (no-op if it is already there).
+  void moveEntry(Entry entry, Group target) {
+    if (_db == null) return;
+    final owner = findGroupOf(entry);
+    if (owner == null || identical(owner, target)) return;
+    owner.entries.remove(entry);
+    target.entries.add(entry);
+    entry.modified = DateTime.now().toUtc();
+    _touch();
+  }
+
+  /// Re-parent [group] under [target]. Refused for the root, for moves into the
+  /// group's own subtree (would create a cycle), and for no-op moves.
+  void moveGroup(Group group, Group target) {
+    final db = _db;
+    if (db == null || identical(group, db.root) || identical(group, target)) {
+      return;
+    }
+    if (_isDescendant(group, target)) return; // can't move into own subtree
+    final parent = findParentOf(group);
+    if (parent == null || identical(parent, target)) return;
+    parent.groups.remove(group);
+    target.groups.add(group);
+    _touch();
+  }
+
+  /// Whether [group] may be moved under [target] (used to filter the picker).
+  bool canMoveGroupInto(Group group, Group target) {
+    final db = _db;
+    if (db == null || identical(group, db.root)) return false;
+    if (identical(group, target) || _isDescendant(group, target)) return false;
+    return !identical(findParentOf(group), target);
+  }
+
   /// Restore the [index]th history version of [entry] (the pre-restore state is
   /// snapshotted first, so it is itself undoable).
   void restoreHistory(Entry entry, int index) {
