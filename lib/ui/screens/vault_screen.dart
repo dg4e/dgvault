@@ -1,5 +1,6 @@
 // dgvault — vault: responsive master/detail (two-pane wide, stacked narrow).
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -111,7 +112,7 @@ class _VaultScreenState extends State<VaultScreen> {
 
     void gen() => showGenerator(context);
     final lock = widget.controller.lock;
-    return CallbackShortcuts(
+    final Widget tree = CallbackShortcuts(
       // Bind both Control and Meta (⌘) so the shortcuts feel native on every OS.
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.keyG, control: true): gen,
@@ -190,6 +191,56 @@ class _VaultScreenState extends State<VaultScreen> {
           ),
         ),
       ),
+    );
+
+    // On macOS the native menu owns ⌘ key-equivalents and processes them before
+    // Flutter sees the key — the default menu's "Find Next" (⌘G) and "Copy" (⌘C)
+    // were swallowing our shortcuts. Declaring them as real menu commands makes
+    // ⌘G/⌘C/⌘L reliable (focus-independent) and replaces those defaults.
+    if (defaultTargetPlatform != TargetPlatform.macOS) return tree;
+    return PlatformMenuBar(
+      menus: [
+        const PlatformMenu(
+          label: 'dgvault',
+          menus: [
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.about),
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
+          ],
+        ),
+        PlatformMenu(
+          label: 'Vault',
+          menus: [
+            PlatformMenuItem(
+              label: 'Generate Password',
+              shortcut:
+                  const SingleActivator(LogicalKeyboardKey.keyG, meta: true),
+              onSelected: gen,
+            ),
+            PlatformMenuItem(
+              label: 'Copy Password',
+              shortcut:
+                  const SingleActivator(LogicalKeyboardKey.keyC, meta: true),
+              onSelected: _copyPassword,
+            ),
+            PlatformMenuItem(
+              label: 'Lock Vault',
+              shortcut:
+                  const SingleActivator(LogicalKeyboardKey.keyL, meta: true),
+              onSelected: lock,
+            ),
+          ],
+        ),
+        const PlatformMenu(
+          label: 'Window',
+          menus: [
+            PlatformProvidedMenuItem(
+                type: PlatformProvidedMenuItemType.minimizeWindow,),
+            PlatformProvidedMenuItem(
+                type: PlatformProvidedMenuItemType.zoomWindow,),
+          ],
+        ),
+      ],
+      child: tree,
     );
   }
 }
