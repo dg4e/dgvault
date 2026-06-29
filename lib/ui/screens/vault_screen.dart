@@ -21,13 +21,60 @@ class VaultScreen extends StatefulWidget {
 
 class _VaultScreenState extends State<VaultScreen> {
   final _search = TextEditingController();
+  late final FocusNode _searchFocus = FocusNode(onKeyEvent: _onSearchKey);
   String _query = '';
   Entry? _selected;
 
   @override
   void dispose() {
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  List<Entry> get _entries => widget.controller.search(_query);
+
+  // Arrow keys navigate the list even while the search box is focused (fzf-style).
+  KeyEventResult _onSearchKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _move(1);
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _move(-1);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _move(int delta) {
+    final list = _entries;
+    if (list.isEmpty) return;
+    final i = _selected == null ? -1 : list.indexOf(_selected!);
+    final next = (i + delta).clamp(0, list.length - 1);
+    setState(() => _selected = list[next]);
+  }
+
+  void _focusSearch() => _searchFocus.requestFocus();
+
+  // Esc: clear an active search first; otherwise lock the vault. Focus stays on
+  // the search field so a second Esc is still caught (and locks).
+  void _onEscape() {
+    if (_search.text.isNotEmpty || _query.isNotEmpty) {
+      _search.clear();
+      setState(() => _query = '');
+    } else {
+      widget.controller.lock();
+    }
+  }
+
+  void _copyPassword() {
+    final pw = _selected?.fields[Field.password]?.value.reveal();
+    if (pw == null || pw.isEmpty) return;
+    copyWithFlash(context, pw, 'password');
   }
 
   void _onSelect(Entry e, bool wide) {
@@ -39,8 +86,10 @@ class _VaultScreenState extends State<VaultScreen> {
           builder: (_) => Scaffold(
             appBar: AppBar(
               backgroundColor: TermColors.surface,
-              title: Text(e.title ?? 'entry',
-                  style: mono(size: 15, color: TermColors.textBright),),
+              title: Text(
+                e.title ?? 'entry',
+                style: mono(size: 15, color: TermColors.textBright),
+              ),
             ),
             body: EntryDetailView(entry: e),
           ),
@@ -63,11 +112,20 @@ class _VaultScreenState extends State<VaultScreen> {
     void gen() => showGenerator(context);
     final lock = widget.controller.lock;
     return CallbackShortcuts(
+      // Bind both Control and Meta (⌘) so the shortcuts feel native on every OS.
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.keyG, control: true): gen,
         const SingleActivator(LogicalKeyboardKey.keyG, meta: true): gen,
         const SingleActivator(LogicalKeyboardKey.keyL, control: true): lock,
         const SingleActivator(LogicalKeyboardKey.keyL, meta: true): lock,
+        const SingleActivator(LogicalKeyboardKey.keyC, control: true):
+            _copyPassword,
+        const SingleActivator(LogicalKeyboardKey.keyC, meta: true):
+            _copyPassword,
+        const SingleActivator(LogicalKeyboardKey.slash): _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.escape): _onEscape,
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(1),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(-1),
       },
       child: Focus(
         autofocus: true,
@@ -85,6 +143,7 @@ class _VaultScreenState extends State<VaultScreen> {
                               width: 340,
                               child: _ListPane(
                                 search: _search,
+                                searchFocus: _searchFocus,
                                 entries: entries,
                                 selected: _selected,
                                 onQuery: (q) => setState(() => _query = q),
@@ -92,7 +151,9 @@ class _VaultScreenState extends State<VaultScreen> {
                               ),
                             ),
                             const VerticalDivider(
-                                width: 1, color: TermColors.border,),
+                              width: 1,
+                              color: TermColors.border,
+                            ),
                             Expanded(
                               child: _selected == null
                                   ? const _EmptyDetail()
@@ -102,6 +163,7 @@ class _VaultScreenState extends State<VaultScreen> {
                         )
                       : _ListPane(
                           search: _search,
+                          searchFocus: _searchFocus,
                           entries: entries,
                           selected: null,
                           onQuery: (q) => setState(() => _query = q),
@@ -114,7 +176,14 @@ class _VaultScreenState extends State<VaultScreen> {
                     '${entries.length}/${widget.controller.entryCount} entries',
                     if (_query.isNotEmpty) 'filter:"$_query"',
                   ],
-                  right: const ['aes-256', '^G gen', '^L lock'],
+                  right: [
+                    '/ find',
+                    '↑↓ nav',
+                    '${hotkey('C')} copy',
+                    '${hotkey('G')} gen',
+                    '${hotkey('L')} lock',
+                    'esc',
+                  ],
                 ),
               ],
             ),
@@ -138,21 +207,28 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Text('dgvault',
-              style: mono(
-                  size: 15, color: TermColors.green, weight: FontWeight.w700,),),
+          Text(
+            'dgvault',
+            style: mono(
+              size: 15,
+              color: TermColors.green,
+              weight: FontWeight.w700,
+            ),
+          ),
           Text(' ://vault', style: mono(size: 13, color: TermColors.textDim)),
           const Spacer(),
           _HeaderBtn(
-              label: 'gen',
-              icon: Icons.casino_outlined,
-              onTap: () => showGenerator(context),),
+            label: 'gen',
+            icon: Icons.casino_outlined,
+            onTap: () => showGenerator(context),
+          ),
           const SizedBox(width: 6),
           _HeaderBtn(
-              label: 'lock',
-              icon: Icons.lock_outline,
-              color: TermColors.amber,
-              onTap: controller.lock,),
+            label: 'lock',
+            icon: Icons.lock_outline,
+            color: TermColors.amber,
+            onTap: controller.lock,
+          ),
         ],
       ),
     );
@@ -160,11 +236,12 @@ class _Header extends StatelessWidget {
 }
 
 class _HeaderBtn extends StatelessWidget {
-  const _HeaderBtn(
-      {required this.label,
-      required this.icon,
-      required this.onTap,
-      this.color = TermColors.green,});
+  const _HeaderBtn({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.color = TermColors.green,
+  });
   final String label;
   final IconData icon;
   final VoidCallback onTap;
@@ -176,7 +253,8 @@ class _HeaderBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-            border: Border.all(color: color.withValues(alpha: 0.5)),),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -193,6 +271,7 @@ class _HeaderBtn extends StatelessWidget {
 class _ListPane extends StatelessWidget {
   const _ListPane({
     required this.search,
+    required this.searchFocus,
     required this.entries,
     required this.selected,
     required this.onQuery,
@@ -200,6 +279,7 @@ class _ListPane extends StatelessWidget {
   });
 
   final TextEditingController search;
+  final FocusNode searchFocus;
   final List<Entry> entries;
   final Entry? selected;
   final ValueChanged<String> onQuery;
@@ -214,6 +294,7 @@ class _ListPane extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: PromptField(
             controller: search,
+            focusNode: searchFocus,
             sigil: '/',
             sigilColor: TermColors.cyan,
             hint: 'search all fields…',
@@ -224,8 +305,10 @@ class _ListPane extends StatelessWidget {
         Expanded(
           child: entries.isEmpty
               ? Center(
-                  child: Text('no matches',
-                      style: mono(color: TermColors.textFaint),),
+                  child: Text(
+                    'no matches',
+                    style: mono(color: TermColors.textFaint),
+                  ),
                 )
               : ListView.builder(
                   itemCount: entries.length,
@@ -242,8 +325,11 @@ class _ListPane extends StatelessWidget {
 }
 
 class _EntryRow extends StatelessWidget {
-  const _EntryRow(
-      {required this.entry, required this.selected, required this.onTap,});
+  const _EntryRow({
+    required this.entry,
+    required this.selected,
+    required this.onTap,
+  });
   final Entry entry;
   final bool selected;
   final VoidCallback onTap;
@@ -271,8 +357,11 @@ class _EntryRow extends StatelessWidget {
               selected ? '▸ ' : '  ',
               style: mono(size: 13, color: TermColors.green),
             ),
-            const Icon(Icons.vpn_key_outlined,
-                size: 14, color: TermColors.greenDim,),
+            const Icon(
+              Icons.vpn_key_outlined,
+              size: 14,
+              color: TermColors.greenDim,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

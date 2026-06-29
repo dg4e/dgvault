@@ -5,7 +5,19 @@
 // accents, thin "box-drawing" borders and corner brackets. Tasteful, not a
 // Matrix parody — high contrast and readable on phones and desktops alike.
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+
+/// Apple platforms use ⌘ (Command); everywhere else uses Ctrl.
+bool get isApplePlatform =>
+    defaultTargetPlatform == TargetPlatform.macOS ||
+    defaultTargetPlatform == TargetPlatform.iOS;
+
+/// The primary modifier glyph for this platform: `⌘` on macOS/iOS, `Ctrl` else.
+String get modKey => isApplePlatform ? '⌘' : 'Ctrl';
+
+/// A platform-correct hotkey label, e.g. `⌘G` on macOS, `Ctrl+G` on Windows/Linux.
+String hotkey(String key) => isApplePlatform ? '$modKey$key' : '$modKey+$key';
 
 /// The palette. One-Dark/GitHub-dark lineage with a green primary.
 class TermColors {

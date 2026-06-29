@@ -242,22 +242,26 @@ class StatusBar extends StatelessWidget {
           color: bg,
           child: Text(s, style: mono(size: 11, color: fg, weight: FontWeight.w600)),
         );
+    Widget item(String s) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Text(s, style: mono(size: 11, color: TermColors.textDim)),
+        );
     return Container(
       color: TermColors.surface,
       child: Row(
         children: [
           seg(mode, TermColors.bg, modeColor),
-          for (final s in left)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              child: Text(s, style: mono(size: 11, color: TermColors.textDim)),
-            ),
+          for (final s in left) item(s),
           const Spacer(),
-          for (final s in right)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              child: Text(s, style: mono(size: 11, color: TermColors.textDim)),
+          // Right hints can be many on desktop; scroll horizontally rather than
+          // overflow on a narrow phone (keeps the trailing end visible).
+          Flexible(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: Row(children: [for (final s in right) item(s)]),
             ),
+          ),
         ],
       ),
     );
