@@ -7,13 +7,18 @@ import 'package:dgvault/core/generator/password_generator.dart';
 import '../theme/terminal_theme.dart';
 import '../widgets/terminal_widgets.dart';
 
+bool _generatorOpen = false;
+
 void showGenerator(BuildContext context) {
+  // Repeated ⌘G / taps must not stack sheets.
+  if (_generatorOpen) return;
+  _generatorOpen = true;
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: TermColors.bg,
     isScrollControlled: true,
     builder: (_) => const _GeneratorSheet(),
-  );
+  ).whenComplete(() => _generatorOpen = false);
 }
 
 class _GeneratorSheet extends StatefulWidget {

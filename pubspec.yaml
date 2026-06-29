@@ -28,3 +28,15 @@ dev_dependencies:
     sdk: flutter
   test: ^1.25.0
   flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # Bundled monospace (OFL) so the terminal glyphs (box-drawing, arrows, ⌘)
+  # render identically on every platform instead of falling back to a system
+  # font that may lack them (renders as "?").
+  fonts:
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700

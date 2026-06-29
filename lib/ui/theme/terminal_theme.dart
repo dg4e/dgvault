@@ -40,15 +40,14 @@ class TermColors {
   static const textFaint = Color(0xFF42505F); // hints / disabled
 }
 
-/// Monospace stack — no bundled font needed; falls back across platforms.
-const String kMonoFamily = 'monospace';
+/// Bundled monospace (see pubspec fonts). Falls back to system monospace fonts
+/// for any glyph it might lack.
+const String kMonoFamily = 'JetBrainsMono';
 const List<String> kMonoFallback = <String>[
   'SF Mono',
   'Menlo',
-  'JetBrains Mono',
   'Cascadia Code',
   'Consolas',
-  'Roboto Mono',
   'DejaVu Sans Mono',
   'monospace',
 ];

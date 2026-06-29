@@ -1,6 +1,5 @@
 // dgvault — vault: responsive master/detail (two-pane wide, stacked narrow).
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,6 +7,7 @@ import 'package:dgvault/core/core.dart';
 
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
+import '../widgets/app_menu.dart';
 import '../widgets/terminal_widgets.dart';
 import 'entry_detail.dart';
 import 'generator_sheet.dart';
@@ -197,16 +197,9 @@ class _VaultScreenState extends State<VaultScreen> {
     // Flutter sees the key — the default menu's "Find Next" (⌘G) and "Copy" (⌘C)
     // were swallowing our shortcuts. Declaring them as real menu commands makes
     // ⌘G/⌘C/⌘L reliable (focus-independent) and replaces those defaults.
-    if (defaultTargetPlatform != TargetPlatform.macOS) return tree;
-    return PlatformMenuBar(
-      menus: [
-        const PlatformMenu(
-          label: 'dgvault',
-          menus: [
-            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.about),
-            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
-          ],
-        ),
+    return appMenuBar(
+      child: tree,
+      appMenus: [
         PlatformMenu(
           label: 'Vault',
           menus: [
@@ -230,17 +223,7 @@ class _VaultScreenState extends State<VaultScreen> {
             ),
           ],
         ),
-        const PlatformMenu(
-          label: 'Window',
-          menus: [
-            PlatformProvidedMenuItem(
-                type: PlatformProvidedMenuItemType.minimizeWindow,),
-            PlatformProvidedMenuItem(
-                type: PlatformProvidedMenuItemType.zoomWindow,),
-          ],
-        ),
       ],
-      child: tree,
     );
   }
 }
