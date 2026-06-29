@@ -88,16 +88,14 @@ class _UnlockScreenState extends State<UnlockScreen> {
                             TermButton(
                               label: busy ? 'DECRYPTING' : 'UNLOCK',
                               busy: busy,
-                              tooltip: c.lockedOut
-                                  ? 'Locked out — close and reopen'
-                                  : 'Decrypt and open the vault (Enter)',
-                              onPressed: (busy || c.lockedOut) ? null : _submit,
+                              tooltip: 'Decrypt and open the vault (Enter)',
+                              onPressed: busy ? null : _submit,
                             ),
                             const Spacer(),
                             TermButton(
                               label: 'CLOSE',
                               color: TermColors.textDim,
-                              tooltip: 'Close this file (resets the lockout)',
+                              tooltip: 'Close this file',
                               onPressed: busy ? null : c.close,
                             ),
                           ],
