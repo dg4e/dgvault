@@ -1,51 +1,99 @@
-// The unlock flow is real (Argon2 KeyVault → KDBX decrypt), so this exercises
-// the engine through the UI controller.
+// The open/unlock/save flow is real — bytes are decrypted by KdbxCodec and
+// written back to actual files on disk.
+
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-void main() {
-  test('bootstrap → locked; correct PIN unlocks and decrypts the vault', () async {
-    final c = VaultController();
-    await c.bootstrap();
-    expect(c.status, VaultStatus.locked);
+import 'test_vault.dart';
 
-    await c.attempt(VaultController.demoPin);
+void main() {
+  test('loadBytes → locked; correct password unlocks + decrypts', () async {
+    final c = VaultController();
+    expect(c.status, VaultStatus.noVault);
+
+    c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
+    expect(c.status, VaultStatus.locked);
+    expect(c.fileName, 'test.kdbx');
+
+    await c.unlock(testVaultPassword);
     expect(c.status, VaultStatus.unlocked);
     expect(c.database, isNotNull);
-    expect(c.entryCount, greaterThan(0));
+    expect(c.entryCount, 2);
 
-    // The real search engine filters the decrypted entries.
     final hits = c.search('github');
-    expect(hits, isNotEmpty);
-    expect(hits.first.title, 'GitHub');
-    expect(c.search('').length, c.entryCount);
+    expect(hits.single.title, 'GitHub');
   });
 
-  test('wrong PIN is denied and decrements the attempt budget', () async {
+  test('wrong password is denied (real authenticated decrypt)', () async {
     final c = VaultController();
-    await c.bootstrap();
+    c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
 
-    await c.attempt('0000');
+    await c.unlock('not the password');
     expect(c.status, VaultStatus.locked);
     expect(c.database, isNull);
     expect(c.error, contains('ACCESS DENIED'));
-    expect(c.remainingAttempts, 4);
 
-    // Recover with the right PIN; counter resets.
-    await c.attempt(VaultController.demoPin);
+    await c.unlock(testVaultPassword);
     expect(c.status, VaultStatus.unlocked);
-    expect(c.remainingAttempts, 5);
   });
 
-  test('lock returns to the locked state and drops the database', () async {
+  test('non-KDBX bytes are rejected', () {
     final c = VaultController();
-    await c.bootstrap();
-    await c.attempt(VaultController.demoPin);
+    c.loadBytes(Uint8List.fromList(List.filled(64, 0)), name: 'junk.bin');
+    expect(c.status, VaultStatus.noVault);
+    expect(c.error, contains('not a KDBX'));
+  });
+
+  test('create new → save → reopen round-trips through a real file', () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_test');
+    final path = '${dir.path}/vault.kdbx';
+    addTearDown(() => dir.delete(recursive: true));
+
+    final c = VaultController();
+    await c.createNew(path, 's3cret-master');
     expect(c.status, VaultStatus.unlocked);
+    expect(File(path).existsSync(), isTrue);
+
+    await c.save(); // re-encrypt + write
+    expect(c.error, isNull);
+
+    // Reopen from disk with a fresh controller.
+    final c2 = VaultController();
+    await c2.openFile(path);
+    expect(c2.status, VaultStatus.locked);
+    await c2.unlock('s3cret-master');
+    expect(c2.status, VaultStatus.unlocked);
+    expect(c2.database!.meta.name, 'vault');
+
+    await c2.unlock('wrong'); // already unlocked → ignored; sanity
+  });
+
+  test('opens a REAL third-party .kdbx file from disk (pykeepass fixture)',
+      () async {
+    final c = VaultController();
+    await c.openFile('test/fixtures/kdbx/reference_aes_argon2.kdbx');
+    expect(c.status, VaultStatus.locked);
+    expect(c.fileName, 'reference_aes_argon2.kdbx');
+
+    await c.unlock('correct horse battery staple');
+    expect(c.status, VaultStatus.unlocked, reason: c.error);
+    expect(c.search('acme').isNotEmpty, isTrue); // the fixture's 'Acme Corp'
+  }, timeout: const Timeout(Duration(minutes: 2)),);
+
+  test('lock keeps the file loaded; close drops it', () async {
+    final c = VaultController();
+    c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
+    await c.unlock(testVaultPassword);
 
     c.lock();
-    expect(c.status, VaultStatus.locked);
+    expect(c.status, VaultStatus.locked); // file still loaded
     expect(c.database, isNull);
+
+    c.close();
+    expect(c.status, VaultStatus.noVault);
+    expect(c.fileName, isNull);
   });
 }

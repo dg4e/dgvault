@@ -21,6 +21,8 @@ dependencies:
   local_auth: ^2.3.0
   # HTTP client for network sync adapters (WebDAV, etc.).
   http: ^1.2.0
+  # Native open/save file pickers (desktop + mobile).
+  file_picker: ^8.1.0
   xml: ^6.5.0
 
 dev_dependencies:

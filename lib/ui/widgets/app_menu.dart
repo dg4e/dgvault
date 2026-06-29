@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../state/file_service.dart';
 import '../state/vault_controller.dart';
 
 Widget appMenuBar({
@@ -27,6 +28,34 @@ Widget appMenuBar({
         menus: [
           PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.about),
           PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
+        ],
+      ),
+      PlatformMenu(
+        label: 'File',
+        menus: [
+          PlatformMenuItem(
+            label: 'Open…',
+            shortcut:
+                const SingleActivator(LogicalKeyboardKey.keyO, meta: true),
+            onSelected: () async {
+              final p = await VaultFiles.pickOpen();
+              if (p != null) await controller.openFile(p);
+            },
+          ),
+          PlatformMenuItem(
+            label: 'Save',
+            shortcut:
+                const SingleActivator(LogicalKeyboardKey.keyS, meta: true),
+            onSelected: () {
+              if (controller.status == VaultStatus.unlocked) controller.save();
+            },
+          ),
+          PlatformMenuItem(
+            label: 'Close',
+            shortcut:
+                const SingleActivator(LogicalKeyboardKey.keyW, meta: true),
+            onSelected: controller.close,
+          ),
         ],
       ),
       PlatformMenu(

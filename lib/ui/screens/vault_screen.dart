@@ -132,6 +132,10 @@ class _VaultScreenState extends State<VaultScreen> {
             _copyPassword,
         const SingleActivator(LogicalKeyboardKey.keyC, meta: true):
             _copyPassword,
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+            widget.controller.save,
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
+            widget.controller.save,
         const SingleActivator(LogicalKeyboardKey.slash): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.escape): _onEscape,
         const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(1),
@@ -229,8 +233,27 @@ class _Header extends StatelessWidget {
               weight: FontWeight.w700,
             ),
           ),
-          Text(' ://vault', style: mono(size: 13, color: TermColors.textDim)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              '· ${controller.fileName ?? '(in memory)'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: mono(size: 13, color: TermColors.textDim),
+            ),
+          ),
+          if (controller.status == VaultStatus.saving) ...[
+            const SizedBox(width: 8),
+            Text('saving…', style: mono(size: 11, color: TermColors.amber)),
+          ],
           const Spacer(),
+          _HeaderBtn(
+            label: 'save',
+            icon: Icons.save_outlined,
+            tooltip: 'Save to file (${hotkey('S')})',
+            onTap: controller.save,
+          ),
+          const SizedBox(width: 6),
           _HeaderBtn(
             label: 'gen',
             icon: Icons.casino_outlined,

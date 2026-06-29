@@ -1,18 +1,11 @@
-// dgvault — unlock screen: terminal boot + passphrase prompt.
+// dgvault — unlock screen: master-password prompt for the loaded .kdbx file.
 
 import 'package:flutter/material.dart';
 
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
+import '../widgets/banner_logo.dart';
 import '../widgets/terminal_widgets.dart';
-
-const _banner = r'''
-    _                    _ _
- __| |__ ___ ____ _ _  _| | |_
-/ _` / _` \ V / _` | || | |  _|
-\__,_\__, |\_/\__,_|\_,_|_|\__|
-     |___/
-     secure vault · kdbx4 · zero-knowledge''';
 
 class UnlockScreen extends StatefulWidget {
   const UnlockScreen({super.key, required this.controller});
@@ -23,21 +16,21 @@ class UnlockScreen extends StatefulWidget {
 }
 
 class _UnlockScreenState extends State<UnlockScreen> {
-  final _pin = TextEditingController();
+  final _pw = TextEditingController();
   final _focus = FocusNode();
 
   @override
   void dispose() {
-    _pin.dispose();
+    _pw.dispose();
     _focus.dispose();
     super.dispose();
   }
 
   void _submit() {
-    final pin = _pin.text.trim();
-    if (pin.isEmpty) return;
-    widget.controller.attempt(pin);
-    _pin.clear();
+    final pw = _pw.text;
+    if (pw.isEmpty) return;
+    widget.controller.unlock(pw);
+    _pw.clear();
   }
 
   @override
@@ -55,34 +48,38 @@ class _UnlockScreenState extends State<UnlockScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      _banner,
-                      style: mono(
-                        size: 13,
-                        color: TermColors.green,
-                        height: 1.25,
-                      ),
-                    ),
-                  ),
+                  const BannerLogo(),
                   const SizedBox(height: 28),
                   TerminalPanel(
-                    title: 'authenticate',
+                    title: 'unlock',
                     accent:
                         c.error != null ? TermColors.red : TermColors.border,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const _BootLog(),
+                        Row(
+                          children: [
+                            Text('file: ',
+                                style:
+                                    mono(size: 12, color: TermColors.textDim),),
+                            Flexible(
+                              child: Text(
+                                c.fileName ?? '(in memory)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: mono(size: 12, color: TermColors.cyan),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 14),
-                        const SectionLabel('master pin'),
+                        const SectionLabel('master password'),
                         PromptField(
-                          controller: _pin,
+                          controller: _pw,
                           focusNode: _focus,
                           autofocus: true,
                           obscure: true,
-                          hint: 'enter pin…',
+                          hint: 'enter master password…',
                           onSubmitted: (_) => _submit(),
                         ),
                         const SizedBox(height: 16),
@@ -95,13 +92,12 @@ class _UnlockScreenState extends State<UnlockScreen> {
                               onPressed: busy ? null : _submit,
                             ),
                             const Spacer(),
-                            if (c.lockedOut)
-                              TermButton(
-                                label: 'RESET',
-                                color: TermColors.amber,
-                                tooltip: 'Reset the failed-attempt counter',
-                                onPressed: c.resetLockout,
-                              ),
+                            TermButton(
+                              label: 'CLOSE',
+                              color: TermColors.textDim,
+                              tooltip: 'Close this file',
+                              onPressed: busy ? null : c.close,
+                            ),
                           ],
                         ),
                         if (c.error != null) ...[
@@ -114,56 +110,12 @@ class _UnlockScreenState extends State<UnlockScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'hint: demo pin is ${VaultController.demoPin}',
-                    style: mono(size: 11, color: TermColors.textFaint),
-                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _BootLog extends StatelessWidget {
-  const _BootLog();
-  @override
-  Widget build(BuildContext context) {
-    const lines = [
-      ('mount', 'encrypted volume  [ok]'),
-      ('kdf', 'argon2id  [ready]'),
-      ('cipher', 'aes-256 + hmac-sha256  [ready]'),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final (k, v) in lines)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 1),
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '  ➜ ',
-                    style: mono(size: 12, color: TermColors.greenDim),
-                  ),
-                  TextSpan(
-                    text: '$k: ',
-                    style: mono(size: 12, color: TermColors.textDim),
-                  ),
-                  TextSpan(
-                    text: v,
-                    style: mono(size: 12, color: TermColors.text),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
     );
   }
 }

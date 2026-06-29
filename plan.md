@@ -3,6 +3,15 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
+> **Build status (R28, 2026-06-29):** ✅ Green — `flutter test` **497 passing /
+> 0 failing**, `flutter analyze` **0 issues**, macOS builds. R28 replaced the demo
+> vault with **real file loading**: landing screen (Open/New via `file_picker`) →
+> master-password unlock (`KdbxCodec.read` on the actual file bytes) → vault, with
+> Save (re-encrypts with fresh seed/IV/salt to disk) and New (create empty vault).
+> Verified by opening the real pykeepass fixture **from disk** + a create→save→
+> reopen round-trip. macOS file entitlement added. Follow-up: run the heavy
+> Argon2 unlock off the UI thread (isolate) so strong KDFs don't block.
+>
 > **Build status (R27, 2026-06-25):** ✅ Green — `flutter test` **486 passing /
 > 0 failing**, `flutter analyze` **0 issues**, macOS app builds. **R27 added the
 > first real UI** (`lib/ui/`): a terminal/hacker design system + a vertical slice —

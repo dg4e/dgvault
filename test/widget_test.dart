@@ -7,10 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'ui/test_vault.dart';
+
 Future<VaultController> _unlocked(WidgetTester tester) async {
   final c = VaultController();
-  await c.bootstrap();
-  await c.attempt(VaultController.demoPin);
+  c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
+  await c.unlock(testVaultPassword);
   await tester.pumpWidget(DgvaultApp(controller: c));
   await tester.pumpAndSettle();
   return c;
@@ -32,24 +34,25 @@ bool _searchHasFocus(WidgetTester tester) =>
     tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
 
 void main() {
-  testWidgets('locked state shows the unlock prompt', (tester) async {
+  testWidgets('landing shows open/new when no vault is loaded', (tester) async {
+    await tester.pumpWidget(DgvaultApp(controller: VaultController()));
+    await tester.pump();
+    expect(find.text('[ OPEN .KDBX ]'), findsOneWidget);
+    expect(find.text('[ NEW VAULT ]'), findsOneWidget);
+  });
+
+  testWidgets('a loaded file shows the unlock prompt', (tester) async {
     final c = VaultController();
-    await c.bootstrap();
+    c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
     await tester.pumpWidget(DgvaultApp(controller: c));
     await tester.pump();
 
-    expect(find.text('hint: demo pin is ${VaultController.demoPin}'), findsOneWidget);
+    expect(find.text('test.kdbx'), findsOneWidget); // filename shown
     expect(find.text('[ UNLOCK ]'), findsOneWidget);
   });
 
   testWidgets('unlocked state renders the vault with entries', (tester) async {
-    final c = VaultController();
-    await c.bootstrap();
-    await c.attempt(VaultController.demoPin);
-
-    await tester.pumpWidget(DgvaultApp(controller: c));
-    await tester.pump();
-
+    await _unlocked(tester);
     // 'GitHub' shows in the list and (two-pane) the detail header.
     expect(find.text('GitHub'), findsWidgets);
     expect(find.text('UNLOCKED'), findsOneWidget); // status bar mode
