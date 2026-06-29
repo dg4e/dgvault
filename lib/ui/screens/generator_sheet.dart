@@ -74,54 +74,115 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: 20, right: 20, top: 20,
+          left: 20,
+          right: 20,
+          top: 20,
           bottom: 20 + MediaQuery.viewInsetsOf(context).bottom,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Text('// PASSWORD GENERATOR',
-                  style: mono(size: 12, color: TermColors.textDim, letterSpacing: 1.5),),
-              const Spacer(),
-              _IconBtn(icon: Icons.refresh, onTap: _regen),
-              _IconBtn(
+            Row(
+              children: [
+                Text(
+                  '// PASSWORD GENERATOR',
+                  style: mono(
+                      size: 12, color: TermColors.textDim, letterSpacing: 1.5,),
+                ),
+                const Spacer(),
+                _IconBtn(icon: Icons.refresh, onTap: _regen),
+                _IconBtn(
                   icon: Icons.content_copy_outlined,
-                  onTap: () => copyWithFlash(context, _output, 'password'),),
-            ],),
+                  onTap: () => copyWithFlash(context, _output, 'password'),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             TerminalPanel(
               accent: _strengthColor,
-              child: SelectableText(_output,
-                  style: mono(size: 16, color: TermColors.textBright, height: 1.4),),
+              child: SelectableText(
+                _output,
+                style:
+                    mono(size: 16, color: TermColors.textBright, height: 1.4),
+              ),
             ),
             const SizedBox(height: 8),
-            Row(children: [
-              Text('entropy: ${_bits.toStringAsFixed(1)} bits',
-                  style: mono(size: 12, color: _strengthColor),),
-              const SizedBox(width: 10),
-              Text(_bits >= 100 ? 'STRONG' : _bits >= 60 ? 'OK' : 'WEAK',
-                  style: mono(size: 12, color: _strengthColor, weight: FontWeight.w700),),
-            ],),
-            const SizedBox(height: 16),
-            Row(children: [
-              Text('length ${_length.round()}',
-                  style: mono(size: 13, color: TermColors.text),),
-              Expanded(
-                child: Slider(
-                  value: _length, min: 6, max: 64, divisions: 58,
-                  activeColor: TermColors.green, inactiveColor: TermColors.border,
-                  onChanged: (v) { setState(() => _length = v); _regen(); },
+            Row(
+              children: [
+                Text(
+                  'entropy: ${_bits.toStringAsFixed(1)} bits',
+                  style: mono(size: 12, color: _strengthColor),
                 ),
-              ),
-            ],),
-            Wrap(spacing: 10, runSpacing: 10, children: [
-              _Toggle(label: 'A-Z', on: _upper, onTap: () { setState(() => _upper = !_upper); _regen(); }),
-              _Toggle(label: 'a-z', on: _lower, onTap: () { setState(() => _lower = !_lower); _regen(); }),
-              _Toggle(label: '0-9', on: _digits, onTap: () { setState(() => _digits = !_digits); _regen(); }),
-              _Toggle(label: '!@#', on: _symbols, onTap: () { setState(() => _symbols = !_symbols); _regen(); }),
-            ],),
+                const SizedBox(width: 10),
+                Text(
+                  _bits >= 100
+                      ? 'STRONG'
+                      : _bits >= 60
+                          ? 'OK'
+                          : 'WEAK',
+                  style: mono(
+                      size: 12, color: _strengthColor, weight: FontWeight.w700,),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(
+                  'length ${_length.round()}',
+                  style: mono(size: 13, color: TermColors.text),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: _length,
+                    min: 6,
+                    max: 64,
+                    divisions: 58,
+                    activeColor: TermColors.green,
+                    inactiveColor: TermColors.border,
+                    onChanged: (v) {
+                      setState(() => _length = v);
+                      _regen();
+                    },
+                  ),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _Toggle(
+                    label: 'A-Z',
+                    on: _upper,
+                    onTap: () {
+                      setState(() => _upper = !_upper);
+                      _regen();
+                    },),
+                _Toggle(
+                    label: 'a-z',
+                    on: _lower,
+                    onTap: () {
+                      setState(() => _lower = !_lower);
+                      _regen();
+                    },),
+                _Toggle(
+                    label: '0-9',
+                    on: _digits,
+                    onTap: () {
+                      setState(() => _digits = !_digits);
+                      _regen();
+                    },),
+                _Toggle(
+                    label: '!@#',
+                    on: _symbols,
+                    onTap: () {
+                      setState(() => _symbols = !_symbols);
+                      _regen();
+                    },),
+              ],
+            ),
           ],
         ),
       ),
@@ -145,7 +206,8 @@ class _Toggle extends StatelessWidget {
           border: Border.all(color: c),
           color: on ? c.withValues(alpha: 0.12) : Colors.transparent,
         ),
-        child: Text('${on ? "[x]" : "[ ]"} $label', style: mono(size: 13, color: c)),
+        child: Text('${on ? "[x]" : "[ ]"} $label',
+            style: mono(size: 13, color: c),),
       ),
     );
   }
@@ -159,7 +221,8 @@ class _IconBtn extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
         child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Icon(icon, size: 18, color: TermColors.textDim),),
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 18, color: TermColors.textDim),
+        ),
       );
 }

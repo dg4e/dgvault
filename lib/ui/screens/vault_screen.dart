@@ -7,7 +7,6 @@ import 'package:dgvault/core/core.dart';
 
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
-import '../widgets/app_menu.dart';
 import '../widgets/terminal_widgets.dart';
 import 'entry_detail.dart';
 import 'generator_sheet.dart';
@@ -27,7 +26,17 @@ class _VaultScreenState extends State<VaultScreen> {
   Entry? _selected;
 
   @override
+  void initState() {
+    super.initState();
+    // Let the app-level menu (single PlatformMenuBar) drive these while mounted.
+    widget.controller.onGenerate = () => showGenerator(context);
+    widget.controller.onCopyPassword = _copyPassword;
+  }
+
+  @override
   void dispose() {
+    widget.controller.onGenerate = null;
+    widget.controller.onCopyPassword = null;
     _search.dispose();
     _searchFocus.dispose();
     super.dispose();
@@ -193,38 +202,9 @@ class _VaultScreenState extends State<VaultScreen> {
       ),
     );
 
-    // On macOS the native menu owns ⌘ key-equivalents and processes them before
-    // Flutter sees the key — the default menu's "Find Next" (⌘G) and "Copy" (⌘C)
-    // were swallowing our shortcuts. Declaring them as real menu commands makes
-    // ⌘G/⌘C/⌘L reliable (focus-independent) and replaces those defaults.
-    return appMenuBar(
-      child: tree,
-      appMenus: [
-        PlatformMenu(
-          label: 'Vault',
-          menus: [
-            PlatformMenuItem(
-              label: 'Generate Password',
-              shortcut:
-                  const SingleActivator(LogicalKeyboardKey.keyG, meta: true),
-              onSelected: gen,
-            ),
-            PlatformMenuItem(
-              label: 'Copy Password',
-              shortcut:
-                  const SingleActivator(LogicalKeyboardKey.keyC, meta: true),
-              onSelected: _copyPassword,
-            ),
-            PlatformMenuItem(
-              label: 'Lock Vault',
-              shortcut:
-                  const SingleActivator(LogicalKeyboardKey.keyL, meta: true),
-              onSelected: lock,
-            ),
-          ],
-        ),
-      ],
-    );
+    // The macOS ⌘ commands live in the single app-level PlatformMenuBar (see
+    // app_menu.dart), driven via controller hooks registered in initState.
+    return tree;
   }
 }
 

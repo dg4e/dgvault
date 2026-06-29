@@ -31,19 +31,38 @@ class VaultController extends ChangeNotifier {
 
   // Light Argon2 so unlock is snappy in the demo; still the real primitive.
   static const _params = KdfParams(
-      algorithm: KdfAlgorithm.argon2id, iterations: 2, memoryKib: 8192, parallelism: 1,);
+    algorithm: KdfAlgorithm.argon2id,
+    iterations: 2,
+    memoryKib: 8192,
+    parallelism: 1,
+  );
 
   final _store = InMemorySecureStore();
   late final KeyVault _vault = KeyVault(
-      store: _store, cipher: AesGcmCipher(), kdf: _kdf,);
+    store: _store,
+    cipher: AesGcmCipher(),
+    kdf: _kdf,
+  );
   final AppLockPolicy _lock = AppLockPolicy(
-      store: InMemoryFailedAttemptStore(), maxAttempts: 5, wipeOnExhaustion: false,);
+    store: InMemoryFailedAttemptStore(),
+    maxAttempts: 5,
+    wipeOnExhaustion: false,
+  );
   late final PinUnlock _pin = PinUnlock(vault: _vault, lock: _lock);
 
   final KdbxCodec _codec = KdbxCodec(
-      bodyCipher: Kdbx4BodyCipher(kdf: _kdf), compressor: const GzipCompressor(),);
+    bodyCipher: Kdbx4BodyCipher(kdf: _kdf),
+    compressor: const GzipCompressor(),
+  );
 
   Uint8List _vaultBytes = Uint8List(0);
+
+  // Action hooks the VaultScreen registers while mounted, so the app-level menu
+  // (which must be a single PlatformMenuBar) can trigger context-dependent
+  // actions (show the generator sheet, copy the selected entry). Null when
+  // locked → the menu items safely no-op.
+  VoidCallback? onGenerate;
+  VoidCallback? onCopyPassword;
 
   VaultStatus status = VaultStatus.booting;
   Database? _db;
@@ -61,7 +80,10 @@ class VaultController extends ChangeNotifier {
     final demo = buildDemoDatabase();
     final header = demoHeader(_params);
     _vaultBytes = await _codec.write(
-        demo, header, CompositeCredential(password: _b(_masterPassword)),);
+      demo,
+      header,
+      CompositeCredential(password: _b(_masterPassword)),
+    );
 
     await _vault.enroll(
       masterKey: HeapSecureKey(_b(_masterPassword)),
@@ -87,7 +109,9 @@ class VaultController extends ChangeNotifier {
         final pw = result.masterKey!;
         try {
           _db = await _codec.read(
-              _vaultBytes, CompositeCredential(password: pw.bytes()),);
+            _vaultBytes,
+            CompositeCredential(password: pw.bytes()),
+          );
         } finally {
           pw.destroy();
         }

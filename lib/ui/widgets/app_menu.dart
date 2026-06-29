@@ -1,17 +1,22 @@
-// dgvault — macOS application menu bar (always present so the menu is never
-// empty, and so ⌘ commands are real menu key-equivalents that AppKit routes
-// reliably, independent of Flutter focus).
+// dgvault — macOS application menu bar.
 //
-// On non-macOS platforms this is a no-op passthrough (those use Ctrl shortcuts
-// via CallbackShortcuts instead).
+// MUST be a single PlatformMenuBar for the whole app (Flutter allows only one at
+// a time — two instances assert). So it lives at the app root, always mounted,
+// and routes the Vault commands through controller hooks the VaultScreen
+// registers while it is on screen. ⌘ key-equivalents declared here are processed
+// by AppKit before Flutter, so they work regardless of focus and override the
+// default menu's conflicting items (⌘G "Find Next", ⌘C "Copy").
+//
+// No-op on non-macOS (those use Ctrl via CallbackShortcuts).
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-Widget appMenuBar({
-  required Widget child,
-  List<PlatformMenu> appMenus = const [],
-}) {
+import '../state/vault_controller.dart';
+
+Widget appMenuBar(
+    {required VaultController controller, required Widget child,}) {
   if (defaultTargetPlatform != TargetPlatform.macOS) return child;
   return PlatformMenuBar(
     menus: [
@@ -22,13 +27,38 @@ Widget appMenuBar({
           PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
         ],
       ),
-      ...appMenus,
+      PlatformMenu(
+        label: 'Vault',
+        menus: [
+          PlatformMenuItem(
+            label: 'Generate Password',
+            shortcut:
+                const SingleActivator(LogicalKeyboardKey.keyG, meta: true),
+            onSelected: () => controller.onGenerate?.call(),
+          ),
+          PlatformMenuItem(
+            label: 'Copy Password',
+            shortcut:
+                const SingleActivator(LogicalKeyboardKey.keyC, meta: true),
+            onSelected: () => controller.onCopyPassword?.call(),
+          ),
+          PlatformMenuItem(
+            label: 'Lock Vault',
+            shortcut:
+                const SingleActivator(LogicalKeyboardKey.keyL, meta: true),
+            onSelected: () {
+              if (controller.status == VaultStatus.unlocked) controller.lock();
+            },
+          ),
+        ],
+      ),
       const PlatformMenu(
         label: 'Window',
         menus: [
           PlatformProvidedMenuItem(
               type: PlatformProvidedMenuItemType.minimizeWindow,),
-          PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.zoomWindow),
+          PlatformProvidedMenuItem(
+              type: PlatformProvidedMenuItemType.zoomWindow,),
         ],
       ),
     ],

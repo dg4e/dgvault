@@ -86,7 +86,8 @@ ThemeData buildTerminalTheme() {
     error: TermColors.red,
   );
 
-  TextStyle t(double s, {Color c = TermColors.text, FontWeight w = FontWeight.w400}) =>
+  TextStyle t(double s,
+          {Color c = TermColors.text, FontWeight w = FontWeight.w400,}) =>
       mono(size: s, color: c, weight: w);
 
   return base.copyWith(
