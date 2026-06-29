@@ -4,10 +4,21 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dgvault/core/core.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_vault.dart';
+
+Future<VaultController> _open() async {
+  final c = VaultController();
+  c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
+  await c.unlock(testVaultPassword);
+  return c;
+}
+
+Entry _find(VaultController c, String title) =>
+    c.search(title).firstWhere((e) => e.title == title);
 
 void main() {
   test('loadBytes → locked; correct password unlocks + decrypts', () async {
@@ -39,6 +50,75 @@ void main() {
 
     await c.unlock(testVaultPassword);
     expect(c.status, VaultStatus.unlocked);
+  });
+
+  group('mutations', () {
+    test('updateEntry snapshots history, edits, bumps modified, marks dirty',
+        () async {
+      final c = await _open();
+      final e = _find(c, 'GitHub');
+      expect(c.isDirty, isFalse);
+
+      c.updateEntry(e, (draft) {
+        draft.fields[Field.title] =
+            Field(key: Field.title, value: InMemoryProtectedValue.plain('GitHub2'));
+      });
+
+      expect(e.title, 'GitHub2');
+      expect(e.history.last.title, 'GitHub'); // prior version snapshotted
+      expect(c.isDirty, isTrue);
+    });
+
+    test('restoreHistory reverts to a prior version (undoable)', () async {
+      final c = await _open();
+      final e = _find(c, 'GitHub');
+      c.updateEntry(e, (d) => d.fields[Field.title] =
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('GitHub2')),);
+      expect(e.title, 'GitHub2');
+
+      c.restoreHistory(e, 0); // restore the snapshot ('GitHub')
+      expect(e.title, 'GitHub');
+      // the pre-restore state ('GitHub2') is itself snapshotted
+      expect(e.history.map((h) => h.title), contains('GitHub2'));
+    });
+
+    test('deleteEntry moves to the Recycle Bin when enabled', () async {
+      final c = await _open();
+      final e = _find(c, 'GitHub');
+      expect(c.findGroupOf(e)!.name, 'Personal');
+
+      c.deleteEntry(e);
+      expect(c.findGroupOf(e)!.uuid, 'rb'); // moved to recycle bin
+      expect(c.entryCount, 4); // still present, just relocated
+    });
+
+    test('deleteEntry permanently removes when recycle bin is disabled',
+        () async {
+      final c = await _open();
+      c.setRecycleBinEnabled(false);
+      final e = _find(c, 'Jira');
+
+      c.deleteEntry(e);
+      expect(c.findGroupOf(e), isNull);
+      expect(c.entryCount, 3);
+    });
+
+    test('deleteEntry creates the Recycle Bin if the vault has none', () async {
+      final dir = await Directory.systemTemp.createTemp('dgvault_rb');
+      addTearDown(() => dir.delete(recursive: true));
+      final c = VaultController();
+      await c.createNew('${dir.path}/v.kdbx', 'pw'); // empty vault, no recycle bin
+      expect(c.recycleBinUuid, isNull);
+
+      final e = Entry(uuid: 'x', fields: {
+        Field.title: Field(key: Field.title, value: InMemoryProtectedValue.plain('Temp')),
+      },);
+      c.addEntry(e);
+      c.deleteEntry(e);
+
+      expect(c.recycleBinUuid, isNotNull);
+      expect(c.findGroupOf(e)!.name, 'Recycle Bin');
+    });
   });
 
   test('non-KDBX bytes are rejected', () {

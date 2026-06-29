@@ -9,7 +9,9 @@ import '../widgets/terminal_widgets.dart';
 
 bool _generatorOpen = false;
 
-void showGenerator(BuildContext context) {
+/// Open the generator. When [onUse] is given, a "USE" button feeds the generated
+/// password back to the caller (e.g. the entry editor) and closes the sheet.
+void showGenerator(BuildContext context, {ValueChanged<String>? onUse}) {
   // Repeated ⌘G / taps must not stack sheets.
   if (_generatorOpen) return;
   _generatorOpen = true;
@@ -17,12 +19,13 @@ void showGenerator(BuildContext context) {
     context: context,
     backgroundColor: TermColors.bg,
     isScrollControlled: true,
-    builder: (_) => const _GeneratorSheet(),
+    builder: (_) => _GeneratorSheet(onUse: onUse),
   ).whenComplete(() => _generatorOpen = false);
 }
 
 class _GeneratorSheet extends StatefulWidget {
-  const _GeneratorSheet();
+  const _GeneratorSheet({this.onUse});
+  final ValueChanged<String>? onUse;
   @override
   State<_GeneratorSheet> createState() => _GeneratorSheetState();
 }
@@ -202,6 +205,20 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
                 ),
               ],
             ),
+            if (widget.onUse != null) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TermButton(
+                  label: 'USE',
+                  tooltip: 'Use this password',
+                  onPressed: () {
+                    widget.onUse!(_output);
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),

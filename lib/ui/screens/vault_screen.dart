@@ -10,6 +10,7 @@ import '../theme/terminal_theme.dart';
 import '../widgets/folder_tree.dart';
 import '../widgets/terminal_widgets.dart';
 import 'entry_detail.dart';
+import 'entry_editor.dart';
 import 'generator_sheet.dart';
 
 class VaultScreen extends StatefulWidget {
@@ -142,10 +143,80 @@ class _VaultScreenState extends State<VaultScreen> {
                 style: mono(size: 15, color: TermColors.textBright),
               ),
             ),
-            body: EntryDetailView(entry: e),
+            body: EntryDetailView(
+              entry: e,
+              onEdit: () => _editEntry(e),
+              onDelete: () => _deleteEntry(e, pop: true),
+              onRestore: (i) => _restoreHistory(e, i),
+            ),
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _addEntry() async {
+    // Drop into the selected folder; root/null lets the controller choose.
+    final root = widget.controller.rootGroup;
+    final group =
+        (_group == null || (root != null && identical(_group, root)))
+            ? null
+            : _group;
+    await openEntryEditor(context, widget.controller, group: group);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _editEntry(Entry e) async {
+    await openEntryEditor(context, widget.controller, entry: e);
+    if (mounted) setState(() {});
+  }
+
+  void _restoreHistory(Entry e, int index) {
+    widget.controller.restoreHistory(e, index);
+    setState(() {});
+  }
+
+  Future<void> _deleteEntry(Entry e, {bool pop = false}) async {
+    final binned = widget.controller.recycleBinEnabled;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: TermColors.surface,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: TermColors.border),
+          borderRadius: BorderRadius.zero,
+        ),
+        title: Text('// DELETE ENTRY',
+            style: mono(size: 13, color: TermColors.red, letterSpacing: 1.5),),
+        content: Text(
+          binned
+              ? 'Move "${e.title ?? '(untitled)'}" to the Recycle Bin?'
+              : 'Permanently delete "${e.title ?? '(untitled)'}"? '
+                  'This cannot be undone.',
+          style: mono(size: 13, color: TermColors.text),
+        ),
+        actions: [
+          TermButton(
+            label: 'CANCEL',
+            color: TermColors.textDim,
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          const SizedBox(width: 8),
+          TermButton(
+            label: binned ? 'MOVE TO TRASH' : 'DELETE',
+            color: TermColors.red,
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    widget.controller.deleteEntry(e);
+    if (pop && mounted) Navigator.of(context).pop(); // close narrow detail route
+    if (mounted) {
+      setState(() {
+        if (identical(_selected, e)) _selected = null;
+      });
     }
   }
 
@@ -221,6 +292,7 @@ class _VaultScreenState extends State<VaultScreen> {
                                 entries: entries,
                                 selected: _selected,
                                 folderName: folderName,
+                                onAdd: _addEntry,
                                 onQuery: (q) => setState(() => _query = q),
                                 onSelect: (e) => _onSelect(e, true),
                               ),
@@ -232,7 +304,13 @@ class _VaultScreenState extends State<VaultScreen> {
                             Expanded(
                               child: _selected == null
                                   ? const _EmptyDetail()
-                                  : EntryDetailView(entry: _selected!),
+                                  : EntryDetailView(
+                                      entry: _selected!,
+                                      onEdit: () => _editEntry(_selected!),
+                                      onDelete: () => _deleteEntry(_selected!),
+                                      onRestore: (i) =>
+                                          _restoreHistory(_selected!, i),
+                                    ),
                             ),
                           ],
                         )
@@ -243,6 +321,7 @@ class _VaultScreenState extends State<VaultScreen> {
                           selected: null,
                           folderName: folderName,
                           onFolderTap: _pickFolder,
+                          onAdd: _addEntry,
                           onQuery: (q) => setState(() => _query = q),
                           onSelect: (e) => _onSelect(e, false),
                         ),
@@ -326,6 +405,14 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           _HeaderBtn(
+            label: 'opts',
+            icon: Icons.settings_outlined,
+            color: TermColors.cyan,
+            tooltip: 'Vault settings',
+            onTap: () => _showSettings(context, controller),
+          ),
+          const SizedBox(width: 6),
+          _HeaderBtn(
             label: 'lock',
             icon: Icons.lock_outline,
             color: TermColors.amber,
@@ -336,6 +423,58 @@ class _Header extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Vault settings sheet — currently the Recycle Bin toggle.
+void _showSettings(BuildContext context, VaultController controller) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: TermColors.bg,
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SectionLabel('vault settings'),
+            const SizedBox(height: 8),
+            StatefulBuilder(
+              builder: (ctx, setSheet) => Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Recycle Bin',
+                            style:
+                                mono(size: 14, color: TermColors.textBright),),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Deleted entries are moved to the trash instead of '
+                          'being permanently erased.',
+                          style: mono(size: 11, color: TermColors.textDim),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Switch(
+                    value: controller.recycleBinEnabled,
+                    activeThumbColor: TermColors.green,
+                    onChanged: (v) {
+                      controller.setRecycleBinEnabled(v);
+                      setSheet(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _HeaderBtn extends StatelessWidget {
@@ -386,6 +525,7 @@ class _ListPane extends StatelessWidget {
     required this.onSelect,
     required this.folderName,
     this.onFolderTap,
+    this.onAdd,
   });
 
   final TextEditingController search;
@@ -394,6 +534,7 @@ class _ListPane extends StatelessWidget {
   final Entry? selected;
   final String folderName;
   final VoidCallback? onFolderTap; // non-null on narrow → opens the folder picker
+  final VoidCallback? onAdd; // create a new entry in this folder
   final ValueChanged<String> onQuery;
   final ValueChanged<Entry> onSelect;
 
@@ -421,6 +562,18 @@ class _ListPane extends StatelessWidget {
                 if (onFolderTap != null)
                   const Icon(Icons.expand_more,
                       size: 14, color: TermColors.textDim,),
+                if (onAdd != null)
+                  Tooltip(
+                    message: 'New entry',
+                    child: InkWell(
+                      onTap: onAdd,
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Icon(Icons.add,
+                            size: 18, color: TermColors.green,),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

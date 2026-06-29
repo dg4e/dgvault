@@ -205,6 +205,112 @@ class VaultController extends ChangeNotifier {
         .toList();
   }
 
+  // ---- mutations ----------------------------------------------------------
+
+  bool get recycleBinEnabled => _db?.meta.recycleBinEnabled ?? true;
+
+  void setRecycleBinEnabled(bool value) {
+    final db = _db;
+    if (db == null) return;
+    db.meta.recycleBinEnabled = value;
+    _touch();
+  }
+
+  /// The group directly containing [entry], or null.
+  Group? findGroupOf(Entry entry) {
+    final db = _db;
+    if (db == null) return null;
+    Group? walk(Group g) {
+      if (g.entries.any((e) => identical(e, entry))) return g;
+      for (final c in g.groups) {
+        final r = walk(c);
+        if (r != null) return r;
+      }
+      return null;
+    }
+
+    return walk(db.root);
+  }
+
+  /// Add [entry] to [group] (defaults to the first non-trash group, or root).
+  void addEntry(Entry entry, {Group? group}) {
+    final db = _db;
+    if (db == null) return;
+    (group ?? _defaultAddGroup(db.root)).entries.add(entry);
+    _touch();
+  }
+
+  /// Apply [mutate] to [entry], snapshotting the prior version into History and
+  /// bumping the modified time.
+  void updateEntry(Entry entry, void Function(Entry draft) mutate) {
+    if (_db == null) return;
+    EntryHistory.record(entry, policy: EntryHistoryPolicy.keepassDefault);
+    mutate(entry);
+    entry.modified = DateTime.now().toUtc();
+    _touch();
+  }
+
+  /// Delete [entry]. With the recycle bin enabled it is moved to the Recycle Bin
+  /// group (created if missing); otherwise it is permanently removed.
+  void deleteEntry(Entry entry) {
+    final db = _db;
+    if (db == null) return;
+    final owner = findGroupOf(entry);
+    if (owner == null) return;
+    owner.entries.remove(entry);
+    if (db.meta.recycleBinEnabled) {
+      final bin = _ensureRecycleBin(db);
+      if (!identical(owner, bin)) {
+        entry.modified = DateTime.now().toUtc();
+        bin.entries.add(entry);
+      }
+    }
+    _touch();
+  }
+
+  /// Restore the [index]th history version of [entry] (the pre-restore state is
+  /// snapshotted first, so it is itself undoable).
+  void restoreHistory(Entry entry, int index) {
+    if (_db == null) return;
+    EntryHistory.restore(entry, index);
+    entry.modified = DateTime.now().toUtc();
+    _touch();
+  }
+
+  Group _defaultAddGroup(Group root) {
+    final rb = recycleBinUuid;
+    return root.groups.firstWhere(
+      (g) => g.uuid != rb,
+      orElse: () => root,
+    );
+  }
+
+  Group _ensureRecycleBin(Database db) {
+    final rb = db.meta.recycleBinUuid;
+    if (rb != null) {
+      final found = _findGroupByUuid(db.root, rb);
+      if (found != null) return found;
+    }
+    final bin = Group(uuid: _uuid(), name: 'Recycle Bin', iconId: 43);
+    db.root.groups.add(bin);
+    db.meta.recycleBinUuid = bin.uuid;
+    return bin;
+  }
+
+  Group? _findGroupByUuid(Group g, String uuid) {
+    if (g.uuid == uuid) return g;
+    for (final c in g.groups) {
+      final r = _findGroupByUuid(c, uuid);
+      if (r != null) return r;
+    }
+    return null;
+  }
+
+  void _touch() {
+    _dirty = true;
+    notifyListeners();
+  }
+
   // ---- helpers ------------------------------------------------------------
 
   KdbxHeader _freshHeader(KdfParams params, DatabaseCipher cipher) =>
@@ -221,4 +327,7 @@ class VaultController extends ChangeNotifier {
       Uint8List.fromList(List.generate(n, (_) => _rng.nextInt(256)));
 
   String _uuid() => base64.encode(_rand(16));
+
+  /// A fresh KDBX-style (base64 of 16 bytes) UUID for a new entry/group.
+  String newUuid() => _uuid();
 }

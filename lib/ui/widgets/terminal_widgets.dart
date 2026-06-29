@@ -200,6 +200,7 @@ class PromptField extends StatelessWidget {
     this.onChanged,
     this.focusNode,
     this.sigilColor = TermColors.green,
+    this.maxLines = 1,
   });
 
   final TextEditingController controller;
@@ -211,6 +212,7 @@ class PromptField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
   final Color sigilColor;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -233,6 +235,7 @@ class PromptField extends StatelessWidget {
               autofocus: autofocus,
               obscureText: obscure,
               obscuringCharacter: '•',
+              maxLines: obscure ? 1 : maxLines,
               onSubmitted: onSubmitted,
               onChanged: onChanged,
               cursorColor: TermColors.green,
