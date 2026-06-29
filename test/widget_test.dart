@@ -119,7 +119,7 @@ void main() {
     // entry row (multi-line: title / user / url)
     expect(
         find.byTooltip('open GitHub\nuser: realytcracker\nhttps://github.com'),
-        findsOneWidget);
+        findsOneWidget,);
 
     // detail field actions (GitHub selected by default in two-pane)
     expect(find.byTooltip('Copy username'), findsOneWidget);
