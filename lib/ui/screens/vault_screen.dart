@@ -7,6 +7,7 @@ import 'package:dgvault/core/core.dart';
 
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
+import '../widgets/folder_tree.dart';
 import '../widgets/terminal_widgets.dart';
 import 'entry_detail.dart';
 import 'generator_sheet.dart';
@@ -24,6 +25,7 @@ class _VaultScreenState extends State<VaultScreen> {
   late final FocusNode _searchFocus = FocusNode(onKeyEvent: _onSearchKey);
   String _query = '';
   Entry? _selected;
+  Group? _group; // selected folder; null → root view (minus recycle bin)
 
   @override
   void initState() {
@@ -42,7 +44,46 @@ class _VaultScreenState extends State<VaultScreen> {
     super.dispose();
   }
 
-  List<Entry> get _entries => widget.controller.search(_query);
+  /// Entries to show: search results (across the whole vault) when searching,
+  /// otherwise the selected folder's entries. The root view excludes the
+  /// Recycle Bin so trashed/old entries don't masquerade as duplicates.
+  List<Entry> get _entries {
+    if (_query.isNotEmpty) return widget.controller.search(_query);
+    final root = widget.controller.rootGroup;
+    if (root == null) return const [];
+    final group = _group ?? root;
+    if (identical(group, root)) {
+      final rb = widget.controller.recycleBinUuid;
+      return root.entriesExcluding(rb == null ? const {} : {rb}).toList();
+    }
+    return group.allEntries.toList();
+  }
+
+  void _selectGroup(Group g) => setState(() {
+        _group = g;
+        _selected = null;
+      });
+
+  void _pickFolder() {
+    final root = widget.controller.rootGroup;
+    if (root == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: TermColors.bg,
+      builder: (_) => SizedBox(
+        height: 360,
+        child: FolderTree(
+          root: root,
+          selected: _group ?? root,
+          recycleBinUuid: widget.controller.recycleBinUuid,
+          onSelect: (g) {
+            Navigator.pop(context);
+            _selectGroup(g);
+          },
+        ),
+      ),
+    );
+  }
 
   // Arrow keys navigate the list even while the search box is focused (fzf-style).
   KeyEventResult _onSearchKey(FocusNode node, KeyEvent e) {
@@ -111,7 +152,12 @@ class _VaultScreenState extends State<VaultScreen> {
   @override
   Widget build(BuildContext context) {
     final wide = isWide(context);
-    final entries = widget.controller.search(_query);
+    final root = widget.controller.rootGroup;
+    final entries = _entries;
+    final folderName =
+        (_group == null || (root != null && identical(_group, root)))
+            ? 'All'
+            : (_group?.name ?? 'All');
     if (wide && _selected == null && entries.isNotEmpty) {
       _selected = entries.first;
     }
@@ -153,13 +199,28 @@ class _VaultScreenState extends State<VaultScreen> {
                       ? Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            if (root != null) ...[
+                              SizedBox(
+                                width: 180,
+                                child: FolderTree(
+                                  root: root,
+                                  selected: _group ?? root,
+                                  recycleBinUuid:
+                                      widget.controller.recycleBinUuid,
+                                  onSelect: _selectGroup,
+                                ),
+                              ),
+                              const VerticalDivider(
+                                  width: 1, color: TermColors.border,),
+                            ],
                             SizedBox(
-                              width: 340,
+                              width: 320,
                               child: _ListPane(
                                 search: _search,
                                 searchFocus: _searchFocus,
                                 entries: entries,
                                 selected: _selected,
+                                folderName: folderName,
                                 onQuery: (q) => setState(() => _query = q),
                                 onSelect: (e) => _onSelect(e, true),
                               ),
@@ -180,6 +241,8 @@ class _VaultScreenState extends State<VaultScreen> {
                           searchFocus: _searchFocus,
                           entries: entries,
                           selected: null,
+                          folderName: folderName,
+                          onFolderTap: _pickFolder,
                           onQuery: (q) => setState(() => _query = q),
                           onSelect: (e) => _onSelect(e, false),
                         ),
@@ -187,6 +250,7 @@ class _VaultScreenState extends State<VaultScreen> {
                 StatusBar(
                   mode: 'UNLOCKED',
                   left: [
+                    if (_query.isEmpty) '⌂ $folderName',
                     '${entries.length}/${widget.controller.entryCount} entries',
                     if (_query.isNotEmpty) 'filter:"$_query"',
                   ],
@@ -320,12 +384,16 @@ class _ListPane extends StatelessWidget {
     required this.selected,
     required this.onQuery,
     required this.onSelect,
+    required this.folderName,
+    this.onFolderTap,
   });
 
   final TextEditingController search;
   final FocusNode searchFocus;
   final List<Entry> entries;
   final Entry? selected;
+  final String folderName;
+  final VoidCallback? onFolderTap; // non-null on narrow → opens the folder picker
   final ValueChanged<String> onQuery;
   final ValueChanged<Entry> onSelect;
 
@@ -334,6 +402,29 @@ class _ListPane extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Folder breadcrumb — tappable on narrow to switch folders.
+        InkWell(
+          onTap: onFolderTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.folder_open_outlined,
+                    size: 13, color: TermColors.textDim,),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(folderName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: mono(size: 12, color: TermColors.cyan),),
+                ),
+                if (onFolderTap != null)
+                  const Icon(Icons.expand_more,
+                      size: 14, color: TermColors.textDim,),
+              ],
+            ),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(10),
           child: PromptField(

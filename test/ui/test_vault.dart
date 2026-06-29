@@ -34,7 +34,7 @@ Entry _e(String uuid, String title,
 }
 
 Database buildTestDatabase() => Database(
-      meta: DatabaseMeta(name: 'test'),
+      meta: DatabaseMeta(name: 'test', recycleBinUuid: 'rb'),
       root: Group(uuid: 'root', name: 'Root', groups: [
         Group(uuid: 'g', name: 'Personal', entries: [
           _e('e1', 'GitHub',
@@ -47,6 +47,13 @@ Database buildTestDatabase() => Database(
               pass: 'pw2',
               url: 'https://proton.me',
               tags: ['email'],),
+        ],),
+        Group(uuid: 'w', name: 'Work', entries: [
+          _e('e3', 'Jira', user: 'ytc', pass: 'pw3', url: 'https://jira.example'),
+        ],),
+        // Recycle Bin — its entry must NOT show in the default (All) view.
+        Group(uuid: 'rb', name: 'Recycle Bin', entries: [
+          _e('e4', 'Deleted Thing', user: 'old', pass: 'pw4'),
         ],),
       ],),
     );

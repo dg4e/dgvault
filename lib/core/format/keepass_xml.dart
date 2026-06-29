@@ -46,6 +46,9 @@ class KeePassXml {
         }
         _textEl(builder, 'RecycleBinEnabled',
             db.meta.recycleBinEnabled ? _true : _false,);
+        if (db.meta.recycleBinUuid != null) {
+          _textEl(builder, 'RecycleBinUUID', db.meta.recycleBinUuid!);
+        }
         builder.element('Binaries', nest: () {
           for (final bin in db.binaryPool) {
             builder.element('Binary', nest: () {
@@ -170,6 +173,14 @@ class KeePassXml {
     return Database(meta: meta, root: rootGroup, binaryPool: pool);
   }
 
+  static bool _isZeroUuid(String b64) {
+    try {
+      return base64.decode(b64.trim()).every((b) => b == 0);
+    } catch (_) {
+      return false;
+    }
+  }
+
   DatabaseMeta _parseMeta(XmlElement? metaEl) {
     final customData = <String, String>{};
     final cd = metaEl?.getElement('CustomData');
@@ -180,12 +191,17 @@ class KeePassXml {
         if (k != null) customData[k] = v ?? '';
       }
     }
+    final rbUuid = metaEl?.getElement('RecycleBinUUID')?.innerText;
     return DatabaseMeta(
       name: metaEl?.getElement('DatabaseName')?.innerText ?? 'Database',
       description: metaEl?.getElement('DatabaseDescription')?.innerText,
       generator: metaEl?.getElement('Generator')?.innerText ?? 'dgvault',
       recycleBinEnabled:
           metaEl?.getElement('RecycleBinEnabled')?.innerText != _false,
+      // A zero UUID ("AAAA…==") means "no recycle bin assigned".
+      recycleBinUuid: (rbUuid == null || rbUuid.isEmpty || _isZeroUuid(rbUuid))
+          ? null
+          : rbUuid,
       customData: customData,
     );
   }

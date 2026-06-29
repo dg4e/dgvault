@@ -12,6 +12,7 @@ class DatabaseMeta {
     this.description,
     this.generator = 'dgvault',
     this.recycleBinEnabled = true,
+    this.recycleBinUuid,
     Map<String, String>? customData,
   }) : customData = customData ?? <String, String>{};
 
@@ -19,6 +20,10 @@ class DatabaseMeta {
   String? description;
   String generator;
   bool recycleBinEnabled;
+
+  /// UUID of the Recycle Bin group (so the UI can keep trashed entries out of
+  /// the normal view). Null/empty when there is no recycle bin.
+  String? recycleBinUuid;
 
   /// Arbitrary plugin/app key-values stored in the database (e.g. read-only hint).
   final Map<String, String> customData;

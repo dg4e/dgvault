@@ -43,6 +43,8 @@ class VaultController extends ChangeNotifier {
   Database? _db;
 
   Database? get database => _db;
+  Group? get rootGroup => _db?.root;
+  String? get recycleBinUuid => _db?.meta.recycleBinUuid;
   bool get hasVault => _bytes != null;
   bool get isDirty => _dirty;
   bool _dirty = false;

@@ -3,6 +3,15 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
+> **Build status (R30, 2026-06-29):** ✅ Green — `flutter test` **503 passing /
+> 0 failing**, `flutter analyze` **0 issues**, macOS builds. R30 added a **folder
+> (group) tree** to the vault UI — the old flat list dumped every group (incl. the
+> Recycle Bin) into one view, which looked like duplicates/old versions. Now a
+> sidebar shows the group hierarchy; selecting a folder filters entries; the
+> default "All" view excludes the Recycle Bin (parsed from Meta/RecycleBinUUID,
+> now also written by the encoder). Narrow screens get a folder picker. (Entry
+> history was already correctly kept out of the list — verified.)
+>
 > **Build status (R29, 2026-06-29):** ✅ Green — `flutter test` **500 passing /
 > 0 failing**, `flutter analyze` **0 issues**, macOS builds. R29 added **KDBX3
 > read support** (`kdbx3_reader.dart`): legacy v3 header, AES-KDF master key,

@@ -31,4 +31,17 @@ class Group {
       yield* child.allEntries;
     }
   }
+
+  /// Entries in this subtree, skipping any group whose UUID is in [exclude]
+  /// (e.g. the Recycle Bin) so trashed entries stay out of the normal view.
+  Iterable<Entry> entriesExcluding(Set<String> exclude) sync* {
+    if (exclude.contains(uuid)) return;
+    yield* entries;
+    for (final child in groups) {
+      yield* child.entriesExcluding(exclude);
+    }
+  }
+
+  /// Total entries in this subtree (including subgroups).
+  int get entryCount => allEntries.length;
 }

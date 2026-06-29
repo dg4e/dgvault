@@ -21,7 +21,8 @@ void main() {
     await c.unlock(testVaultPassword);
     expect(c.status, VaultStatus.unlocked);
     expect(c.database, isNotNull);
-    expect(c.entryCount, 2);
+    expect(c.entryCount, 4); // total incl. Work + Recycle Bin
+    expect(c.recycleBinUuid, 'rb');
 
     final hits = c.search('github');
     expect(hits.single.title, 'GitHub');

@@ -112,6 +112,27 @@ void main() {
     expect(find.text('https://proton.me'), findsOneWidget);
   });
 
+  testWidgets('folder tree shows groups; Recycle Bin excluded from default view',
+      (tester) async {
+    await _unlocked(tester);
+
+    // Folder sidebar lists the groups (wide/two-pane test surface).
+    expect(find.text('Personal'), findsOneWidget);
+    expect(find.text('Work'), findsOneWidget);
+    expect(find.text('Recycle Bin'), findsOneWidget);
+
+    // Default (All) view shows live entries but NOT the trashed one.
+    expect(find.text('GitHub'), findsWidgets);
+    expect(find.text('Jira'), findsWidgets);
+    expect(find.text('Deleted Thing'), findsNothing);
+
+    // Selecting the Recycle Bin folder reveals the trashed entry.
+    await tester.tap(find.text('Recycle Bin'));
+    await tester.pumpAndSettle();
+    expect(find.text('Deleted Thing'), findsWidgets);
+    expect(find.text('GitHub'), findsNothing);
+  });
+
   testWidgets('interactive controls expose hover tooltips', (tester) async {
     await _unlocked(tester);
 
