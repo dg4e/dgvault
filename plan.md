@@ -3,6 +3,14 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
+> **Build status (R29, 2026-06-29):** ✅ Green — `flutter test` **500 passing /
+> 0 failing**, `flutter analyze` **0 issues**, macOS builds. R29 added **KDBX3
+> read support** (`kdbx3_reader.dart`): legacy v3 header, AES-KDF master key,
+> AES-256-CBC body, StreamStartBytes verification, SHA-256 hashed block stream,
+> Salsa20 inner stream (outer-header key). Version-dispatched in VaultController.
+> Verified against a real KDBX 3.1 fixture (built + pykeepass-validated). dgvault
+> now opens both KDBX3 and KDBX4; it writes KDBX4 (a save upgrades v3 → v4).
+>
 > **Build status (R28, 2026-06-29):** ✅ Green — `flutter test` **497 passing /
 > 0 failing**, `flutter analyze` **0 issues**, macOS builds. R28 replaced the demo
 > vault with **real file loading**: landing screen (Open/New via `file_picker`) →

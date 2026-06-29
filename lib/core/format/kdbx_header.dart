@@ -131,6 +131,21 @@ class KdbxHeader {
   static const int sig1 = 0x9AA2D903;
   static const int sig2 = 0xB54BFB67;
 
+  /// Validate the KDBX magic and return the major version (3 or 4). Throws
+  /// [KdbxFormatException] if the magic is wrong — used to detect the format
+  /// before choosing a v3/v4 reader.
+  static int majorVersion(Uint8List bytes) {
+    if (bytes.length < 12) {
+      throw KdbxFormatException('file too short for KDBX header');
+    }
+    final bd = ByteData.sublistView(bytes);
+    if (bd.getUint32(0, Endian.little) != sig1 ||
+        bd.getUint32(4, Endian.little) != sig2) {
+      throw KdbxFormatException('bad KDBX magic signature');
+    }
+    return bd.getUint16(10, Endian.little);
+  }
+
   // Header field ids.
   static const int _fEndOfHeader = 0;
   static const int _fCipherId = 2;

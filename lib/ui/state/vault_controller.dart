@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:dgvault/core/core.dart';
 import 'package:dgvault/core/crypto/impl/argon2_kdf.dart';
+import 'package:dgvault/core/crypto/impl/kdbx3_reader.dart';
 import 'package:dgvault/core/crypto/impl/kdbx4_body_cipher.dart';
 import 'package:dgvault/data/format/gzip_compressor.dart';
 
@@ -63,9 +64,12 @@ class VaultController extends ChangeNotifier {
 
   /// Load already-read KDBX bytes (used by tests / non-file sources).
   void loadBytes(Uint8List bytes, {String? path, required String name}) {
-    // Validate it's a KDBX before prompting (fail fast on a bad file).
+    // Validate it's a supported KDBX (v3 or v4) before prompting.
     try {
-      KdbxHeader.read(bytes);
+      final v = KdbxHeader.majorVersion(bytes);
+      if (v != 3 && v != 4) {
+        throw KdbxFormatException('unsupported KDBX major version $v');
+      }
     } on KdbxFormatException catch (e) {
       error = 'not a KDBX file: ${e.message}';
       notifyListeners();
@@ -89,8 +93,15 @@ class VaultController extends ChangeNotifier {
 
     try {
       final cred = CompositeCredential(password: _b(password));
-      _db = await _codec.read(bytes, cred);
-      _header = KdbxHeader.read(bytes);
+      if (KdbxHeader.majorVersion(bytes) == 3) {
+        _db = await const Kdbx3Reader()
+            .read(bytes, cred, compressor: const GzipCompressor());
+        // dgvault writes KDBX4; a save() upgrades the legacy file to v4.
+        _header = _freshHeader(KdfParams.argon2idDefault(), DatabaseCipher.aes256);
+      } else {
+        _db = await _codec.read(bytes, cred);
+        _header = KdbxHeader.read(bytes);
+      }
       _cred = cred;
       _dirty = false;
       status = VaultStatus.unlocked;

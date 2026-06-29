@@ -83,6 +83,17 @@ void main() {
     expect(c.search('acme').isNotEmpty, isTrue); // the fixture's 'Acme Corp'
   }, timeout: const Timeout(Duration(minutes: 2)),);
 
+  test('opens a legacy KDBX3 file via the same flow (version dispatch)',
+      () async {
+    final c = VaultController();
+    await c.openFile('test/fixtures/kdbx/reference_kdbx3.kdbx');
+    expect(c.status, VaultStatus.locked); // v3 accepted, prompts for password
+
+    await c.unlock('kdbx3pass');
+    expect(c.status, VaultStatus.unlocked, reason: c.error);
+    expect(c.search('acme v3').isNotEmpty, isTrue);
+  });
+
   test('lock keeps the file loaded; close drops it', () async {
     final c = VaultController();
     c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
