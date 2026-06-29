@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
-"""Generate the dgvault app icon: a vault/safe door with a 'dg' combination
-dial in the terminal/hacker aesthetic (mint-on-near-black, neon glow).
+"""Generate the dgvault app icon for every platform.
 
-Renders at high resolution with supersampling, then writes every macOS
-AppIcon size. Re-run after tweaking: `python3 tool/gen_icon.py`.
+The mark: a vault/safe door with a 'dg' combination dial in the terminal/hacker
+aesthetic (mint-on-near-black, neon glow). One design, rendered into the shape
+and file layout each platform expects:
+
+  macOS   Assets.xcassets/AppIcon.appiconset/app_icon_*.png   (rounded, alpha)
+  iOS     Assets.xcassets/AppIcon.appiconset/Icon-App-*.png    (square, NO alpha)
+  Android mipmap-*/ic_launcher.png                             (square legacy)
+          mipmap-*/ic_launcher_foreground.png + anydpi-v26     (adaptive)
+  Windows runner/resources/app_icon.ico                        (multi-size)
+  Linux   dgvault.png                                          (packaging)
+
+Re-run after tweaking: `python3 tool/gen_icon.py`.
 """
 
 import math
@@ -13,48 +22,27 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FONT = os.path.join(ROOT, "assets", "fonts", "JetBrainsMono-Bold.ttf")
-OUT_DIR = os.path.join(
-    ROOT, "macos", "Runner", "Assets.xcassets", "AppIcon.appiconset"
-)
 
 # Palette (from lib/ui/theme/terminal_theme.dart).
-BG = (11, 14, 20, 255)        # #0B0E14
-DOOR = (13, 17, 23, 255)      # door face
-PANEL = (17, 22, 31, 255)     # #11161F dial face
-GREEN = (92, 242, 160, 255)   # #5CF2A0 primary mint
+DOOR = (13, 17, 23, 255)        # door face
+PANEL = (17, 22, 31, 255)       # #11161F dial face
+GREEN = (92, 242, 160, 255)     # #5CF2A0 primary mint
 GREEN_DIM = (46, 125, 91, 255)  # #2E7D5B
-CYAN = (86, 197, 214, 255)    # #56C5D6
+TEXT = (224, 255, 240, 255)     # near-white mint for the wordmark
+BG_TOP = (9, 12, 17, 255)
+BG_BOT = (15, 19, 27, 255)
+BG_HEX = "#0B0E14"              # Android adaptive background color
 
 
-def lerp(a, b, t):
-    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(4))
-
-
-def draw_icon(D):
-    """Draw the icon on a DxD RGBA canvas."""
+def _design(D):
+    """The safe-door + dial + 'dg' mark on a TRANSPARENT background, DxD."""
     img = Image.new("RGBA", (D, D), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-
-    margin = D * 0.05
-    bg_box = [margin, margin, D - margin, D - margin]
-    bg_radius = D * 0.225
-    # Background squircle with a faint vertical gradient for depth.
-    grad = Image.new("RGBA", (1, D), BG)
-    gp = grad.load()
-    for y in range(D):
-        gp[0, y] = lerp((9, 12, 17, 255), (15, 19, 27, 255), y / D)
-    grad = grad.resize((D, D))
-    mask = Image.new("L", (D, D), 0)
-    ImageDraw.Draw(mask).rounded_rectangle(bg_box, bg_radius, fill=255)
-    img.paste(grad, (0, 0), mask)
-
-    # Neon layer (blurred later for the glow halo).
     neon = Image.new("RGBA", (D, D), (0, 0, 0, 0))
     nd = ImageDraw.Draw(neon)
-
     cx, cy = D / 2, D / 2
 
-    # --- safe door frame (rounded square) -------------------------------
+    # safe door frame (rounded square)
     door_inset = D * 0.16
     door_box = [door_inset, door_inset, D - door_inset, D - door_inset]
     door_radius = D * 0.10
@@ -62,100 +50,175 @@ def draw_icon(D):
     for layer, w in ((nd, D * 0.020), (d, D * 0.013)):
         layer.rounded_rectangle(door_box, door_radius, outline=GREEN,
                                 width=max(1, int(w)))
-    # inner double-line frame (terminal box-draw vibe)
     f2 = D * 0.205
     d.rounded_rectangle([f2, f2, D - f2, D - f2], door_radius * 0.7,
                         outline=GREEN_DIM, width=max(1, int(D * 0.006)))
 
     # corner bolts
-    bolt_off = D * 0.225
-    br = D * 0.018
+    bolt_off, br = D * 0.225, D * 0.018
     for bx in (bolt_off, D - bolt_off):
         for by in (bolt_off, D - bolt_off):
             d.ellipse([bx - br, by - br, bx + br, by + br], fill=GREEN_DIM)
 
-    # --- combination dial ----------------------------------------------
+    # combination dial: tick marks
     R = D * 0.205
-    # tick marks around the dial
     ticks = 36
     for i in range(ticks):
         ang = math.radians(i * 360 / ticks - 90)
         major = i % 3 == 0
-        r0 = R * (1.0)
         r1 = R * (0.86 if major else 0.92)
         col = GREEN if major else GREEN_DIM
         w = D * (0.010 if major else 0.005)
-        x0, y0 = cx + r0 * math.cos(ang), cy + r0 * math.sin(ang)
-        x1, y1 = cx + r1 * math.cos(ang), cy + r1 * math.sin(ang)
-        nd.line([x0, y0, x1, y1], fill=col, width=max(1, int(w)))
-
-    # dial outer ring
+        nd.line([cx + R * math.cos(ang), cy + R * math.sin(ang),
+                 cx + r1 * math.cos(ang), cy + r1 * math.sin(ang)],
+                fill=col, width=max(1, int(w)))
+    # dial ring + face
     for layer, w in ((nd, D * 0.018), (d, D * 0.011)):
         layer.ellipse([cx - R, cy - R, cx + R, cy + R], outline=GREEN,
                       width=max(1, int(w)))
-    # dial face
     rf = R * 0.80
     d.ellipse([cx - rf, cy - rf, cx + rf, cy + rf], fill=PANEL,
               outline=GREEN_DIM, width=max(1, int(D * 0.006)))
 
-    # --- 'dg' wordmark in the dial -------------------------------------
-    text = "dg"
-    fs = int(R * 1.02)
-    font = ImageFont.truetype(FONT, fs)
-    bbox = d.textbbox((0, 0), text, font=font)
+    # 'dg' wordmark centered in the dial
+    font = ImageFont.truetype(FONT, int(R * 1.02))
+    bbox = d.textbbox((0, 0), "dg", font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    tx = cx - tw / 2 - bbox[0]
-    ty = cy - th / 2 - bbox[1]
-    nd.text((tx, ty), text, font=font, fill=GREEN)
-    # crisp text with a faint cyan underglow for a CRT feel
-    d.text((tx, ty), text, font=font, fill=(220, 255, 238, 255))
+    tx, ty = cx - tw / 2 - bbox[0], cy - th / 2 - bbox[1]
+    nd.text((tx, ty), "dg", font=font, fill=GREEN)
+    d.text((tx, ty), "dg", font=font, fill=TEXT)
 
-    # --- composite glow -------------------------------------------------
+    # neon glow halo, then the crisp design on top
     glow = neon.filter(ImageFilter.GaussianBlur(D * 0.014))
     out = Image.alpha_composite(img, glow)
-    out = Image.alpha_composite(out, glow)  # intensify
-    # redraw crisp strokes on top of the glow
-    out = Image.alpha_composite(out, _crisp_overlay(D))
+    out = Image.alpha_composite(out, glow)   # intensify
+    out = Image.alpha_composite(out, img)    # crisp strokes over the glow
     return out
 
 
-def _crisp_overlay(D):
-    """The crisp foreground (re-drawn so the glow doesn't wash it out)."""
-    img = Image.new("RGBA", (D, D), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    cx, cy = D / 2, D / 2
+def _bg(D, rounded):
+    """Background fill: rounded square (alpha corners) or full opaque square."""
+    grad = Image.new("RGBA", (1, D), BG_TOP)
+    gp = grad.load()
+    for y in range(D):
+        t = y / D
+        gp[0, y] = tuple(round(BG_TOP[i] + (BG_BOT[i] - BG_TOP[i]) * t)
+                         for i in range(4))
+    grad = grad.resize((D, D))
+    if not rounded:
+        return grad
+    out = Image.new("RGBA", (D, D), (0, 0, 0, 0))
+    margin = D * 0.05
+    mask = Image.new("L", (D, D), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        [margin, margin, D - margin, D - margin], D * 0.225, fill=255)
+    out.paste(grad, (0, 0), mask)
+    return out
 
-    door_inset = D * 0.16
-    door_box = [door_inset, door_inset, D - door_inset, D - door_inset]
-    d.rounded_rectangle(door_box, D * 0.10, outline=GREEN,
-                        width=max(1, int(D * 0.013)))
-    R = D * 0.205
-    d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=GREEN,
-              width=max(1, int(D * 0.011)))
-    rf = R * 0.80
-    d.ellipse([cx - rf, cy - rf, cx + rf, cy + rf], outline=GREEN_DIM,
-              width=max(1, int(D * 0.006)))
 
-    text = "dg"
-    fs = int(R * 1.02)
-    font = ImageFont.truetype(FONT, fs)
-    bbox = d.textbbox((0, 0), text, font=font)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    tx = cx - tw / 2 - bbox[0]
-    ty = cy - th / 2 - bbox[1]
-    d.text((tx, ty), text, font=font, fill=(224, 255, 240, 255))
-    return img
+def compose(D, mode):
+    """mode: 'rounded' (macOS), 'square' (iOS/Android/Win), 'foreground'."""
+    if mode == "foreground":
+        # Shrink the mark into the adaptive-icon safe zone so the door corners
+        # survive a circular mask (key content within the central ~66dp/108dp).
+        s = int(D * 0.70)
+        design = _design(s)
+        out = Image.new("RGBA", (D, D), (0, 0, 0, 0))
+        out.paste(design, ((D - s) // 2, (D - s) // 2), design)
+        return out
+    return Image.alpha_composite(_bg(D, rounded=(mode == "rounded")),
+                                 _design(D))
+
+
+def _master(mode, size=1024):
+    return compose(size, mode)
+
+
+def _save(img, path, rgb=False):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if rgb:
+        bg = Image.new("RGB", img.size, (11, 14, 20))
+        bg.paste(img, mask=img.split()[3])
+        bg.save(path)
+    else:
+        img.save(path)
+    print("wrote", os.path.relpath(path, ROOT))
+
+
+def gen_macos():
+    base = os.path.join(ROOT, "macos", "Runner", "Assets.xcassets",
+                        "AppIcon.appiconset")
+    m = _master("rounded")
+    for s in (16, 32, 64, 128, 256, 512, 1024):
+        _save(m.resize((s, s), Image.LANCZOS),
+              os.path.join(base, f"app_icon_{s}.png"))
+
+
+def gen_ios():
+    base = os.path.join(ROOT, "ios", "Runner", "Assets.xcassets",
+                        "AppIcon.appiconset")
+    if not os.path.isdir(base):
+        return
+    m = _master("square")
+    # filename -> pixel size (App Store icons must be opaque, no alpha)
+    icons = {
+        "Icon-App-20x20@1x.png": 20, "Icon-App-20x20@2x.png": 40,
+        "Icon-App-20x20@3x.png": 60, "Icon-App-29x29@1x.png": 29,
+        "Icon-App-29x29@2x.png": 58, "Icon-App-29x29@3x.png": 87,
+        "Icon-App-40x40@1x.png": 40, "Icon-App-40x40@2x.png": 80,
+        "Icon-App-40x40@3x.png": 120, "Icon-App-60x60@2x.png": 120,
+        "Icon-App-60x60@3x.png": 180, "Icon-App-76x76@1x.png": 76,
+        "Icon-App-76x76@2x.png": 152, "Icon-App-83.5x83.5@2x.png": 167,
+        "Icon-App-1024x1024@1x.png": 1024,
+    }
+    for name, px in icons.items():
+        _save(m.resize((px, px), Image.LANCZOS),
+              os.path.join(base, name), rgb=True)
+
+
+def gen_android():
+    res = os.path.join(ROOT, "android", "app", "src", "main", "res")
+    if not os.path.isdir(res):
+        return
+    legacy = _master("square")
+    fg = _master("foreground")
+    # density -> (legacy px, adaptive foreground px @108dp)
+    dens = {"mdpi": (48, 108), "hdpi": (72, 162), "xhdpi": (96, 216),
+            "xxhdpi": (144, 324), "xxxhdpi": (192, 432)}
+    for name, (lpx, fpx) in dens.items():
+        d = os.path.join(res, f"mipmap-{name}")
+        _save(legacy.resize((lpx, lpx), Image.LANCZOS),
+              os.path.join(d, "ic_launcher.png"))
+        _save(fg.resize((fpx, fpx), Image.LANCZOS),
+              os.path.join(d, "ic_launcher_foreground.png"))
+
+
+def gen_windows():
+    path = os.path.join(ROOT, "windows", "runner", "resources",
+                        "app_icon.ico")
+    if not os.path.isdir(os.path.dirname(path)):
+        return
+    m = _master("square", 256)
+    m.save(path, format="ICO",
+           sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64),
+                  (128, 128), (256, 256)])
+    print("wrote", os.path.relpath(path, ROOT))
+
+
+def gen_linux():
+    if not os.path.isdir(os.path.join(ROOT, "linux")):
+        return
+    m = _master("rounded")
+    _save(m.resize((512, 512), Image.LANCZOS),
+          os.path.join(ROOT, "linux", "dgvault.png"))
 
 
 def main():
-    SS = 2048  # supersample master
-    master = draw_icon(SS)
-    sizes = [16, 32, 64, 128, 256, 512, 1024]
-    for s in sizes:
-        out = master.resize((s, s), Image.LANCZOS)
-        path = os.path.join(OUT_DIR, f"app_icon_{s}.png")
-        out.save(path)
-        print(f"wrote {path}")
+    gen_macos()
+    gen_ios()
+    gen_android()
+    gen_windows()
+    gen_linux()
 
 
 if __name__ == "__main__":
