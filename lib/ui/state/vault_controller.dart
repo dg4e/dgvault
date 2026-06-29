@@ -22,10 +22,23 @@ class VaultController extends ChangeNotifier {
   VaultController();
 
   static const _kdf = Argon2KeyDerivation();
+  static const maxAttempts = 5;
   final KdbxCodec _codec = KdbxCodec(
     bodyCipher: Kdbx4BodyCipher(kdf: _kdf),
     compressor: const GzipCompressor(),
   );
+
+  // Consecutive wrong-password limit. wipeOnExhaustion:false → a non-destructive
+  // lockout (never deletes the user's file); counter resets on success/close.
+  // NOTE: in-memory, so it resets on app restart — persisting it needs the
+  // OS-keystore-backed store.
+  final AppLockPolicy _lock = AppLockPolicy(
+    store: InMemoryFailedAttemptStore(),
+    maxAttempts: maxAttempts,
+    wipeOnExhaustion: false,
+  );
+  bool get lockedOut => _lock.isLockedOut;
+  int get remainingAttempts => _lock.remainingAttempts;
 
   // Hooks the VaultScreen registers while mounted (for the app-level menu).
   VoidCallback? onGenerate;
@@ -72,6 +85,7 @@ class VaultController extends ChangeNotifier {
     this.path = path;
     fileName = name;
     error = null;
+    _lock.reset(); // fresh file → fresh attempt budget
     status = VaultStatus.locked;
     notifyListeners();
   }
@@ -80,6 +94,11 @@ class VaultController extends ChangeNotifier {
   Future<void> unlock(String password) async {
     final bytes = _bytes;
     if (bytes == null || status == VaultStatus.unlocking) return;
+    if (_lock.isLockedOut) {
+      error = 'LOCKED OUT — too many attempts; close and reopen the file';
+      notifyListeners();
+      return;
+    }
     status = VaultStatus.unlocking;
     error = null;
     notifyListeners();
@@ -90,10 +109,14 @@ class VaultController extends ChangeNotifier {
       _header = KdbxHeader.read(bytes);
       _cred = cred;
       _dirty = false;
+      _lock.recordSuccess(); // reset the failure counter
       status = VaultStatus.unlocked;
     } on KdbxIntegrityException {
+      final r = _lock.recordFailure();
       status = VaultStatus.locked;
-      error = 'ACCESS DENIED — wrong master password';
+      error = r.lockedOut
+          ? 'LOCKED OUT — $maxAttempts failed attempts; close and reopen'
+          : 'ACCESS DENIED — ${r.remainingAttempts} attempt(s) left';
     } catch (e) {
       status = VaultStatus.locked;
       error = 'open failed: $e';
@@ -167,7 +190,8 @@ class VaultController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Close the file entirely (back to the landing screen).
+  /// Close the file entirely (back to the landing screen). Also clears the
+  /// lockout, so reopening the file gives a fresh attempt budget.
   void close() {
     _bytes = null;
     _header = null;
@@ -176,6 +200,7 @@ class VaultController extends ChangeNotifier {
     path = null;
     fileName = null;
     error = null;
+    _lock.reset();
     status = VaultStatus.noVault;
     notifyListeners();
   }

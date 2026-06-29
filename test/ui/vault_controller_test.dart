@@ -40,6 +40,37 @@ void main() {
     expect(c.status, VaultStatus.unlocked);
   });
 
+  test('locks out after 5 failed attempts — non-destructive, resets on close',
+      () async {
+    final c = VaultController();
+    c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
+
+    for (var i = 0; i < 4; i++) {
+      await c.unlock('wrong$i');
+      expect(c.lockedOut, isFalse);
+      expect(c.remainingAttempts, 4 - i);
+      expect(c.error, contains('attempt(s) left'));
+    }
+    await c.unlock('wrong5'); // 5th failure
+    expect(c.lockedOut, isTrue);
+    expect(c.remainingAttempts, 0);
+    expect(c.error, contains('LOCKED OUT'));
+
+    // While locked out, even the CORRECT password is refused...
+    await c.unlock(testVaultPassword);
+    expect(c.status, VaultStatus.locked);
+    expect(c.database, isNull);
+    // ...and the file is NOT wiped (still loaded on disk/in memory).
+    expect(c.hasVault, isTrue);
+
+    // Closing clears the lockout; reopening gives a fresh budget.
+    c.close();
+    expect(c.lockedOut, isFalse);
+    c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
+    await c.unlock(testVaultPassword);
+    expect(c.status, VaultStatus.unlocked);
+  });
+
   test('non-KDBX bytes are rejected', () {
     final c = VaultController();
     c.loadBytes(Uint8List.fromList(List.filled(64, 0)), name: 'junk.bin');
