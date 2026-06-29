@@ -86,8 +86,11 @@ ThemeData buildTerminalTheme() {
     error: TermColors.red,
   );
 
-  TextStyle t(double s,
-          {Color c = TermColors.text, FontWeight w = FontWeight.w400,}) =>
+  TextStyle t(
+    double s, {
+    Color c = TermColors.text,
+    FontWeight w = FontWeight.w400,
+  }) =>
       mono(size: s, color: c, weight: w);
 
   return base.copyWith(
@@ -111,5 +114,16 @@ ThemeData buildTerminalTheme() {
       labelSmall: t(11, c: TermColors.textDim),
     ),
     iconTheme: const IconThemeData(color: TermColors.textDim, size: 18),
+    // Terminal-styled tooltips applied to every Tooltip in the app.
+    tooltipTheme: TooltipThemeData(
+      waitDuration: const Duration(milliseconds: 300),
+      preferBelow: false,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: TermColors.surfaceAlt,
+        border: Border.all(color: TermColors.borderBright),
+      ),
+      textStyle: mono(size: 11, color: TermColors.green),
+    ),
   );
 }

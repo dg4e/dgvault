@@ -91,6 +91,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
                             TermButton(
                               label: busy ? 'DECRYPTING' : 'UNLOCK',
                               busy: busy,
+                              tooltip: 'Decrypt and open the vault (Enter)',
                               onPressed: busy ? null : _submit,
                             ),
                             const Spacer(),
@@ -98,6 +99,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
                               TermButton(
                                 label: 'RESET',
                                 color: TermColors.amber,
+                                tooltip: 'Reset the failed-attempt counter',
                                 onPressed: c.resetLockout,
                               ),
                           ],

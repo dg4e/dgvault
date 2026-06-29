@@ -7,11 +7,12 @@ import '../theme/terminal_theme.dart';
 
 /// A blinking block cursor.
 class BlinkingCursor extends StatefulWidget {
-  const BlinkingCursor(
-      {super.key,
-      this.color = TermColors.green,
-      this.width = 9,
-      this.height = 16,});
+  const BlinkingCursor({
+    super.key,
+    this.color = TermColors.green,
+    this.width = 9,
+    this.height = 16,
+  });
   final Color color;
   final double width;
   final double height;
@@ -23,8 +24,9 @@ class BlinkingCursor extends StatefulWidget {
 class _BlinkingCursorState extends State<BlinkingCursor>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1100),)
-    ..repeat();
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
 
   @override
   void dispose() {
@@ -88,7 +90,10 @@ class TerminalPanel extends StatelessWidget {
               child: Text(
                 '┤ ${title!} ├',
                 style: mono(
-                    size: 11, color: TermColors.green, weight: FontWeight.w600,),
+                  size: 11,
+                  color: TermColors.green,
+                  weight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -119,12 +124,14 @@ class TermButton extends StatefulWidget {
     required this.onPressed,
     this.color = TermColors.green,
     this.busy = false,
+    this.tooltip,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final Color color;
   final bool busy;
+  final String? tooltip;
 
   @override
   State<TermButton> createState() => _TermButtonState();
@@ -137,7 +144,7 @@ class _TermButtonState extends State<TermButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null && !widget.busy;
     final c = enabled ? widget.color : TermColors.textFaint;
-    return MouseRegion(
+    final button = MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
@@ -175,6 +182,8 @@ class _TermButtonState extends State<TermButton> {
         ),
       ),
     );
+    if (widget.tooltip == null) return button;
+    return Tooltip(message: widget.tooltip!, child: button);
   }
 }
 
@@ -213,8 +222,10 @@ class PromptField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(
         children: [
-          Text('$sigil ',
-              style: mono(color: sigilColor, weight: FontWeight.w700),),
+          Text(
+            '$sigil ',
+            style: mono(color: sigilColor, weight: FontWeight.w700),
+          ),
           Expanded(
             child: TextField(
               controller: controller,
@@ -243,12 +254,13 @@ class PromptField extends StatelessWidget {
 
 /// vim/tmux-style status bar split into left and right segments.
 class StatusBar extends StatelessWidget {
-  const StatusBar(
-      {super.key,
-      required this.left,
-      required this.right,
-      this.mode = 'READY',
-      this.modeColor = TermColors.green,});
+  const StatusBar({
+    super.key,
+    required this.left,
+    required this.right,
+    this.mode = 'READY',
+    this.modeColor = TermColors.green,
+  });
   final List<String> left;
   final List<String> right;
   final String mode;
@@ -259,8 +271,10 @@ class StatusBar extends StatelessWidget {
     Widget seg(String s, Color fg, Color bg) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           color: bg,
-          child: Text(s,
-              style: mono(size: 11, color: fg, weight: FontWeight.w600),),
+          child: Text(
+            s,
+            style: mono(size: 11, color: fg, weight: FontWeight.w600),
+          ),
         );
     Widget item(String s) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -294,17 +308,24 @@ class TagChip extends StatelessWidget {
   final String label;
   final Color color;
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-            border: Border.all(color: color.withValues(alpha: 0.6)),),
-        child: Text('#$label', style: mono(size: 11, color: color)),
+  Widget build(BuildContext context) => Tooltip(
+        message: 'tag: $label',
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            border: Border.all(color: color.withValues(alpha: 0.6)),
+          ),
+          child: Text('#$label', style: mono(size: 11, color: color)),
+        ),
       );
 }
 
 /// Copy [value] to the clipboard and flash a status snackbar.
 Future<void> copyWithFlash(
-    BuildContext context, String value, String label,) async {
+  BuildContext context,
+  String value,
+  String label,
+) async {
   await Clipboard.setData(ClipboardData(text: value));
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)

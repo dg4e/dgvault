@@ -52,9 +52,10 @@ class _EntryDetailViewState extends State<EntryDetailView> {
               child: Text(
                 title,
                 style: mono(
-                    size: 20,
-                    color: TermColors.textBright,
-                    weight: FontWeight.w700,),
+                  size: 20,
+                  color: TermColors.textBright,
+                  weight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -62,9 +63,10 @@ class _EntryDetailViewState extends State<EntryDetailView> {
         if (e.tags.isNotEmpty) ...[
           const SizedBox(height: 12),
           Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [for (final t in e.tags) TagChip(t)],),
+            spacing: 6,
+            runSpacing: 6,
+            children: [for (final t in e.tags) TagChip(t)],
+          ),
         ],
         const SizedBox(height: 20),
         for (final k in keys)
@@ -138,8 +140,11 @@ class _FieldRow extends StatelessWidget {
                   decoration: const BoxDecoration(
                     color: TermColors.surfaceAlt,
                     border: Border(
-                        left: BorderSide(
-                            color: TermColors.borderBright, width: 2,),),
+                      left: BorderSide(
+                        color: TermColors.borderBright,
+                        width: 2,
+                      ),
+                    ),
                   ),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -161,12 +166,12 @@ class _FieldRow extends StatelessWidget {
                   icon: revealed
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  tooltip: revealed ? 'hide' : 'reveal',
+                  tooltip: revealed ? 'Hide $label' : 'Reveal $label',
                   onTap: onToggle,
                 ),
               _IconBtn(
                 icon: Icons.content_copy_outlined,
-                tooltip: 'copy',
+                tooltip: 'Copy $label',
                 onTap: () => copyWithFlash(context, value, label),
               ),
             ],
@@ -178,8 +183,11 @@ class _FieldRow extends StatelessWidget {
 }
 
 class _IconBtn extends StatelessWidget {
-  const _IconBtn(
-      {required this.icon, required this.tooltip, required this.onTap,});
+  const _IconBtn({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;

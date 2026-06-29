@@ -2,6 +2,7 @@
 
 import 'package:dgvault/ui/app.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
+import 'package:dgvault/ui/theme/terminal_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -106,6 +107,27 @@ void main() {
 
     expect(find.text('https://github.com'), findsNothing);
     expect(find.text('https://proton.me'), findsOneWidget);
+  });
+
+  testWidgets('interactive controls expose hover tooltips', (tester) async {
+    await _unlocked(tester);
+
+    // header buttons (platform-correct shortcut in the message)
+    expect(find.byTooltip('Generate a password (${hotkey('G')})'), findsOneWidget);
+    expect(find.byTooltip('Lock the vault (${hotkey('L')})'), findsOneWidget);
+
+    // entry row (multi-line: title / user / url)
+    expect(
+        find.byTooltip('open GitHub\nuser: realytcracker\nhttps://github.com'),
+        findsOneWidget);
+
+    // detail field actions (GitHub selected by default in two-pane)
+    expect(find.byTooltip('Copy username'), findsOneWidget);
+    expect(find.byTooltip('Reveal password'), findsOneWidget);
+    expect(find.byTooltip('Copy password'), findsWidgets);
+
+    // tag chips
+    expect(find.byTooltip('tag: dev'), findsWidgets);
   });
 
   testWidgets('Ctrl+C copies the selected entry password', (tester) async {

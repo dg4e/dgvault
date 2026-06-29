@@ -15,8 +15,10 @@ import 'package:flutter/services.dart';
 
 import '../state/vault_controller.dart';
 
-Widget appMenuBar(
-    {required VaultController controller, required Widget child,}) {
+Widget appMenuBar({
+  required VaultController controller,
+  required Widget child,
+}) {
   if (defaultTargetPlatform != TargetPlatform.macOS) return child;
   return PlatformMenuBar(
     menus: [
@@ -56,9 +58,11 @@ Widget appMenuBar(
         label: 'Window',
         menus: [
           PlatformProvidedMenuItem(
-              type: PlatformProvidedMenuItemType.minimizeWindow,),
+            type: PlatformProvidedMenuItemType.minimizeWindow,
+          ),
           PlatformProvidedMenuItem(
-              type: PlatformProvidedMenuItemType.zoomWindow,),
+            type: PlatformProvidedMenuItemType.zoomWindow,
+          ),
         ],
       ),
     ],

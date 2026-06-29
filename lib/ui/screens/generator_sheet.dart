@@ -88,12 +88,20 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
                 Text(
                   '// PASSWORD GENERATOR',
                   style: mono(
-                      size: 12, color: TermColors.textDim, letterSpacing: 1.5,),
+                    size: 12,
+                    color: TermColors.textDim,
+                    letterSpacing: 1.5,
+                  ),
                 ),
                 const Spacer(),
-                _IconBtn(icon: Icons.refresh, onTap: _regen),
+                _IconBtn(
+                  icon: Icons.refresh,
+                  tooltip: 'Regenerate',
+                  onTap: _regen,
+                ),
                 _IconBtn(
                   icon: Icons.content_copy_outlined,
+                  tooltip: 'Copy password',
                   onTap: () => copyWithFlash(context, _output, 'password'),
                 ),
               ],
@@ -122,7 +130,10 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
                           ? 'OK'
                           : 'WEAK',
                   style: mono(
-                      size: 12, color: _strengthColor, weight: FontWeight.w700,),
+                    size: 12,
+                    color: _strengthColor,
+                    weight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -154,33 +165,41 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
               runSpacing: 10,
               children: [
                 _Toggle(
-                    label: 'A-Z',
-                    on: _upper,
-                    onTap: () {
-                      setState(() => _upper = !_upper);
-                      _regen();
-                    },),
+                  label: 'A-Z',
+                  tooltip: 'Include uppercase letters',
+                  on: _upper,
+                  onTap: () {
+                    setState(() => _upper = !_upper);
+                    _regen();
+                  },
+                ),
                 _Toggle(
-                    label: 'a-z',
-                    on: _lower,
-                    onTap: () {
-                      setState(() => _lower = !_lower);
-                      _regen();
-                    },),
+                  label: 'a-z',
+                  tooltip: 'Include lowercase letters',
+                  on: _lower,
+                  onTap: () {
+                    setState(() => _lower = !_lower);
+                    _regen();
+                  },
+                ),
                 _Toggle(
-                    label: '0-9',
-                    on: _digits,
-                    onTap: () {
-                      setState(() => _digits = !_digits);
-                      _regen();
-                    },),
+                  label: '0-9',
+                  tooltip: 'Include digits',
+                  on: _digits,
+                  onTap: () {
+                    setState(() => _digits = !_digits);
+                    _regen();
+                  },
+                ),
                 _Toggle(
-                    label: '!@#',
-                    on: _symbols,
-                    onTap: () {
-                      setState(() => _symbols = !_symbols);
-                      _regen();
-                    },),
+                  label: '!@#',
+                  tooltip: 'Include symbols',
+                  on: _symbols,
+                  onTap: () {
+                    setState(() => _symbols = !_symbols);
+                    _regen();
+                  },
+                ),
               ],
             ),
           ],
@@ -191,38 +210,53 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
 }
 
 class _Toggle extends StatelessWidget {
-  const _Toggle({required this.label, required this.on, required this.onTap});
+  const _Toggle({
+    required this.label,
+    required this.on,
+    required this.onTap,
+    this.tooltip,
+  });
   final String label;
   final bool on;
   final VoidCallback onTap;
+  final String? tooltip;
   @override
   Widget build(BuildContext context) {
     final c = on ? TermColors.green : TermColors.textFaint;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: c),
-          color: on ? c.withValues(alpha: 0.12) : Colors.transparent,
+    return Tooltip(
+      message: tooltip ?? label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: c),
+            color: on ? c.withValues(alpha: 0.12) : Colors.transparent,
+          ),
+          child: Text(
+            '${on ? "[x]" : "[ ]"} $label',
+            style: mono(size: 13, color: c),
+          ),
         ),
-        child: Text('${on ? "[x]" : "[ ]"} $label',
-            style: mono(size: 13, color: c),),
       ),
     );
   }
 }
 
 class _IconBtn extends StatelessWidget {
-  const _IconBtn({required this.icon, required this.onTap});
+  const _IconBtn({required this.icon, required this.onTap, this.tooltip});
   final IconData icon;
   final VoidCallback onTap;
+  final String? tooltip;
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, size: 18, color: TermColors.textDim),
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip ?? '',
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, size: 18, color: TermColors.textDim),
+          ),
         ),
       );
 }

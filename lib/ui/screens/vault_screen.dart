@@ -234,6 +234,7 @@ class _Header extends StatelessWidget {
           _HeaderBtn(
             label: 'gen',
             icon: Icons.casino_outlined,
+            tooltip: 'Generate a password (${hotkey('G')})',
             onTap: () => showGenerator(context),
           ),
           const SizedBox(width: 6),
@@ -241,6 +242,7 @@ class _Header extends StatelessWidget {
             label: 'lock',
             icon: Icons.lock_outline,
             color: TermColors.amber,
+            tooltip: 'Lock the vault (${hotkey('L')})',
             onTap: controller.lock,
           ),
         ],
@@ -255,27 +257,32 @@ class _HeaderBtn extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.color = TermColors.green,
+    this.tooltip,
   });
   final String label;
   final IconData icon;
   final VoidCallback onTap;
   final Color color;
+  final String? tooltip;
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Text(label, style: mono(size: 12, color: color)),
-          ],
+    return Tooltip(
+      message: tooltip ?? label,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(label, style: mono(size: 12, color: color)),
+            ],
+          ),
         ),
       ),
     );
@@ -351,58 +358,67 @@ class _EntryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = entry.fields[Field.userName]?.value.reveal() ?? '';
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: selected ? TermColors.surfaceAlt : Colors.transparent,
-          border: Border(
-            left: BorderSide(
-              color: selected ? TermColors.green : Colors.transparent,
-              width: 2,
+    final url = entry.fields[Field.url]?.value.reveal();
+    final tip = [
+      'open ${entry.title ?? '(untitled)'}',
+      if (user.isNotEmpty) 'user: $user',
+      if (url != null && url.isNotEmpty) url,
+    ].join('\n');
+    return Tooltip(
+      message: tip,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: selected ? TermColors.surfaceAlt : Colors.transparent,
+            border: Border(
+              left: BorderSide(
+                color: selected ? TermColors.green : Colors.transparent,
+                width: 2,
+              ),
+              bottom: const BorderSide(color: TermColors.border, width: 0.5),
             ),
-            bottom: const BorderSide(color: TermColors.border, width: 0.5),
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            Text(
-              selected ? '▸ ' : '  ',
-              style: mono(size: 13, color: TermColors.green),
-            ),
-            const Icon(
-              Icons.vpn_key_outlined,
-              size: 14,
-              color: TermColors.greenDim,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.title ?? '(untitled)',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: mono(size: 14, color: TermColors.textBright),
-                  ),
-                  if (user.isNotEmpty)
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Text(
+                selected ? '▸ ' : '  ',
+                style: mono(size: 13, color: TermColors.green),
+              ),
+              const Icon(
+                Icons.vpn_key_outlined,
+                size: 14,
+                color: TermColors.greenDim,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      user,
+                      entry.title ?? '(untitled)',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: mono(size: 11, color: TermColors.textDim),
+                      style: mono(size: 14, color: TermColors.textBright),
                     ),
-                ],
+                    if (user.isNotEmpty)
+                      Text(
+                        user,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: mono(size: 11, color: TermColors.textDim),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            if (entry.tags.isNotEmpty)
-              Text(
-                '#${entry.tags.first}',
-                style: mono(size: 10, color: TermColors.magenta),
-              ),
-          ],
+              if (entry.tags.isNotEmpty)
+                Text(
+                  '#${entry.tags.first}',
+                  style: mono(size: 10, color: TermColors.magenta),
+                ),
+            ],
+          ),
         ),
       ),
     );

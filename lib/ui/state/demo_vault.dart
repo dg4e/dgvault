@@ -44,13 +44,16 @@ Entry _entry(
           Field(key: Field.notes, value: InMemoryProtectedValue.plain(notes)),
     if (totp != null)
       'TOTP': Field(
-          key: 'TOTP', value: InMemoryProtectedValue(totp, isProtected: true),),
+        key: 'TOTP',
+        value: InMemoryProtectedValue(totp, isProtected: true),
+      ),
   };
   return Entry(
-      uuid: uuid,
-      fields: fields,
-      tags: tags,
-      modified: DateTime.utc(2026, 6, 1),);
+    uuid: uuid,
+    fields: fields,
+    tags: tags,
+    modified: DateTime.utc(2026, 6, 1),
+  );
 }
 
 Database buildDemoDatabase() {
