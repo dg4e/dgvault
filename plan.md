@@ -3,6 +3,33 @@
 **Plan author:** 🎼 Composer (technical architect)
 **Round 1 status:** Scoring / planning only — no business code.
 
+> **Build status (R31, 2026-06-30):** ✅ Green — `flutter test` **551 passing /
+> 0 failing**, `flutter analyze` **0 issues**, **macOS + Android build**, and the
+> app **runs on the iOS Simulator** (iPhone 15 Pro, screenshot-verified). R31 was
+> a large UX + hardening round:
+> • **Entry/folder management:** entry editing, history viewer + restore,
+>   delete → Recycle Bin, add; folder add/rename/delete; **drag-to-reorder** for
+>   entries and folders (sibling-constrained), **move-to-folder** for both; entry
+>   + folder sort; Settings sheet (KDF transform rounds with a **Benchmark**
+>   button, history max items/size, recycle-bin toggle).
+> • **Branding/chrome:** cross-platform app icon (vault dial + `dg`, `tool/gen_icon.py`);
+>   Amiga-style **About cracktro**; version (auto from `package_info_plus`) +
+>   filename shown in the in-app header **and the native desktop title bar**
+>   (`window_manager`); resizable panes; hover-stable rows.
+> • **Security/robustness audit + fixes:** bounds-checked the pre-auth untrusted
+>   parsers (VariantDictionary / KDBX4 + KDBX3 header TLV loops, CBOR recursion +
+>   counts, gzip-bomb cap, base64 guards) so malformed files raise typed
+>   exceptions instead of RangeError/OOM/StackOverflow; WebDAV refuses Basic creds
+>   over non-HTTPS + rejects cross-origin paths; local-net guard fails closed;
+>   `lock()`/`close()` zeroize secrets; `save()` reentrancy + dirty-flag fix
+>   (no lost edits); merge preserves remote-entry history; stable display sort;
+>   removed dead/duplicate code. (XSS/SQLi/CSRF/IDOR/session-hijack are N/A —
+>   local app, no SQL/WebView/HTTP-server/session surface.)
+> • **Toolchain/run:** set up the Android SDK (cmdline-tools, platform 36,
+>   build-tools 36.0.0, JDK 17) with `ANDROID_HOME` persisted; created emulator
+>   AVDs `pixel_api36` (phone) + `tablet_api36`; iOS simulators via Xcode 26.3.
+>   `README.md` rewritten with full per-platform run/build instructions.
+>
 > **Build status (R30, 2026-06-29):** ✅ Green — `flutter test` **503 passing /
 > 0 failing**, `flutter analyze` **0 issues**, macOS builds. R30 added a **folder
 > (group) tree** to the vault UI — the old flat list dumped every group (incl. the
