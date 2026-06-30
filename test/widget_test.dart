@@ -1,6 +1,7 @@
 // Widget smoke tests for the terminal UI shell.
 
 import 'package:dgvault/ui/app.dart';
+import 'package:dgvault/ui/app_info.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:dgvault/ui/theme/terminal_theme.dart';
 import 'package:flutter/gestures.dart';
@@ -112,6 +113,27 @@ void main() {
 
     expect(find.text('https://github.com'), findsNothing);
     expect(find.text('https://proton.me'), findsOneWidget);
+  });
+
+  testWidgets('title bar shows version + filename; About opens the cracktro',
+      (tester) async {
+    await _unlocked(tester);
+    expect(find.text(kAppTitle), findsOneWidget); // 'dgvault v0.1.0'
+    expect(find.textContaining('test.kdbx'), findsWidgets); // filename shown
+
+    await tester.tap(find.byTooltip('About dgvault'));
+    await tester.pump(); // start the route
+    await tester.pump(const Duration(milliseconds: 700)); // fade + fly-in
+
+    expect(find.text('dgvault'), findsOneWidget); // gradient logo wordmark
+    expect(find.text(kAppCopyright), findsOneWidget);
+    expect(find.text(kAppAuthors), findsOneWidget);
+
+    // Close it (don't pumpAndSettle — the cracktro loops forever).
+    await tester.tap(find.byTooltip('Close (Esc)'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text(kAppCopyright), findsNothing);
   });
 
   testWidgets('folder rows do not resize on hover', (tester) async {

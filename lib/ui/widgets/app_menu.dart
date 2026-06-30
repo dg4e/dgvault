@@ -19,15 +19,18 @@ import '../state/vault_controller.dart';
 Widget appMenuBar({
   required VaultController controller,
   required Widget child,
+  VoidCallback? onAbout,
 }) {
   if (defaultTargetPlatform != TargetPlatform.macOS) return child;
   return PlatformMenuBar(
     menus: [
-      const PlatformMenu(
+      PlatformMenu(
         label: 'dgvault',
         menus: [
-          PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.about),
-          PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
+          PlatformMenuItem(label: 'About dgvault', onSelected: onAbout),
+          const PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.quit,
+          ),
         ],
       ),
       PlatformMenu(

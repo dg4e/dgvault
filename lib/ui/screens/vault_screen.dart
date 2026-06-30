@@ -5,11 +5,13 @@ import 'package:flutter/services.dart';
 
 import 'package:dgvault/core/core.dart';
 
+import '../app_info.dart';
 import '../state/sorting.dart';
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
 import '../widgets/folder_tree.dart';
 import '../widgets/terminal_widgets.dart';
+import 'cracktro_screen.dart';
 import 'entry_detail.dart';
 import 'entry_editor.dart';
 import 'generator_sheet.dart';
@@ -642,27 +644,37 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            'dgvault',
+            kAppTitle, // dgvault v0.1.0
             style: mono(
               size: 15,
               color: TermColors.green,
               weight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              '· ${controller.fileName ?? '(in memory)'}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: mono(size: 13, color: TermColors.textDim),
+          if (controller.fileName != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                '— ${controller.fileName}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: mono(size: 13, color: TermColors.textDim),
+              ),
             ),
-          ),
+          ],
           if (controller.status == VaultStatus.saving) ...[
             const SizedBox(width: 8),
             Text('saving…', style: mono(size: 11, color: TermColors.amber)),
           ],
           const Spacer(),
+          _HeaderBtn(
+            label: 'about',
+            icon: Icons.info_outline,
+            color: TermColors.magenta,
+            tooltip: 'About dgvault',
+            onTap: () => showCracktro(context),
+          ),
+          const SizedBox(width: 6),
           _HeaderBtn(
             label: 'save',
             icon: Icons.save_outlined,
