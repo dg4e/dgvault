@@ -15,6 +15,7 @@ import 'dart:typed_data';
 
 import '../model/database.dart';
 import '../model/kdf_params.dart';
+import '../util/bytes.dart';
 import 'variant_dictionary.dart';
 
 class KdbxFormatException implements Exception {
@@ -48,13 +49,6 @@ class KdbxUuids {
   ]);
 }
 
-bool _bytesEqual(Uint8List a, Uint8List b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
 
 /// Maps the KDBX4 `KdfParameters` VariantDictionary to/from [KdfParams].
 class KdfParameters {
@@ -90,7 +84,7 @@ class KdfParameters {
       throw KdbxFormatException('KdfParameters missing \$UUID');
     }
     final salt = vd.getBytes('S') ?? Uint8List(0);
-    if (_bytesEqual(uuid, KdbxUuids.aesKdf)) {
+    if (bytesEqual(uuid, KdbxUuids.aesKdf)) {
       return (
         KdfParams(
           algorithm: KdfAlgorithm.aesKdf,
@@ -99,7 +93,7 @@ class KdfParameters {
         salt,
       );
     }
-    final algo = _bytesEqual(uuid, KdbxUuids.argon2d)
+    final algo = bytesEqual(uuid, KdbxUuids.argon2d)
         ? KdfAlgorithm.argon2d
         : KdfAlgorithm.argon2id;
     final memBytes = vd.getUInt64('M') ?? 0;
@@ -235,10 +229,19 @@ class KdbxHeader {
     VariantDictionary? publicCustom;
 
     while (true) {
+      // Untrusted, pre-authentication input: bounds-check the 5-byte TLV header
+      // and the declared length before slicing, and require an end-of-header
+      // field (a missing one must not loop off the end).
+      if (offset + 5 > bytes.length) {
+        throw KdbxFormatException('truncated KDBX header (no end-of-header)');
+      }
       final id = bd.getUint8(offset);
       offset += 1;
       final len = bd.getUint32(offset, Endian.little);
       offset += 4;
+      if (offset + len > bytes.length) {
+        throw KdbxFormatException('KDBX header field $id length $len overruns');
+      }
       final data = bytes.sublist(offset, offset + len);
       offset += len;
 
@@ -258,10 +261,13 @@ class KdbxHeader {
           header.headerBytes = Uint8List.sublistView(bytes, 0, offset);
           return header;
         case _fCipherId:
-          cipher = _bytesEqual(data, KdbxUuids.chacha20)
+          cipher = bytesEqual(data, KdbxUuids.chacha20)
               ? DatabaseCipher.chacha20
               : DatabaseCipher.aes256;
         case _fCompression:
+          if (data.length < 4) {
+            throw KdbxFormatException('KDBX compression field too short');
+          }
           compressed =
               ByteData.sublistView(data).getUint32(0, Endian.little) == 1;
         case _fMasterSeed:

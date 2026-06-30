@@ -73,4 +73,31 @@ void main() {
     final dav = WebDavRemoteStorage(baseUrl: base, client: _server({}));
     expect(() => dav.download('missing'), throwsA(isA<RemoteStorageException>()));
   });
+
+  test('refuses to send credentials over plaintext HTTP', () {
+    expect(
+      () => WebDavRemoteStorage(
+          baseUrl: Uri.parse('http://dav.example/'),
+          username: 'u',
+          password: 'p',),
+      throwsArgumentError,
+    );
+  });
+
+  test('allows insecure HTTP credentials only with explicit opt-in', () {
+    final dav = WebDavRemoteStorage(
+      baseUrl: Uri.parse('http://dav.example/'),
+      username: 'u',
+      password: 'p',
+      allowInsecure: true,
+    );
+    expect(dav, isA<WebDavRemoteStorage>());
+  });
+
+  test('refuses a cross-origin path (credential-exfiltration guard)', () {
+    final dav = WebDavRemoteStorage(
+        baseUrl: base, username: 'u', password: 'p', client: _server({}),);
+    expect(() => dav.download('https://evil.example/steal'),
+        throwsA(isA<RemoteStorageException>()),);
+  });
 }

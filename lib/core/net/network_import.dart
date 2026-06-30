@@ -45,9 +45,15 @@ class HostClassifier {
     // bypass; Critic R20). Anything numeric-looking we can't confidently place in
     // a local range fails safe → not local.
     if (!h.contains('.')) {
+      final numericLooking =
+          _digits.hasMatch(h) || h.startsWith('0x') || h.startsWith('0X');
       final asInt = _parseIntHost(h);
       if (asInt != null) return _isLocalIpv4Int(asInt);
-      return true; // non-numeric single-label LAN name
+      // A numeric-looking host we could NOT parse (octal with 8/9, >32-bit /
+      // int64 overflow, malformed 0x-hex) is a failed integer-encoded-IP form —
+      // fail CLOSED (not local) rather than letting it bypass the guard.
+      if (numericLooking) return false;
+      return true; // genuine non-numeric single-label LAN name
     }
 
     return false; // dotted public FQDN

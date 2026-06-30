@@ -46,8 +46,3 @@ abstract interface class Cipher {
     required Stream<List<int>> ciphertext,
   });
 }
-
-/// Resolves the concrete [Cipher] for a database's declared algorithm.
-abstract interface class CipherRegistry {
-  Cipher forAlgorithm(DatabaseCipher algorithm);
-}

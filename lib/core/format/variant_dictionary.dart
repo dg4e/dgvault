@@ -84,6 +84,9 @@ class VariantDictionary {
   static VariantDictionary parse(Uint8List bytes) {
     final bd = ByteData.sublistView(bytes);
     var offset = 0;
+    if (bytes.length < 2) {
+      throw VariantDictionaryException('truncated VariantDictionary header');
+    }
     final version = bd.getUint16(offset, Endian.little);
     offset += 2;
     if ((version >> 8) != 0x01) {
@@ -91,21 +94,54 @@ class VariantDictionary {
           'unsupported VariantDictionary version 0x${version.toRadixString(16)}',);
     }
     final vd = VariantDictionary();
-    while (offset < bytes.length) {
+    // Bounded TLV loop: every length is unsigned and bounds-checked against the
+    // remaining bytes before slicing, and a missing terminator is an error —
+    // this is parsed from an untrusted file BEFORE any authentication.
+    while (true) {
+      if (offset + 1 > bytes.length) {
+        throw VariantDictionaryException('missing VariantDictionary terminator');
+      }
       final type = bd.getUint8(offset);
       offset += 1;
       if (type == 0x00) break; // terminator
-      final keyLen = bd.getInt32(offset, Endian.little);
+
+      final keyLen = _readLen(bd, bytes, offset, 'key');
       offset += 4;
-      final key = utf8.decode(bytes.sublist(offset, offset + keyLen));
+      _checkRange(offset, keyLen, bytes.length, 'key');
+      final key = _utf8(bytes.sublist(offset, offset + keyLen), 'key');
       offset += keyLen;
-      final valueLen = bd.getInt32(offset, Endian.little);
+
+      final valueLen = _readLen(bd, bytes, offset, 'value');
       offset += 4;
-      final value = bytes.sublist(offset, offset + valueLen);
+      _checkRange(offset, valueLen, bytes.length, 'value');
+      final value = Uint8List.sublistView(bytes, offset, offset + valueLen);
       offset += valueLen;
+
       vd._entries[key] = _decodeEntry(type, value);
     }
     return vd;
+  }
+
+  /// Read an unsigned 32-bit length, bounds-checking the 4 length bytes.
+  static int _readLen(ByteData bd, Uint8List bytes, int offset, String what) {
+    if (offset + 4 > bytes.length) {
+      throw VariantDictionaryException('truncated $what length');
+    }
+    return bd.getUint32(offset, Endian.little); // unsigned: never negative
+  }
+
+  static void _checkRange(int offset, int len, int total, String what) {
+    if (offset + len > total) {
+      throw VariantDictionaryException('$what length $len exceeds buffer');
+    }
+  }
+
+  static String _utf8(Uint8List bytes, String what) {
+    try {
+      return utf8.decode(bytes);
+    } on FormatException {
+      throw VariantDictionaryException('invalid UTF-8 in $what');
+    }
   }
 
   static void _addInt32(BytesBuilder out, int v) {
@@ -144,23 +180,36 @@ class VariantDictionary {
 
   static _Entry _decodeEntry(int type, Uint8List value) {
     final bd = ByteData.sublistView(value);
+    void need(int n) {
+      if (value.length < n) {
+        throw VariantDictionaryException(
+            'value for type 0x${type.toRadixString(16)} needs $n bytes, '
+            'got ${value.length}',);
+      }
+    }
+
     switch (type) {
       case typeUInt32:
+        need(4);
         return _Entry(type, bd.getUint32(0, Endian.little));
       case typeInt32:
+        need(4);
         return _Entry(type, bd.getInt32(0, Endian.little));
       case typeUInt64:
+        need(8);
         return _Entry(type, bd.getUint64(0, Endian.little));
       case typeInt64:
+        need(8);
         return _Entry(type, bd.getInt64(0, Endian.little));
       case typeBool:
         return _Entry(type, value.isNotEmpty && value[0] != 0);
       case typeString:
-        return _Entry(type, utf8.decode(value));
+        return _Entry(type, _utf8(value, 'string value'));
       case typeByteArray:
         return _Entry(type, value);
       default:
-        throw VariantDictionaryException('unknown type 0x$type');
+        throw VariantDictionaryException(
+            'unknown type 0x${type.toRadixString(16)}',);
     }
   }
 }

@@ -297,6 +297,34 @@ void main() {
     expect(c.search('acme v3').isNotEmpty, isTrue);
   });
 
+  test('lock zeroizes entry secrets (ProtectedValue disposed)', () async {
+    final c = await _open();
+    final gh = c.search('GitHub').first;
+    final pw = gh.fields[Field.password]!.value; // InMemoryProtectedValue
+    expect(pw.reveal(), isNotEmpty); // readable while unlocked
+
+    c.lock();
+    // After lock the backing bytes are wiped, so a stale reference can't reveal.
+    expect(pw.reveal, throwsStateError);
+  });
+
+  test('an edit during an in-flight save keeps the vault dirty', () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_save');
+    addTearDown(() => dir.delete(recursive: true));
+    final c = VaultController();
+    await c.createNew('${dir.path}/v.kdbx', 'pw');
+
+    final fut = c.save(); // runs to the codec.write await, then yields
+    c.addEntry(Entry(uuid: 'mid', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('Mid')),
+    },),); // mutation lands while the write is in flight
+    await fut;
+
+    expect(c.isDirty, isTrue,
+        reason: 'edit during save must not be silently marked clean',);
+  });
+
   test('lock keeps the file loaded; close drops it', () async {
     final c = VaultController();
     c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');

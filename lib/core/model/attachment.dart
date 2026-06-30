@@ -22,6 +22,4 @@ class Attachment {
 
   /// Eagerly-loaded bytes, or null when the payload is streamed on demand.
   final Uint8List? inlineData;
-
-  bool get isLoaded => inlineData != null;
 }

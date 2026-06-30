@@ -18,17 +18,46 @@ class WebDavRemoteStorage implements RemoteStorage {
     String? username,
     String? password,
     http.Client? client,
+    this.allowInsecure = false,
   })  : _base = baseUrl,
         _client = client ?? http.Client(),
         _authHeader = (username != null && password != null)
             ? 'Basic ${base64Auth(username, password)}'
-            : null;
+            : null {
+    // Never send HTTP Basic credentials in the clear: base64(user:pass) over
+    // plaintext HTTP is trivially recoverable by a network eavesdropper.
+    if (_authHeader != null && _base.scheme != 'https' && !allowInsecure) {
+      throw ArgumentError.value(
+        baseUrl.toString(),
+        'baseUrl',
+        'refusing to send WebDAV credentials over a non-HTTPS URL; use https '
+            'or set allowInsecure: true for a trusted local network',
+      );
+    }
+  }
+
+  /// Opt-in escape hatch for trusted LAN endpoints that have no TLS.
+  final bool allowInsecure;
 
   final Uri _base;
   final http.Client _client;
   final String? _authHeader;
 
-  Uri _uri(String path) => _base.resolve(path);
+  /// Resolve [path] against the base, refusing any result that escapes the
+  /// base origin — otherwise an absolute/scheme-relative `path` (e.g. from an
+  /// untrusted sync descriptor) would leak the Authorization header to another
+  /// host (credential exfiltration / SSRF).
+  Uri _uri(String path) {
+    final u = _base.resolve(path);
+    if (u.scheme != _base.scheme ||
+        u.host != _base.host ||
+        u.port != _base.port) {
+      throw RemoteStorageException(
+          'refusing cross-origin WebDAV request to ${u.scheme}://${u.host}',);
+    }
+    return u;
+  }
+
   Map<String, String> get _headers =>
       _authHeader == null ? {} : {'authorization': _authHeader};
 

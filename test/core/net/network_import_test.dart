@@ -38,6 +38,20 @@ void main() {
       expect(HostClassifier.isLocal('example.com'), isFalse);
       expect(HostClassifier.isLocal('sub.example.com'), isFalse);
     });
+
+    test('integer-encoded IPv4 is range-checked, not blanket-local', () {
+      expect(HostClassifier.isLocal('2130706433'), isTrue); // 127.0.0.1
+      expect(HostClassifier.isLocal('134744072'), isFalse); // 8.8.8.8 public
+    });
+
+    test('numeric-looking dotless hosts that fail to parse fail CLOSED', () {
+      // octal with 8/9, >32-bit / int64 overflow, malformed 0x-hex: a failed
+      // integer-encoded-IP form must NOT bypass the guard as "local".
+      for (final h in ['0999', '08888888', '99999999999999999999', '0xZZ',
+        '0x',]) {
+        expect(HostClassifier.isLocal(h), isFalse, reason: h);
+      }
+    });
   });
 
   group('LocalOnlyPolicy', () {

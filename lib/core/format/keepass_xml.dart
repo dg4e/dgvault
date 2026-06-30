@@ -223,7 +223,13 @@ class KeePassXml {
       if (id == null) continue;
       Uint8List? data;
       final text = b.innerText.trim();
-      if (text.isNotEmpty) data = base64.decode(text);
+      if (text.isNotEmpty) {
+        try {
+          data = base64.decode(text);
+        } on FormatException {
+          throw const FormatException('invalid base64 in <Binary> payload');
+        }
+      }
       out.add(Attachment(
         id: id,
         name: '',

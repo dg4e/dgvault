@@ -163,4 +163,21 @@ void main() {
       expect(d.modifiedEntries.single.attachmentsChanged, isTrue);
     });
   });
+
+  group('DatabaseMerger — history preservation', () {
+    test('a remote-only entry keeps its version history after merge', () {
+      final remote = e('x', title: 'Doc', modified: DateTime.utc(2024, 1, 2))
+        ..history
+            .add(e('x', title: 'Doc-old', modified: DateTime.utc(2024, 1, 1)));
+      final source =
+          db(Group(uuid: 'r', name: 'Root', entries: [remote]));
+      final target = db(Group(uuid: 'r', name: 'Root'));
+
+      const DatabaseMerger().merge(target, source);
+
+      final merged = target.root.entries.firstWhere((x) => x.uuid == 'x');
+      expect(merged.history, hasLength(1));
+      expect(merged.history.single.title, 'Doc-old');
+    });
+  });
 }

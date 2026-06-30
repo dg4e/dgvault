@@ -14,6 +14,7 @@ import 'dart:typed_data';
 
 import '../model/database.dart';
 import '../model/group.dart';
+import '../util/bytes.dart';
 
 /// Number of built-in KeePass preset icons (indices 0..68). This is the fixed
 /// KeePass 2.x standard icon set size.
@@ -77,7 +78,7 @@ class CustomIconPool {
   /// is added. Otherwise the icon is stored and [preferredUuid] returned.
   String addDeduplicated(String preferredUuid, Uint8List data) {
     for (final existing in _byUuid.values) {
-      if (_bytesEqual(existing.data, data)) return existing.uuid;
+      if (bytesEqual(existing.data, data)) return existing.uuid;
     }
     _byUuid[preferredUuid] = CustomIcon(uuid: preferredUuid, data: data);
     return preferredUuid;
@@ -124,12 +125,4 @@ class CustomIconService {
     }
     return dead.length;
   }
-}
-
-bool _bytesEqual(Uint8List a, Uint8List b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }

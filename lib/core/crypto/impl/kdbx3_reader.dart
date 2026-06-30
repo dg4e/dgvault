@@ -107,10 +107,18 @@ class Kdbx3Reader {
     var compressed = false;
 
     while (true) {
+      // Untrusted, pre-authentication: bounds-check the 3-byte TLV header and
+      // the declared length, and require a terminating field.
+      if (offset + 3 > bytes.length) {
+        throw KdbxFormatException('truncated KDBX3 header (no end field)');
+      }
       final id = bd.getUint8(offset);
       offset += 1;
       final len = bd.getUint16(offset, Endian.little); // v3: 2-byte length
       offset += 2;
+      if (offset + len > bytes.length) {
+        throw KdbxFormatException('KDBX3 header field $id length $len overruns');
+      }
       final data = Uint8List.sublistView(bytes, offset, offset + len);
       offset += len;
       switch (id) {
@@ -127,13 +135,18 @@ class Kdbx3Reader {
             innerStreamId: innerId,
           );
         case _fCompression:
+          _need(data, 4, 'compression');
           compressed = ByteData.sublistView(data).getUint32(0, Endian.little) == 1;
         case _fMasterSeed:
           masterSeed = data;
         case _fTransformSeed:
           transformSeed = data;
         case _fTransformRounds:
+          _need(data, 8, 'transform rounds');
           rounds = ByteData.sublistView(data).getUint64(0, Endian.little);
+          if (rounds < 1 || rounds > _maxTransformRounds) {
+            throw KdbxFormatException('implausible KDBX3 transform rounds');
+          }
         case _fEncryptionIv:
           encIv = data;
         case _fProtectedStreamKey:
@@ -141,10 +154,21 @@ class Kdbx3Reader {
         case _fStreamStartBytes:
           streamStart = data;
         case _fInnerRandomStreamId:
+          _need(data, 4, 'inner stream id');
           innerId = ByteData.sublistView(data).getUint32(0, Endian.little);
         default:
           break; // cipher id / comment / unknown — ignored
       }
+    }
+  }
+
+  /// Sanity cap on AES-KDF rounds so a malicious header can't pin the CPU
+  /// forever (legitimate vaults are well under this).
+  static const int _maxTransformRounds = 100000000;
+
+  static void _need(Uint8List data, int n, String what) {
+    if (data.length < n) {
+      throw KdbxFormatException('KDBX3 $what field needs $n bytes');
     }
   }
 

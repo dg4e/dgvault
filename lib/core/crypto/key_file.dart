@@ -21,6 +21,8 @@ import 'dart:typed_data';
 
 import 'package:xml/xml.dart';
 
+import '../util/bytes.dart';
+
 class KeyFileException implements Exception {
   KeyFileException(this.message);
   final String message;
@@ -102,13 +104,18 @@ class KeyFile {
       if (hashAttr != null) {
         final expected = _hexDecode(hashAttr.trim());
         final actual = _hash32(key).sublist(0, expected.length);
-        if (!_bytesEqual(actual, expected)) {
+        if (!bytesEqual(actual, expected)) {
           throw KeyFileException('XML key file hash mismatch (corrupt file)');
         }
       }
       return key;
     } else {
-      final key = base64.decode(raw.trim());
+      final Uint8List key;
+      try {
+        key = base64.decode(raw.trim());
+      } on FormatException {
+        throw KeyFileException('XML(v1) key data is not valid base64');
+      }
       if (key.length != 32) {
         throw KeyFileException('XML(v1) key is ${key.length} bytes, need 32');
       }
@@ -147,13 +154,5 @@ class KeyFile {
       out[i] = byte;
     }
     return out;
-  }
-
-  static bool _bytesEqual(Uint8List a, Uint8List b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
   }
 }

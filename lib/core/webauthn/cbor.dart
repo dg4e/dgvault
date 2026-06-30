@@ -22,8 +22,13 @@ class CborReader {
   final Uint8List bytes;
   int offset = 0;
 
+  /// Maximum array/map nesting depth — attacker CBOR (e.g. repeated `0x81`)
+  /// must not recurse [readItem] deep enough to overflow the stack.
+  static const int _maxDepth = 64;
+
   /// Decode a single CBOR data item, advancing [offset].
-  Object? readItem() {
+  Object? readItem([int depth = 0]) {
+    if (depth > _maxDepth) throw CborException('CBOR nesting too deep');
     final initial = _u8();
     final major = initial >> 5;
     final info = initial & 0x1f;
@@ -37,19 +42,28 @@ class CborReader {
       case 3: // text string
         return utf8.decode(_take(_argument(info)));
       case 4: // array
-        final n = _argument(info);
-        return [for (var i = 0; i < n; i++) readItem()];
+        final n = _count(_argument(info));
+        return [for (var i = 0; i < n; i++) readItem(depth + 1)];
       case 5: // map
-        final n = _argument(info);
+        final n = _count(_argument(info));
         final map = <Object?, Object?>{};
         for (var i = 0; i < n; i++) {
-          final k = readItem();
-          map[k] = readItem();
+          final k = readItem(depth + 1);
+          map[k] = readItem(depth + 1);
         }
         return map;
       default:
         throw CborException('unsupported CBOR major type $major');
     }
+  }
+
+  /// An element count must be non-negative and fit the remaining bytes (each
+  /// element is ≥1 byte), so a huge/negative count can't drive a giant loop.
+  int _count(int n) {
+    if (n < 0 || n > bytes.length - offset) {
+      throw CborException('implausible CBOR element count $n');
+    }
+    return n;
   }
 
   int _argument(int info) {
@@ -82,7 +96,9 @@ class CborReader {
   }
 
   Uint8List _take(int n) {
-    if (offset + n > bytes.length) throw CborException('truncated CBOR string');
+    if (n < 0 || offset + n > bytes.length) {
+      throw CborException('truncated or oversized CBOR string');
+    }
     final out = Uint8List.sublistView(bytes, offset, offset + n);
     offset += n;
     return out;

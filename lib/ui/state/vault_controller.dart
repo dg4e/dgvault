@@ -46,9 +46,12 @@ class VaultController extends ChangeNotifier {
   Database? get database => _db;
   Group? get rootGroup => _db?.root;
   String? get recycleBinUuid => _db?.meta.recycleBinUuid;
-  bool get hasVault => _bytes != null;
   bool get isDirty => _dirty;
   bool _dirty = false;
+
+  // Monotonic counter bumped on every mutation; save() uses it to detect edits
+  // that land while an async write is in flight (so they aren't marked clean).
+  int _mutationSeq = 0;
   int get entryCount => _db?.root.allEntries.length ?? 0;
 
   Uint8List _b(String s) => Uint8List.fromList(utf8.encode(s));
@@ -124,6 +127,11 @@ class VaultController extends ChangeNotifier {
   Future<void> save() async {
     final db = _db, cred = _cred, p = path, h = _header;
     if (db == null || cred == null || p == null || h == null) return;
+    if (status == VaultStatus.saving) return; // reentrancy guard
+    // Snapshot the mutation count: serialize/write awaits below let the UI run,
+    // so an edit can land mid-save. If one does, the vault stays dirty (and the
+    // edit is re-saved) rather than being silently marked clean.
+    final seqAtStart = _mutationSeq;
     status = VaultStatus.saving;
     notifyListeners();
     try {
@@ -132,7 +140,7 @@ class VaultController extends ChangeNotifier {
       await File(p).writeAsBytes(out, flush: true);
       _bytes = out;
       _header = header;
-      _dirty = false;
+      _dirty = _mutationSeq != seqAtStart; // edited during the write → still dirty
       error = null;
     } catch (e) {
       error = 'save failed: $e';
@@ -177,6 +185,7 @@ class VaultController extends ChangeNotifier {
 
   /// Lock the open database (keep the file loaded for re-unlock).
   void lock() {
+    _wipeSecrets();
     _db = null;
     _cred = null;
     error = null;
@@ -186,6 +195,7 @@ class VaultController extends ChangeNotifier {
 
   /// Close the file entirely (back to the landing screen).
   void close() {
+    _wipeSecrets();
     _bytes = null;
     _header = null;
     _db = null;
@@ -195,6 +205,44 @@ class VaultController extends ChangeNotifier {
     error = null;
     status = VaultStatus.noVault;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _wipeSecrets();
+    super.dispose();
+  }
+
+  /// Best-effort zeroing of plaintext secrets before dropping the database, per
+  /// the ProtectedValue memory-protection contract. Disposes every field value
+  /// (live entries and their history) and zeroes the credential bytes.
+  void _wipeSecrets() {
+    final db = _db;
+    if (db != null) {
+      for (final entry in db.root.allEntries) {
+        for (final field in entry.fields.values) {
+          field.value.dispose();
+        }
+        for (final version in entry.history) {
+          for (final field in version.fields.values) {
+            field.value.dispose();
+          }
+        }
+      }
+    }
+    final cred = _cred;
+    if (cred != null) {
+      _zero(cred.password);
+      _zero(cred.keyFile);
+      _zero(cred.challengeResponse);
+    }
+  }
+
+  void _zero(Uint8List? bytes) {
+    if (bytes == null) return;
+    for (var i = 0; i < bytes.length; i++) {
+      bytes[i] = 0;
+    }
   }
 
   /// Entries matching [query] (empty → all), via the real search engine.
@@ -511,6 +559,7 @@ class VaultController extends ChangeNotifier {
 
   void _touch() {
     _dirty = true;
+    _mutationSeq++;
     notifyListeners();
   }
 

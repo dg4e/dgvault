@@ -20,12 +20,25 @@ extension FolderSortX on FolderSort {
   /// A copy of [groups] in this order (input is never mutated).
   List<Group> apply(List<Group> groups) {
     if (this == FolderSort.manual) return groups;
-    final out = List<Group>.of(groups);
     int byName(Group a, Group b) =>
         a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    out.sort(this == FolderSort.nameAsc ? byName : (a, b) => byName(b, a));
-    return out;
+    return stableSort(
+        groups, this == FolderSort.nameAsc ? byName : (a, b) => byName(b, a),);
   }
+}
+
+/// A stable sort (equal-key items keep their original relative order) returning
+/// a new list — Dart's [List.sort] is not guaranteed stable, which would let
+/// items with equal titles/timestamps reshuffle between rebuilds.
+List<T> stableSort<T>(List<T> items, int Function(T a, T b) compare) {
+  final indexed = [
+    for (var i = 0; i < items.length; i++) (i, items[i]),
+  ];
+  indexed.sort((a, b) {
+    final c = compare(a.$2, b.$2);
+    return c != 0 ? c : a.$1.compareTo(b.$1);
+  });
+  return [for (final e in indexed) e.$2];
 }
 
 extension EntrySortX on EntrySort {
@@ -40,7 +53,6 @@ extension EntrySortX on EntrySort {
   /// A copy of [entries] in this order (input is never mutated).
   List<Entry> apply(List<Entry> entries) {
     if (this == EntrySort.manual) return entries;
-    final out = List<Entry>.of(entries);
     int byTitle(Entry a, Entry b) => (a.title ?? '')
         .toLowerCase()
         .compareTo((b.title ?? '').toLowerCase());
@@ -52,18 +64,14 @@ extension EntrySortX on EntrySort {
       return b.compareTo(a);
     }
 
-    switch (this) {
-      case EntrySort.manual:
-        break; // handled by the early return above
-      case EntrySort.titleAsc:
-        out.sort(byTitle);
-      case EntrySort.titleDesc:
-        out.sort((a, b) => byTitle(b, a));
-      case EntrySort.modifiedDesc:
-        out.sort((a, b) => byDateDesc(a.modified, b.modified));
-      case EntrySort.createdDesc:
-        out.sort((a, b) => byDateDesc(a.created, b.created));
-    }
-    return out;
+    return switch (this) {
+      EntrySort.manual => entries, // handled by the early return above
+      EntrySort.titleAsc => stableSort(entries, byTitle),
+      EntrySort.titleDesc => stableSort(entries, (a, b) => byTitle(b, a)),
+      EntrySort.modifiedDesc =>
+        stableSort(entries, (a, b) => byDateDesc(a.modified, b.modified)),
+      EntrySort.createdDesc =>
+        stableSort(entries, (a, b) => byDateDesc(a.created, b.created)),
+    };
   }
 }
