@@ -183,6 +183,12 @@ class VaultController extends ChangeNotifier {
 
   // ---- lifecycle ----------------------------------------------------------
 
+  /// Surface a user-facing error (e.g. a failed file picker) on the UI.
+  void reportError(String message) {
+    error = message;
+    notifyListeners();
+  }
+
   /// Lock the open database (keep the file loaded for re-unlock).
   void lock() {
     _wipeSecrets();

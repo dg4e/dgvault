@@ -13,17 +13,25 @@ class LandingScreen extends StatelessWidget {
   final VaultController controller;
 
   Future<void> _open(BuildContext context) async {
-    final path = await VaultFiles.pickOpen();
-    if (path != null) await controller.openFile(path);
+    try {
+      final path = await VaultFiles.pickOpen();
+      if (path != null) await controller.openFile(path);
+    } catch (e) {
+      controller.reportError('could not open file: $e');
+    }
   }
 
   Future<void> _new(BuildContext context) async {
-    final path = await VaultFiles.pickNew();
-    if (path == null) return;
-    if (!context.mounted) return;
-    final pw = await _promptNewPassword(context);
-    if (pw == null || pw.isEmpty) return;
-    await controller.createNew(path, pw);
+    try {
+      final path = await VaultFiles.pickNew();
+      if (path == null) return;
+      if (!context.mounted) return;
+      final pw = await _promptNewPassword(context);
+      if (pw == null || pw.isEmpty) return;
+      await controller.createNew(path, pw);
+    } catch (e) {
+      controller.reportError('could not create file: $e');
+    }
   }
 
   @override
