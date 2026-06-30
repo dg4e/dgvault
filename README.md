@@ -16,6 +16,7 @@ Runs on **macOS, Windows, Linux, iOS, and Android** from a single codebase.
 ## Features
 
 - Open/create real `.kdbx` files (KDBX 3 read, KDBX 4 read/write) — interops with KeePass / KeePassXC.
+- Registered `.kdbx` file type: open a vault from Finder/Files/a file manager and it launches dgvault straight to the unlock screen (macOS/iOS/Android wired in-app; Windows/Linux via command-line arg + an install-time file association).
 - Folders with add / rename / delete / **drag-to-reorder** / move-to.
 - Entries with editing, history (view + restore), delete → Recycle Bin, **drag-to-reorder**, move-to, sort.
 - Password generator (charset + diceware), TOTP, password audit.

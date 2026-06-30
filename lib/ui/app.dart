@@ -10,16 +10,20 @@ import 'screens/cracktro_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/unlock_screen.dart';
 import 'screens/vault_screen.dart';
+import 'state/open_file_channel.dart';
 import 'state/vault_controller.dart';
 import 'theme/terminal_theme.dart';
 import 'widgets/app_menu.dart';
 import 'window_title.dart';
 
 class DgvaultApp extends StatefulWidget {
-  const DgvaultApp({super.key, this.controller});
+  const DgvaultApp({super.key, this.controller, this.initialFile});
 
   /// Inject a controller (tests); otherwise one is created.
   final VaultController? controller;
+
+  /// A `.kdbx` path the app was launched with (Windows/Linux file association).
+  final String? initialFile;
 
   @override
   State<DgvaultApp> createState() => _DgvaultAppState();
@@ -29,6 +33,17 @@ class _DgvaultAppState extends State<DgvaultApp> {
   late final VaultController _controller =
       widget.controller ?? VaultController();
   final _navKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Handle a .kdbx that the OS opened with dgvault (file association).
+    if (widget.controller == null) {
+      OpenFileChannel(_controller).start(); // macOS/iOS/Android (channel)
+      final initial = widget.initialFile; // Windows/Linux (command-line arg)
+      if (initial != null) _controller.openFile(initial);
+    }
+  }
 
   @override
   void dispose() {
