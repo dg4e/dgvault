@@ -818,6 +818,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       text: '${(widget.controller.historyMaxSize / (1024 * 1024)).round()}',);
   late final _desc =
       TextEditingController(text: widget.controller.databaseDescription);
+  late final _idleLock =
+      TextEditingController(text: '${widget.controller.idleLockMinutes}');
+  late final _focusLock =
+      TextEditingController(text: '${widget.controller.focusLockMinutes}');
   bool _benchmarking = false;
 
   @override
@@ -826,11 +830,20 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _histItems.dispose();
     _histSize.dispose();
     _desc.dispose();
+    _idleLock.dispose();
+    _focusLock.dispose();
     super.dispose();
   }
 
   void _commitDescription() =>
       widget.controller.setDatabaseDescription(_desc.text);
+
+  void _commitIdleLock() =>
+      widget.controller.idleLockMinutes = int.tryParse(_idleLock.text.trim()) ?? 0;
+
+  void _commitFocusLock() =>
+      widget.controller.focusLockMinutes =
+          int.tryParse(_focusLock.text.trim()) ?? 0;
 
   void _commitRounds() {
     final v = int.tryParse(_rounds.text.trim());
@@ -910,6 +923,55 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     },
                   ),
                 ],
+              ),
+              const _SettingsDivider(),
+
+              // Auto-lock
+              const SectionLabel('auto-lock'),
+              const SizedBox(height: 6),
+              Text(
+                'Re-lock the vault automatically. 0 = off.',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel('when idle (min)'),
+                        PromptField(
+                          controller: _idleLock,
+                          sigil: '#',
+                          onChanged: (_) => _commitIdleLock(),
+                          onSubmitted: (_) => _commitIdleLock(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel('after focus lost (min)'),
+                        PromptField(
+                          controller: _focusLock,
+                          sigil: '#',
+                          onChanged: (_) => _commitFocusLock(),
+                          onSubmitted: (_) => _commitFocusLock(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '"focus lost" re-locks when you return after switching away '
+                '(e.g. to another app) for that long.',
+                style: mono(size: 11, color: TermColors.textFaint),
               ),
               const _SettingsDivider(),
 

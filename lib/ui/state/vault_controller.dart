@@ -281,6 +281,42 @@ class VaultController extends ChangeNotifier {
     _touch();
   }
 
+  // ---- auto-lock (minutes; 0 = off) — persisted in the vault's custom data ---
+
+  static const _kIdleLock = 'dgvault.idleLockMinutes';
+  static const _kFocusLock = 'dgvault.focusLockMinutes';
+
+  int _customInt(String key) =>
+      int.tryParse(_db?.meta.customData[key] ?? '') ?? 0;
+
+  void _setCustomInt(String key, int value) {
+    final db = _db;
+    if (db == null) return;
+    if (value <= 0) {
+      db.meta.customData.remove(key);
+    } else {
+      db.meta.customData[key] = '$value';
+    }
+    _touch();
+  }
+
+  /// Lock after this many idle minutes (0 = off).
+  int get idleLockMinutes => _customInt(_kIdleLock);
+  set idleLockMinutes(int m) => _setCustomInt(_kIdleLock, m);
+
+  /// Lock after this many minutes away once focus returns (0 = off).
+  int get focusLockMinutes => _customInt(_kFocusLock);
+  set focusLockMinutes(int m) => _setCustomInt(_kFocusLock, m);
+
+  /// The active auto-lock policy derived from the current settings.
+  AutoLockPolicy get autoLockPolicy => AutoLockPolicy(
+        idleTimeout: Duration(minutes: idleLockMinutes),
+        focusTimeout: Duration(minutes: focusLockMinutes),
+      );
+
+  bool get isUnlocked =>
+      status == VaultStatus.unlocked || status == VaultStatus.saving;
+
   /// The group directly containing [entry], or null.
   Group? findGroupOf(Entry entry) {
     final db = _db;

@@ -14,6 +14,7 @@ import 'state/open_file_channel.dart';
 import 'state/vault_controller.dart';
 import 'theme/terminal_theme.dart';
 import 'widgets/app_menu.dart';
+import 'widgets/auto_lock_gate.dart';
 import 'window_title.dart';
 
 class DgvaultApp extends StatefulWidget {
@@ -64,6 +65,12 @@ class _DgvaultAppState extends State<DgvaultApp> {
       navigatorKey: _navKey,
       debugShowCheckedModeBanner: false,
       theme: buildTerminalTheme(),
+      // Wrap everything (screens + dialogs/sheets) so auto-lock sees activity
+      // everywhere and can re-lock on idle / loss of focus.
+      builder: (context, child) => AutoLockGate(
+        controller: _controller,
+        child: child ?? const SizedBox.shrink(),
+      ),
       // Single, always-mounted menu bar (macOS) — Flutter allows only one
       // PlatformMenuBar at a time, so it lives here above the screen switch.
       home: appMenuBar(

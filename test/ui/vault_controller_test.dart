@@ -196,6 +196,32 @@ void main() {
       expect(identical(c.rootGroup, root), isTrue);
     });
 
+    test('auto-lock minutes persist in customData (0 removes the key)',
+        () async {
+      final c = await _open();
+      c.idleLockMinutes = 5;
+      c.focusLockMinutes = 2;
+      expect(c.idleLockMinutes, 5);
+      expect(c.focusLockMinutes, 2);
+      expect(c.autoLockPolicy.idleTimeout, const Duration(minutes: 5));
+      expect(c.autoLockPolicy.focusTimeout, const Duration(minutes: 2));
+
+      c.idleLockMinutes = 0; // off → key removed
+      expect(c.idleLockMinutes, 0);
+      expect(
+        c.database!.meta.customData.containsKey('dgvault.idleLockMinutes'),
+        isFalse,
+      );
+    });
+
+    test('vault description round-trips via the controller', () async {
+      final c = await _open();
+      c.setDatabaseDescription('shared work vault');
+      expect(c.databaseDescription, 'shared work vault');
+      c.setDatabaseDescription('   ');
+      expect(c.databaseDescription, ''); // blank clears it
+    });
+
     test('setKdfIterations updates the pending header', () async {
       final c = await _open();
       c.setKdfIterations(7);
