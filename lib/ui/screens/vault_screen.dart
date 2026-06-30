@@ -1232,7 +1232,10 @@ class _EntryRowState extends State<_EntryRow> {
       if (user.isNotEmpty) 'user: $user',
       if (url != null && url.isNotEmpty) url,
     ].join('\n');
-    final showHandle = widget.reorderIndex != null && _hover;
+    // Touch screens have no hover, so always show the drag handle there when
+    // the list is reorderable; desktop reveals it on hover.
+    final showHandle =
+        widget.reorderIndex != null && (isMobilePlatform || _hover);
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),

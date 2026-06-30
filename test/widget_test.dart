@@ -225,6 +225,21 @@ void main() {
     }
   });
 
+  testWidgets('entry drag handles are visible on touch (no hover needed)',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await _unlocked(tester);
+      // Select a folder so its entries become reorderable (manual sort).
+      await tester.tap(find.text('Personal'));
+      await tester.pumpAndSettle();
+      // On touch the handle shows without any hover.
+      expect(find.byIcon(Icons.drag_indicator), findsWidgets);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('dragging the divider resizes the folder pane', (tester) async {
     await _unlocked(tester);
     final before = tester.getSize(find.byType(FolderTree)).width;
