@@ -3,5 +3,10 @@
 import 'package:flutter/material.dart';
 
 import 'ui/app.dart';
+import 'ui/app_info.dart';
 
-void main() => runApp(const DgvaultApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await loadAppInfo(); // populate the version before the UI builds
+  runApp(const DgvaultApp());
+}

@@ -7,8 +7,8 @@ import 'package:dgvault/ui/theme/terminal_theme.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'ui/test_vault.dart';
 
@@ -37,6 +37,18 @@ bool _searchHasFocus(WidgetTester tester) =>
     tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
 
 void main() {
+  setUp(() async {
+    // Feed package_info_plus a known version so appTitle resolves in tests.
+    PackageInfo.setMockInitialValues(
+      appName: 'dgvault',
+      packageName: 'com.dgvault.dgvault',
+      version: '0.1.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+    await loadAppInfo();
+  });
+
   testWidgets('landing shows open/new when no vault is loaded', (tester) async {
     await tester.pumpWidget(DgvaultApp(controller: VaultController()));
     await tester.pump();
@@ -118,7 +130,7 @@ void main() {
   testWidgets('title bar shows version + filename; About opens the cracktro',
       (tester) async {
     await _unlocked(tester);
-    expect(find.text(kAppTitle), findsOneWidget); // 'dgvault v0.1.0'
+    expect(find.text(appTitle), findsOneWidget); // 'dgvault v0.1.0'
     expect(find.textContaining('test.kdbx'), findsWidgets); // filename shown
 
     await tester.tap(find.byTooltip('About dgvault'));

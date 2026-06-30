@@ -24,6 +24,7 @@ dependencies:
   # Native open/save file pickers (desktop + mobile).
   file_picker: ^8.1.0
   xml: ^6.5.0
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:

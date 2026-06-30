@@ -42,7 +42,7 @@ class _DgvaultAppState extends State<DgvaultApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: kAppTitle, // dgvault v0.1.0
+      title: appTitle, // dgvault v0.1.0
       navigatorKey: _navKey,
       debugShowCheckedModeBanner: false,
       theme: buildTerminalTheme(),

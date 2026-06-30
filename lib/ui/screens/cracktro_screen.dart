@@ -22,8 +22,8 @@ Future<void> showCracktro(BuildContext context) {
   );
 }
 
-const String _scrollText =
-    'DGVAULT $kAppVersion ... $kAppCopyright ... $kAppAuthors ... '
+String get _scrollText =>
+    'DGVAULT V$appVersion ... $kAppCopyright ... $kAppAuthors ... '
     'KEEP YOUR SECRETS DANGEROUS ... ONE VAULT TO RULE THE KEEP ... '
     'GREETZ TO THE WHOLE SCENE AND EVERYONE STILL CRACKING THE GOOD CODE ... '
     'STAY FREE ... STAY ENCRYPTED ...     ';
@@ -117,7 +117,7 @@ class _CracktroScreenState extends State<CracktroScreen>
                       opacity: fadeIn,
                       child: Column(
                         children: [
-                          _credit('v$kAppVersion', TermColors.green, 16,
+                          _credit('v$appVersion', TermColors.green, 16,
                               weight: FontWeight.w700,),
                           const SizedBox(height: 10),
                           _credit(kAppCopyright, TermColors.cyan, 13),

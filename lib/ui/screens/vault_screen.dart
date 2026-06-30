@@ -644,7 +644,7 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            kAppTitle, // dgvault v0.1.0
+            appTitle, // dgvault v0.1.0
             style: mono(
               size: 15,
               color: TermColors.green,
