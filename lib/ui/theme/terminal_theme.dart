@@ -25,6 +25,10 @@ String get modKey => isApplePlatform ? '⌘' : 'Ctrl';
 /// A platform-correct hotkey label, e.g. `⌘G` on macOS, `Ctrl+G` on Windows/Linux.
 String hotkey(String key) => isApplePlatform ? '$modKey$key' : '$modKey+$key';
 
+/// A parenthesised shortcut hint for tooltips/labels, e.g. ` (⌘S)` on desktop;
+/// empty on touch platforms (no physical keyboard, so the hint is meaningless).
+String hotkeyHint(String key) => isMobilePlatform ? '' : ' (${hotkey(key)})';
+
 /// The palette. One-Dark/GitHub-dark lineage with a green primary.
 class TermColors {
   static const bg = Color(0xFF0B0E14); // app background

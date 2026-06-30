@@ -242,6 +242,14 @@ void main() {
     expect(windowTitleFor('v.kdbx'), '$appTitle — v.kdbx');
   });
 
+  test('hotkeyHint omits the shortcut on mobile, shows it on desktop', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    expect(hotkeyHint('S'), isEmpty);
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    expect(hotkeyHint('S'), ' (⌘S)');
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('folder rows do not resize on hover', (tester) async {
     await _unlocked(tester);
     // 'Work' sits below 'Personal' in the tree; if hovering 'Personal' grew its
@@ -324,9 +332,10 @@ void main() {
   testWidgets('interactive controls expose hover tooltips', (tester) async {
     await _unlocked(tester);
 
-    // header buttons (platform-correct shortcut in the message)
-    expect(find.byTooltip('Generate a password (${hotkey('G')})'), findsOneWidget);
-    expect(find.byTooltip('Lock the vault (${hotkey('L')})'), findsOneWidget);
+    // header buttons (shortcut shown only on desktop, via hotkeyHint)
+    expect(find.byTooltip('Generate a password${hotkeyHint('G')}'),
+        findsOneWidget,);
+    expect(find.byTooltip('Lock the vault${hotkeyHint('L')}'), findsOneWidget);
 
     // entry row (multi-line: title / user / url)
     expect(

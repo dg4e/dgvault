@@ -715,14 +715,14 @@ class _Header extends StatelessWidget {
         _HeaderBtn(
           label: 'save',
           icon: Icons.save_outlined,
-          tooltip: 'Save to file (${hotkey('S')})',
+          tooltip: 'Save to file${hotkeyHint('S')}',
           onTap: controller.save,
         ),
         const SizedBox(width: 6),
         _HeaderBtn(
           label: 'gen',
           icon: Icons.casino_outlined,
-          tooltip: 'Generate a password (${hotkey('G')})',
+          tooltip: 'Generate a password${hotkeyHint('G')}',
           onTap: () => showGenerator(context),
         ),
         const SizedBox(width: 6),
@@ -738,7 +738,7 @@ class _Header extends StatelessWidget {
           label: 'lock',
           icon: Icons.lock_outline,
           color: TermColors.amber,
-          tooltip: 'Lock the vault (${hotkey('L')})',
+          tooltip: 'Lock the vault${hotkeyHint('L')}',
           onTap: controller.lock,
         ),
       ];
@@ -988,7 +988,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Changes are saved with the vault (⌘S).',
+                'Changes are saved with the vault${hotkeyHint('S')}.',
                 style: mono(size: 11, color: TermColors.textFaint),
               ),
             ],

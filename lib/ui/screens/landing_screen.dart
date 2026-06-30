@@ -58,13 +58,13 @@ class LandingScreen extends StatelessWidget {
                           children: [
                             TermButton(
                               label: 'OPEN .KDBX',
-                              tooltip: 'Open an existing vault (⌘O)',
+                              tooltip: 'Open an existing vault${hotkeyHint('O')}',
                               onPressed: () => _open(context),
                             ),
                             TermButton(
                               label: 'NEW VAULT',
                               color: TermColors.cyan,
-                              tooltip: 'Create a new vault (⌘N)',
+                              tooltip: 'Create a new vault${hotkeyHint('N')}',
                               onPressed: () => _new(context),
                             ),
                           ],
