@@ -162,13 +162,15 @@ class _Header extends StatelessWidget {
           const Spacer(),
           if (hasMenu)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_horiz,
-                  size: 18, color: TermColors.textDim,),
               tooltip: 'Folder options',
               padding: EdgeInsets.zero,
-              splashRadius: 18,
               constraints: const BoxConstraints(),
               color: TermColors.surfaceAlt,
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.more_horiz,
+                    size: 18, color: TermColors.textDim,),
+              ),
               onSelected: (v) {
                 if (v == 'add') {
                   onAddRoot?.call();
@@ -290,19 +292,21 @@ class _FolderRowState extends State<_FolderRow> {
                     color: w.selected ? accent : Colors.transparent, width: 2,),
               ),
             ),
-            padding: EdgeInsets.only(left: 6.0 + w.depth * 14, right: 2),
-            child: Row(
-              children: [
-                Icon(
-                    w.isTrash
-                        ? Icons.delete_outline
-                        : Icons.folder_outlined,
-                    size: 14,
-                    color: w.selected ? accent : TermColors.textDim,),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
+            padding: EdgeInsets.only(left: 6.0 + w.depth * 14, right: 4),
+            // Fixed height + fixed-width trailing slot so hovering (which swaps
+            // the count for the drag handle / menu) never resizes the row.
+            child: SizedBox(
+              height: 38,
+              child: Row(
+                children: [
+                  Icon(
+                      w.isTrash
+                          ? Icons.delete_outline
+                          : Icons.folder_outlined,
+                      size: 14,
+                      color: w.selected ? accent : TermColors.textDim,),
+                  const SizedBox(width: 8),
+                  Expanded(
                     child: Text(
                       w.group.name.isEmpty ? '(root)' : w.group.name,
                       maxLines: 1,
@@ -315,35 +319,44 @@ class _FolderRowState extends State<_FolderRow> {
                       ),
                     ),
                   ),
-                ),
-                if (count > 0 && !showActions)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text('$count',
-                        style:
-                            mono(size: 11, color: TermColors.textFaint),),
+                  SizedBox(
+                    width: 48,
+                    child: showActions
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (w.draggable)
+                                ReorderableDragStartListener(
+                                  index: w.index,
+                                  child: const Icon(Icons.drag_indicator,
+                                      size: 16, color: TermColors.textDim,),
+                                ),
+                              if (w.hasMenu)
+                                _FolderMenu(
+                                  group: w.group,
+                                  isRoot: w.isRoot,
+                                  onAddFolder: w.onAddFolder,
+                                  onRenameFolder: w.onRenameFolder,
+                                  onMoveFolder: w.onMoveFolder,
+                                  onDeleteFolder: w.onDeleteFolder,
+                                ),
+                            ],
+                          )
+                        : (count > 0
+                            ? Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: Text('$count',
+                                      style: mono(
+                                          size: 11,
+                                          color: TermColors.textFaint,),),
+                                ),
+                              )
+                            : null),
                   ),
-                if (showActions && w.draggable)
-                  ReorderableDragStartListener(
-                    index: w.index,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 2),
-                      child: Icon(Icons.drag_indicator,
-                          size: 16, color: TermColors.textDim,),
-                    ),
-                  ),
-                if (showActions && w.hasMenu)
-                  _FolderMenu(
-                    group: w.group,
-                    isRoot: w.isRoot,
-                    onAddFolder: w.onAddFolder,
-                    onRenameFolder: w.onRenameFolder,
-                    onMoveFolder: w.onMoveFolder,
-                    onDeleteFolder: w.onDeleteFolder,
-                  )
-                else
-                  const SizedBox(width: 4),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -371,13 +384,17 @@ class _FolderMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canEdit = !isRoot; // root can't be renamed / moved / deleted
+    // Use child: (not icon:) so there is no IconButton 48px tap target padding
+    // that would grow the row height when the menu appears on hover.
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, size: 16, color: TermColors.textDim),
       tooltip: 'Folder actions',
       padding: EdgeInsets.zero,
-      splashRadius: 18,
       constraints: const BoxConstraints(),
       color: TermColors.surfaceAlt,
+      child: const Padding(
+        padding: EdgeInsets.all(4),
+        child: Icon(Icons.more_vert, size: 16, color: TermColors.textDim),
+      ),
       onSelected: (v) {
         switch (v) {
           case 'add':

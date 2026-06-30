@@ -3,6 +3,7 @@
 import 'package:dgvault/ui/app.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:dgvault/ui/theme/terminal_theme.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -111,6 +112,22 @@ void main() {
 
     expect(find.text('https://github.com'), findsNothing);
     expect(find.text('https://proton.me'), findsOneWidget);
+  });
+
+  testWidgets('folder rows do not resize on hover', (tester) async {
+    await _unlocked(tester);
+    // 'Work' sits below 'Personal' in the tree; if hovering 'Personal' grew its
+    // row, 'Work' would shift down.
+    final before = tester.getTopLeft(find.text('Work')).dy;
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(() => mouse.removePointer());
+    await mouse.moveTo(tester.getCenter(find.text('Personal')));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.more_vert), findsWidgets); // hover revealed actions
+    expect(tester.getTopLeft(find.text('Work')).dy, before); // unchanged
   });
 
   testWidgets('move-to relocates the selected entry via the folder picker',
