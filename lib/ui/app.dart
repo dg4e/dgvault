@@ -1,6 +1,8 @@
 // dgvault — root app: owns the VaultController and routes between the landing,
 // unlock, and vault screens.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'app_info.dart';
@@ -11,6 +13,7 @@ import 'screens/vault_screen.dart';
 import 'state/vault_controller.dart';
 import 'theme/terminal_theme.dart';
 import 'widgets/app_menu.dart';
+import 'window_title.dart';
 
 class DgvaultApp extends StatefulWidget {
   const DgvaultApp({super.key, this.controller});
@@ -54,6 +57,8 @@ class _DgvaultAppState extends State<DgvaultApp> {
         child: ListenableBuilder(
           listenable: _controller,
           builder: (context, _) {
+            // Mirror the in-app header onto the native desktop title bar.
+            unawaited(setWindowTitle(windowTitleFor(_controller.fileName)));
             switch (_controller.status) {
               case VaultStatus.noVault:
                 return LandingScreen(controller: _controller);

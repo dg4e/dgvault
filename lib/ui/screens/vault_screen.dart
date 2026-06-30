@@ -32,6 +32,9 @@ class _VaultScreenState extends State<VaultScreen> {
   Group? _group; // selected folder; null → root view (minus recycle bin)
   EntrySort _entrySort = EntrySort.manual;
   FolderSort _folderSort = FolderSort.manual;
+  // Resizable pane widths (wide/two-pane layout), dragged via the dividers.
+  double _folderW = 200;
+  double _listW = 320;
 
   @override
   void initState() {
@@ -523,12 +526,27 @@ class _VaultScreenState extends State<VaultScreen> {
                 _Header(controller: widget.controller),
                 Expanded(
                   child: wide
-                      ? Row(
+                      ? LayoutBuilder(builder: (context, c) {
+                          // Clamp widths against the available space so the
+                          // detail pane always keeps a usable minimum, even as
+                          // the window resizes.
+                          const minDetail = 260.0;
+                          final avail = c.maxWidth;
+                          final hasFolders = root != null;
+                          final fw = hasFolders
+                              ? _folderW.clamp(
+                                  140.0, (avail - _listW - minDetail)
+                                      .clamp(140.0, avail),)
+                              : 0.0;
+                          final lw = _listW.clamp(
+                              220.0,
+                              (avail - fw - minDetail).clamp(220.0, avail),);
+                          return Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (root != null) ...[
+                            if (hasFolders) ...[
                               SizedBox(
-                                width: 200,
+                                width: fw,
                                 child: FolderTree(
                                   root: root,
                                   selected: _group ?? root,
@@ -545,11 +563,15 @@ class _VaultScreenState extends State<VaultScreen> {
                                   onReorder: _reorderFolders,
                                 ),
                               ),
-                              const VerticalDivider(
-                                  width: 1, color: TermColors.border,),
+                              _ResizeHandle(
+                                key: const ValueKey('resize-folder'),
+                                onDrag: (dx) => setState(() => _folderW =
+                                    (fw + dx).clamp(140.0,
+                                        avail - _listW - minDetail,),),
+                              ),
                             ],
                             SizedBox(
-                              width: 320,
+                              width: lw,
                               child: _ListPane(
                                 search: _search,
                                 searchFocus: _searchFocus,
@@ -566,9 +588,11 @@ class _VaultScreenState extends State<VaultScreen> {
                                 onSelect: (e) => _onSelect(e, true),
                               ),
                             ),
-                            const VerticalDivider(
-                              width: 1,
-                              color: TermColors.border,
+                            _ResizeHandle(
+                              key: const ValueKey('resize-list'),
+                              onDrag: (dx) => setState(() => _listW =
+                                  (lw + dx).clamp(220.0,
+                                      avail - fw - minDetail,),),
                             ),
                             Expanded(
                               child: _selected == null
@@ -583,7 +607,8 @@ class _VaultScreenState extends State<VaultScreen> {
                                     ),
                             ),
                           ],
-                        )
+                          );
+                        },)
                       : _ListPane(
                           search: _search,
                           searchFocus: _searchFocus,
@@ -1248,4 +1273,45 @@ class _EmptyDetail extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// A draggable column divider — drag to resize the adjacent pane. Shows a
+/// resize cursor and lights up on hover/drag.
+class _ResizeHandle extends StatefulWidget {
+  const _ResizeHandle({super.key, required this.onDrag});
+  final ValueChanged<double> onDrag; // horizontal delta in logical pixels
+  @override
+  State<_ResizeHandle> createState() => _ResizeHandleState();
+}
+
+class _ResizeHandleState extends State<_ResizeHandle> {
+  bool _hover = false;
+  bool _active = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final lit = _hover || _active;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeLeftRight,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: (_) => setState(() => _active = true),
+        onHorizontalDragEnd: (_) => setState(() => _active = false),
+        onHorizontalDragCancel: () => setState(() => _active = false),
+        onHorizontalDragUpdate: (d) => widget.onDrag(d.delta.dx),
+        child: SizedBox(
+          width: 8,
+          child: Center(
+            child: Container(
+              width: lit ? 2 : 1,
+              height: double.infinity,
+              color: lit ? TermColors.green : TermColors.border,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

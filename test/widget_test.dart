@@ -4,6 +4,8 @@ import 'package:dgvault/ui/app.dart';
 import 'package:dgvault/ui/app_info.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:dgvault/ui/theme/terminal_theme.dart';
+import 'package:dgvault/ui/widgets/folder_tree.dart';
+import 'package:dgvault/ui/window_title.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -146,6 +148,23 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text(kAppCopyright), findsNothing);
+  });
+
+  testWidgets('dragging the divider resizes the folder pane', (tester) async {
+    await _unlocked(tester);
+    final before = tester.getSize(find.byType(FolderTree)).width;
+
+    await tester.drag(
+        find.byKey(const ValueKey('resize-folder')), const Offset(50, 0),);
+    await tester.pumpAndSettle();
+
+    final after = tester.getSize(find.byType(FolderTree)).width;
+    expect(after, greaterThan(before)); // pane widened with the drag
+  });
+
+  test('windowTitleFor composes version and filename', () {
+    expect(windowTitleFor(null), appTitle);
+    expect(windowTitleFor('v.kdbx'), '$appTitle — v.kdbx');
   });
 
   testWidgets('folder rows do not resize on hover', (tester) async {
