@@ -271,6 +271,16 @@ class VaultController extends ChangeNotifier {
     _touch();
   }
 
+  /// Free-text notes/description stored on the vault itself (KDBX Meta).
+  String get databaseDescription => _db?.meta.description ?? '';
+
+  void setDatabaseDescription(String value) {
+    final db = _db;
+    if (db == null) return;
+    db.meta.description = value.trim().isEmpty ? null : value;
+    _touch();
+  }
+
   /// The group directly containing [entry], or null.
   Group? findGroupOf(Entry entry) {
     final db = _db;

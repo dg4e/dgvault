@@ -816,6 +816,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       TextEditingController(text: '${widget.controller.historyMaxItems}');
   late final _histSize = TextEditingController(
       text: '${(widget.controller.historyMaxSize / (1024 * 1024)).round()}',);
+  late final _desc =
+      TextEditingController(text: widget.controller.databaseDescription);
   bool _benchmarking = false;
 
   @override
@@ -823,8 +825,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _rounds.dispose();
     _histItems.dispose();
     _histSize.dispose();
+    _desc.dispose();
     super.dispose();
   }
+
+  void _commitDescription() =>
+      widget.controller.setDatabaseDescription(_desc.text);
 
   void _commitRounds() {
     final v = int.tryParse(_rounds.text.trim());
@@ -904,6 +910,24 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     },
                   ),
                 ],
+              ),
+              const _SettingsDivider(),
+
+              // Vault notes / description (KDBX Meta)
+              const SectionLabel('vault notes'),
+              const SizedBox(height: 6),
+              Text(
+                'Free-text notes stored in the vault itself (KDBX description).',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              const SizedBox(height: 8),
+              PromptField(
+                controller: _desc,
+                sigil: '›',
+                hint: 'notes about this vault…',
+                maxLines: 4,
+                onChanged: (_) => _commitDescription(),
+                onSubmitted: (_) => _commitDescription(),
               ),
               const _SettingsDivider(),
 
