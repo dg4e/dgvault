@@ -84,96 +84,109 @@ class _CracktroScreenState extends State<CracktroScreen>
         bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
         child: Focus(
           autofocus: true,
-          child: Stack(
-            children: [
-              // Animated copper-bar + starfield background.
-              Positioned.fill(
-                child: AnimatedBuilder(
-                  animation: _loop,
-                  builder: (_, __) => CustomPaint(
-                    painter: _BackdropPainter(t: _loop.value, stars: _stars),
-                  ),
-                ),
-              ),
-
-              // Centre: fly-in gradient logo + credits.
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, -1.6),
-                        end: Offset.zero,
-                      ).animate(logoIn),
-                      child: ScaleTransition(
-                        scale: Tween<double>(begin: 0.6, end: 1)
-                            .animate(logoIn),
-                        child: _GradientLogo(loop: _loop),
-                      ),
+          child: GestureDetector(
+            // On touch devices, tapping anywhere dismisses the cracktro.
+            onTap: isMobilePlatform ? _close : null,
+            behavior: HitTestBehavior.opaque,
+            child: Stack(
+              children: [
+                // Animated copper-bar + starfield background.
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _loop,
+                    builder: (_, __) => CustomPaint(
+                      painter: _BackdropPainter(t: _loop.value, stars: _stars),
                     ),
-                    const SizedBox(height: 18),
-                    FadeTransition(
-                      opacity: fadeIn,
-                      child: Column(
-                        children: [
-                          _credit('v$appVersion', TermColors.green, 16,
-                              weight: FontWeight.w700,),
-                          const SizedBox(height: 10),
-                          _credit(kAppCopyright, TermColors.cyan, 13),
-                          const SizedBox(height: 4),
-                          _credit(kAppAuthors, TermColors.magenta, 13),
-                        ],
+                  ),
+                ),
+
+                // Centre: fly-in gradient logo + credits.
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, -1.6),
+                          end: Offset.zero,
+                        ).animate(logoIn),
+                        child: ScaleTransition(
+                          scale:
+                              Tween<double>(begin: 0.6, end: 1).animate(logoIn),
+                          child: _GradientLogo(loop: _loop),
+                        ),
                       ),
+                      const SizedBox(height: 18),
+                      FadeTransition(
+                        opacity: fadeIn,
+                        child: Column(
+                          children: [
+                            _credit(
+                              'v$appVersion',
+                              TermColors.green,
+                              16,
+                              weight: FontWeight.w700,
+                            ),
+                            const SizedBox(height: 10),
+                            _credit(kAppCopyright, TermColors.cyan, 13),
+                            const SizedBox(height: 4),
+                            _credit(kAppAuthors, TermColors.magenta, 13),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom: sine-wave scroller.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 54,
+                  height: 110,
+                  child: AnimatedBuilder(
+                    animation: _loop,
+                    builder: (_, __) => CustomPaint(
+                      painter: _ScrollerPainter(t: _loop.value),
+                      size: Size.infinite,
                     ),
-                  ],
-                ),
-              ),
-
-              // Bottom: sine-wave scroller.
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 54,
-                height: 110,
-                child: AnimatedBuilder(
-                  animation: _loop,
-                  builder: (_, __) => CustomPaint(
-                    painter: _ScrollerPainter(t: _loop.value),
-                    size: Size.infinite,
                   ),
                 ),
-              ),
 
-              // Close affordance.
-              Positioned(
-                top: 14,
-                right: 16,
-                child: _CloseChip(onTap: _close),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 16,
-                child: Center(
-                  child: Text(
-                    // No physical keyboard on phones/tablets — drop the Esc hint.
-                    isMobilePlatform
-                        ? 'tap ✕ to return'
-                        : 'press [esc] or click ✕ to return',
-                    style: mono(size: 11, color: TermColors.textFaint),
+                // Close affordance.
+                Positioned(
+                  top: 14,
+                  right: 16,
+                  child: _CloseChip(onTap: _close),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 16,
+                  child: Center(
+                    child: Text(
+                      // No physical keyboard on phones/tablets — drop the Esc hint.
+                      isMobilePlatform
+                          ? 'tap ✕ to return'
+                          : 'press [esc] or click ✕ to return',
+                      style: mono(size: 11, color: TermColors.textFaint),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _credit(String text, Color color, double size,
-      {FontWeight weight = FontWeight.w500,}) {
+  Widget _credit(
+    String text,
+    Color color,
+    double size, {
+    FontWeight weight = FontWeight.w500,
+  }) {
     return Text(
       text,
       textAlign: TextAlign.center,
@@ -351,7 +364,9 @@ class _ScrollerPainter extends CustomPainter {
               color: color,
               weight: FontWeight.w800,
             ).copyWith(
-              shadows: [Shadow(color: color.withValues(alpha: 0.6), blurRadius: 12)],
+              shadows: [
+                Shadow(color: color.withValues(alpha: 0.6), blurRadius: 12),
+              ],
             ),
           ),
           textDirection: TextDirection.ltr,
@@ -380,7 +395,8 @@ class _CloseChip extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.4),
             border: Border.all(color: TermColors.border),
           ),
-          child: const Icon(Icons.close, size: 18, color: TermColors.textBright),
+          child:
+              const Icon(Icons.close, size: 18, color: TermColors.textBright),
         ),
       ),
     );

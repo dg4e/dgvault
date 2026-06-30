@@ -165,6 +165,34 @@ void main() {
     }
   });
 
+  testWidgets('tapping the cracktro dismisses it on mobile', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    try {
+      await _unlocked(tester);
+      // Open the About cracktro from the phone overflow menu.
+      await tester.tap(find.byIcon(Icons.more_vert).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('About dgvault'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text(kAppCopyright), findsOneWidget); // open
+
+      // A tap anywhere (here: empty top-left) closes it.
+      await tester.tapAt(const Offset(40, 120));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text(kAppCopyright), findsNothing); // dismissed
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('phone header collapses actions into an overflow menu; no '
       'keyboard hints in the status bar', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
