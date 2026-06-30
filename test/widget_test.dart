@@ -130,6 +130,29 @@ void main() {
     expect(tester.getTopLeft(find.text('Work')).dy, before); // unchanged
   });
 
+  testWidgets('entry rows do not resize on hover when reorderable',
+      (tester) async {
+    await _unlocked(tester);
+    // Select a folder so its entries become drag-reorderable (manual sort).
+    await tester.tap(find.text('Personal'));
+    await tester.pumpAndSettle();
+
+    // 'Proton Mail' sits below 'GitHub' in Personal; hovering GitHub must not
+    // grow its row and push Proton Mail down.
+    final before = tester.getTopLeft(find.text('Proton Mail')).dy;
+    final ghInList = find.descendant(
+        of: find.byType(ReorderableListView), matching: find.text('GitHub'),);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(() => mouse.removePointer());
+    await mouse.moveTo(tester.getCenter(ghInList));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.drag_indicator), findsWidgets); // handle on hover
+    expect(tester.getTopLeft(find.text('Proton Mail')).dy, before); // unchanged
+  });
+
   testWidgets('move-to relocates the selected entry via the folder picker',
       (tester) async {
     final c = await _unlocked(tester);

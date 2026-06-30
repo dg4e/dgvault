@@ -1191,20 +1191,29 @@ class _EntryRowState extends State<_EntryRow> {
                     ],
                   ),
                 ),
-                if (showHandle)
-                  ReorderableDragStartListener(
-                    index: widget.reorderIndex!,
-                    child: const Padding(
-                      padding: EdgeInsets.only(left: 4),
-                      child: Icon(Icons.drag_indicator,
-                          size: 16, color: TermColors.textDim,),
-                    ),
-                  )
-                else if (entry.tags.isNotEmpty)
-                  Text(
-                    '#${entry.tags.first}',
-                    style: mono(size: 10, color: TermColors.magenta),
+                // Fixed-width trailing slot so swapping the tag for the drag
+                // handle on hover never reflows the title.
+                SizedBox(
+                  width: 56,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: showHandle
+                        ? ReorderableDragStartListener(
+                            index: widget.reorderIndex!,
+                            child: const Icon(Icons.drag_indicator,
+                                size: 16, color: TermColors.textDim,),
+                          )
+                        : (entry.tags.isNotEmpty
+                            ? Text(
+                                '#${entry.tags.first}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style:
+                                    mono(size: 10, color: TermColors.magenta),
+                              )
+                            : null),
                   ),
+                ),
               ],
             ),
           ),
