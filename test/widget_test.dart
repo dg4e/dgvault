@@ -6,6 +6,7 @@ import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:dgvault/ui/theme/terminal_theme.dart';
 import 'package:dgvault/ui/widgets/folder_tree.dart';
 import 'package:dgvault/ui/window_title.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -148,6 +149,38 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text(kAppCopyright), findsNothing);
+  });
+
+  testWidgets('phone header collapses actions into an overflow menu; no '
+      'keyboard hints in the status bar', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    tester.view.physicalSize = const Size(390, 844); // a phone, < wide breakpoint
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    try {
+      await _unlocked(tester);
+
+      // Header actions collapse to one overflow button (no labelled row buttons).
+      expect(find.byIcon(Icons.more_vert), findsWidgets);
+      expect(find.text('save'), findsNothing);
+      expect(find.text('about'), findsNothing);
+
+      // Keyboard-shortcut hints are gone on touch.
+      expect(find.textContaining('copy'), findsNothing);
+      expect(find.text('esc'), findsNothing);
+
+      // Opening the overflow exposes the actions.
+      await tester.tap(find.byIcon(Icons.more_vert).first);
+      await tester.pumpAndSettle();
+      expect(find.text('About dgvault'), findsOneWidget);
+      expect(find.text('Lock vault'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('dragging the divider resizes the folder pane', (tester) async {

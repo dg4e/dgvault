@@ -13,6 +13,12 @@ bool get isApplePlatform =>
     defaultTargetPlatform == TargetPlatform.macOS ||
     defaultTargetPlatform == TargetPlatform.iOS;
 
+/// Touch-first platforms (phones/tablets) — no physical keyboard assumed, so
+/// keyboard-shortcut hints and dense desktop chrome are hidden.
+bool get isMobilePlatform =>
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.android;
+
 /// The primary modifier glyph for this platform: `⌘` on macOS/iOS, `Ctrl` else.
 String get modKey => isApplePlatform ? '⌘' : 'Ctrl';
 

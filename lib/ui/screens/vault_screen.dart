@@ -633,14 +633,17 @@ class _VaultScreenState extends State<VaultScreen> {
                     '${entries.length}/${widget.controller.entryCount} entries',
                     if (_query.isNotEmpty) 'filter:"$_query"',
                   ],
-                  right: [
-                    '/ find',
-                    '↑↓ nav',
-                    '${hotkey('C')} copy',
-                    '${hotkey('G')} gen',
-                    '${hotkey('L')} lock',
-                    'esc',
-                  ],
+                  // Keyboard-shortcut hints are meaningless on touch devices.
+                  right: isMobilePlatform
+                      ? const <String>[]
+                      : [
+                          '/ find',
+                          '↑↓ nav',
+                          '${hotkey('C')} copy',
+                          '${hotkey('G')} gen',
+                          '${hotkey('L')} lock',
+                          'esc',
+                        ],
                 ),
               ],
             ),
@@ -692,43 +695,96 @@ class _Header extends StatelessWidget {
             Text('saving…', style: mono(size: 11, color: TermColors.amber)),
           ],
           const Spacer(),
-          _HeaderBtn(
-            label: 'about',
-            icon: Icons.info_outline,
-            color: TermColors.magenta,
-            tooltip: 'About dgvault',
-            onTap: () => showCracktro(context),
-          ),
-          const SizedBox(width: 6),
-          _HeaderBtn(
-            label: 'save',
-            icon: Icons.save_outlined,
-            tooltip: 'Save to file (${hotkey('S')})',
-            onTap: controller.save,
-          ),
-          const SizedBox(width: 6),
-          _HeaderBtn(
-            label: 'gen',
-            icon: Icons.casino_outlined,
-            tooltip: 'Generate a password (${hotkey('G')})',
-            onTap: () => showGenerator(context),
-          ),
-          const SizedBox(width: 6),
-          _HeaderBtn(
-            label: 'opts',
-            icon: Icons.settings_outlined,
-            color: TermColors.cyan,
-            tooltip: 'Vault settings',
-            onTap: () => _showSettings(context, controller),
-          ),
-          const SizedBox(width: 6),
-          _HeaderBtn(
-            label: 'lock',
-            icon: Icons.lock_outline,
-            color: TermColors.amber,
-            tooltip: 'Lock the vault (${hotkey('L')})',
-            onTap: controller.lock,
-          ),
+          // Wide: a row of labelled buttons. Narrow (phone): one overflow menu
+          // so the actions never overflow the bar.
+          if (isWide(context)) ..._actions(context) else _overflow(context),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _actions(BuildContext context) => [
+        _HeaderBtn(
+          label: 'about',
+          icon: Icons.info_outline,
+          color: TermColors.magenta,
+          tooltip: 'About dgvault',
+          onTap: () => showCracktro(context),
+        ),
+        const SizedBox(width: 6),
+        _HeaderBtn(
+          label: 'save',
+          icon: Icons.save_outlined,
+          tooltip: 'Save to file (${hotkey('S')})',
+          onTap: controller.save,
+        ),
+        const SizedBox(width: 6),
+        _HeaderBtn(
+          label: 'gen',
+          icon: Icons.casino_outlined,
+          tooltip: 'Generate a password (${hotkey('G')})',
+          onTap: () => showGenerator(context),
+        ),
+        const SizedBox(width: 6),
+        _HeaderBtn(
+          label: 'opts',
+          icon: Icons.settings_outlined,
+          color: TermColors.cyan,
+          tooltip: 'Vault settings',
+          onTap: () => _showSettings(context, controller),
+        ),
+        const SizedBox(width: 6),
+        _HeaderBtn(
+          label: 'lock',
+          icon: Icons.lock_outline,
+          color: TermColors.amber,
+          tooltip: 'Lock the vault (${hotkey('L')})',
+          onTap: controller.lock,
+        ),
+      ];
+
+  Widget _overflow(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 22, color: TermColors.text),
+      tooltip: 'Menu',
+      color: TermColors.surfaceAlt,
+      onSelected: (v) {
+        switch (v) {
+          case 'save':
+            controller.save();
+          case 'gen':
+            showGenerator(context);
+          case 'settings':
+            _showSettings(context, controller);
+          case 'about':
+            showCracktro(context);
+          case 'lock':
+            controller.lock();
+        }
+      },
+      itemBuilder: (_) => [
+        _menuItem('save', Icons.save_outlined, 'Save', TermColors.green),
+        _menuItem(
+            'gen', Icons.casino_outlined, 'Generate password', TermColors.green,),
+        _menuItem('settings', Icons.settings_outlined, 'Settings',
+            TermColors.cyan,),
+        const PopupMenuDivider(),
+        _menuItem(
+            'about', Icons.info_outline, 'About dgvault', TermColors.magenta,),
+        _menuItem('lock', Icons.lock_outline, 'Lock vault', TermColors.amber),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(
+      String value, IconData icon, String label, Color color,) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: color),
+          const SizedBox(width: 12),
+          Text(label, style: mono(size: 13, color: TermColors.text)),
         ],
       ),
     );
