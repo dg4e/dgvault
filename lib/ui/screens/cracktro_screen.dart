@@ -157,7 +157,10 @@ class _CracktroScreenState extends State<CracktroScreen>
                 bottom: 16,
                 child: Center(
                   child: Text(
-                    'press [esc] or click ✕ to return',
+                    // No physical keyboard on phones/tablets — drop the Esc hint.
+                    isMobilePlatform
+                        ? 'tap ✕ to return'
+                        : 'press [esc] or click ✕ to return',
                     style: mono(size: 11, color: TermColors.textFaint),
                   ),
                 ),

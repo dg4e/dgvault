@@ -2,6 +2,7 @@
 
 import 'package:dgvault/ui/app.dart';
 import 'package:dgvault/ui/app_info.dart';
+import 'package:dgvault/ui/screens/cracktro_screen.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:dgvault/ui/theme/terminal_theme.dart';
 import 'package:dgvault/ui/widgets/folder_tree.dart';
@@ -149,6 +150,19 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text(kAppCopyright), findsNothing);
+  });
+
+  testWidgets('About cracktro drops the Esc hint on mobile', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      await tester.pumpWidget(const MaterialApp(home: CracktroScreen()));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('tap ✕ to return'), findsOneWidget);
+      expect(find.textContaining('esc'), findsNothing);
+      await tester.pumpWidget(const SizedBox()); // dispose looping controllers
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('phone header collapses actions into an overflow menu; no '
