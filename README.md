@@ -74,10 +74,16 @@ avdmanager create avd -n tablet_api36 -k "system-images;android-36;google_apis;a
 Launch + run:
 
 ```bash
-flutter emulators                       # lists pixel_api36 / tablet_api36
-flutter emulators --launch pixel_api36
-flutter run -d pixel_api36              # or -d tablet_api36
+flutter emulators                       # lists the AVDs (pixel_api36 / tablet_api36)
+flutter emulators --launch pixel_api36  # --launch takes the AVD name
+# once it has booted, run on the RUNNING device id (NOT the AVD name):
+flutter devices                         # note the id, e.g. emulator-5554
+flutter run -d emulator-5554
 ```
+
+Note: `flutter emulators --launch` takes the **AVD name** (`pixel_api36`), but
+`flutter run -d` takes the **device id** from `flutter devices` (`emulator-5554`)
+— they are different identifiers.
 
 ### Physical devices
 
