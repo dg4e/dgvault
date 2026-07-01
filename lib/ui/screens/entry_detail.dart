@@ -52,72 +52,80 @@ class _EntryDetailViewState extends State<EntryDetailView> {
       ...e.fields.keys.where((k) => k != Field.title && !_order.contains(k)),
     ];
 
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Row(
-          children: [
-            Text('▌', style: mono(size: 22, color: TermColors.green)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: mono(
-                  size: 20,
-                  color: TermColors.textBright,
-                  weight: FontWeight.w700,
+    // SelectionArea makes every value (username / url / notes / a revealed
+    // password / uuid / history) drag- or long-press-selectable with a Copy
+    // toolbar, alongside the per-field copy icons. Icon buttons still take taps.
+    return SelectionArea(
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Row(
+            children: [
+              Text('▌', style: mono(size: 22, color: TermColors.green)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: mono(
+                    size: 20,
+                    color: TermColors.textBright,
+                    weight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-            if (widget.onMove != null)
-              _ActionBtn(
+              if (widget.onMove != null)
+                _ActionBtn(
                   icon: Icons.drive_file_move_outline,
                   tooltip: 'Move to folder',
-                  onTap: widget.onMove!,),
-            if (widget.onEdit != null)
-              _ActionBtn(
+                  onTap: widget.onMove!,
+                ),
+              if (widget.onEdit != null)
+                _ActionBtn(
                   icon: Icons.edit_outlined,
                   tooltip: 'Edit entry',
-                  onTap: widget.onEdit!,),
-            if (widget.onDelete != null)
-              _ActionBtn(
+                  onTap: widget.onEdit!,
+                ),
+              if (widget.onDelete != null)
+                _ActionBtn(
                   icon: Icons.delete_outline,
                   tooltip: 'Delete entry',
                   color: TermColors.red,
-                  onTap: widget.onDelete!,),
-          ],
-        ),
-        if (e.tags.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [for (final t in e.tags) TagChip(t)],
+                  onTap: widget.onDelete!,
+                ),
+            ],
           ),
-        ],
-        const SizedBox(height: 20),
-        for (final k in keys)
-          _FieldRow(
-            label: _labelFor(k),
-            value: e.fields[k]!.value.reveal(),
-            secret: e.fields[k]!.isProtected,
-            revealed: _revealed.contains(k),
-            onToggle: () => setState(
-              () => _revealed.contains(k)
-                  ? _revealed.remove(k)
-                  : _revealed.add(k),
+          if (e.tags.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final t in e.tags) TagChip(t)],
             ),
-          ),
-        if (e.history.isNotEmpty) ...[
+          ],
+          const SizedBox(height: 20),
+          for (final k in keys)
+            _FieldRow(
+              label: _labelFor(k),
+              value: e.fields[k]!.value.reveal(),
+              secret: e.fields[k]!.isProtected,
+              revealed: _revealed.contains(k),
+              onToggle: () => setState(
+                () => _revealed.contains(k)
+                    ? _revealed.remove(k)
+                    : _revealed.add(k),
+              ),
+            ),
+          if (e.history.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _HistorySection(history: e.history, onRestore: widget.onRestore),
+          ],
           const SizedBox(height: 24),
-          _HistorySection(history: e.history, onRestore: widget.onRestore),
+          Text(
+            'uuid: ${e.uuid}   modified: ${e.modified?.toIso8601String() ?? "—"}',
+            style: mono(size: 11, color: TermColors.textFaint),
+          ),
         ],
-        const SizedBox(height: 24),
-        Text(
-          'uuid: ${e.uuid}   modified: ${e.modified?.toIso8601String() ?? "—"}',
-          style: mono(size: 11, color: TermColors.textFaint),
-        ),
-      ],
+      ),
     );
   }
 
@@ -323,22 +331,31 @@ class _HistoryRowState extends State<_HistoryRow> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Row(
                 children: [
-                  Text(_open ? '▾' : '▸',
-                      style: mono(size: 13, color: TermColors.green),),
+                  Text(
+                    _open ? '▾' : '▸',
+                    style: mono(size: 13, color: TermColors.green),
+                  ),
                   const SizedBox(width: 8),
-                  Text(widget.label,
-                      style: mono(
-                          size: 12,
-                          color: TermColors.text,
-                          weight: FontWeight.w700,),),
+                  Text(
+                    widget.label,
+                    style: mono(
+                      size: 12,
+                      color: TermColors.text,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(v.title ?? '(untitled)',
-                        overflow: TextOverflow.ellipsis,
-                        style: mono(size: 12, color: TermColors.textDim),),
+                    child: Text(
+                      v.title ?? '(untitled)',
+                      overflow: TextOverflow.ellipsis,
+                      style: mono(size: 12, color: TermColors.textDim),
+                    ),
                   ),
-                  Text(when,
-                      style: mono(size: 10, color: TermColors.textFaint),),
+                  Text(
+                    when,
+                    style: mono(size: 10, color: TermColors.textFaint),
+                  ),
                 ],
               ),
             ),
