@@ -8,6 +8,8 @@ import UIKit
   private var pendingFile: [String: Any]?
   private var openFileChannel: FlutterMethodChannel?
   private var engineReady = false
+  // Retains the in-place document bridge (dgvault/documents channel).
+  private var documentsBridge: DocumentPickerBridge?
 
   override func application(
     _ application: UIApplication,
@@ -32,6 +34,7 @@ import UIKit
         }
       }
       openFileChannel = channel
+      documentsBridge = DocumentPickerBridge(messenger: messenger)
     }
   }
 
@@ -41,10 +44,15 @@ import UIKit
     let scoped = url.startAccessingSecurityScopedResource()
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
     guard let data = try? Data(contentsOf: url) else { return }
-    let payload: [String: Any] = [
+    var payload: [String: Any] = [
       "name": url.lastPathComponent,
       "bytes": FlutterStandardTypedData(bytes: data),
     ]
+    // If opened in place, hand Dart a security-scoped bookmark so Save writes
+    // back to the original file rather than a managed copy.
+    if let bookmark = try? url.bookmarkData() {
+      payload["path"] = "bookmark:" + bookmark.base64EncodedString()
+    }
     if engineReady, let channel = openFileChannel {
       channel.invokeMethod("openFile", arguments: payload)
     } else {

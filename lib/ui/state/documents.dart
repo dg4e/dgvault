@@ -1,16 +1,21 @@
-// dgvault — Android Storage Access Framework bridge.
+// dgvault — mobile document bridge (in-place open/save).
 //
-// Opening/creating a vault through SAF yields a content:// URI with PERSISTABLE
-// read/write permission, so edits can be written straight back to the original
-// file the user chose (no local copy). The native side (MainActivity) runs the
-// document pickers and reads/writes via the content resolver.
+// Opening or creating a vault through the OS document picker yields a location
+// token with PERSISTABLE read/write access, so edits are written straight back
+// to the original file the user chose (no local copy):
+//   • Android — a SAF content:// URI (native: MainActivity, via the content
+//     resolver with takePersistableUriPermission).
+//   • iOS — a security-scoped bookmark encoded as `bookmark:<base64>` (native:
+//     DocumentPickerBridge, via UIDocumentPickerViewController + NSFileCoordinator).
+// Both platforms speak the same MethodChannel; the token is opaque to Dart and
+// is stored as the vault "path".
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class OpenedDocument {
   const OpenedDocument(this.uri, this.name, this.bytes);
-  final String uri; // content:// (used as the vault "path")
+  final String uri; // content:// (Android) or bookmark:… (iOS) — the vault "path"
   final String name; // display name for the UI
   final Uint8List bytes;
 }
@@ -24,13 +29,15 @@ class CreatedDocument {
 class Documents {
   static const MethodChannel _ch = MethodChannel('dgvault/documents');
 
-  /// SAF is Android-only; other platforms use filesystem paths.
+  /// In-place documents are a mobile concept; desktop uses filesystem paths.
   static bool get isSupported =>
-      defaultTargetPlatform == TargetPlatform.android;
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
 
-  /// A location that must be read/written through SAF rather than dart:io.
+  /// A location that must be read/written through the bridge rather than
+  /// dart:io — an Android SAF URI or an iOS security-scoped bookmark token.
   static bool isDocumentUri(String location) =>
-      location.startsWith('content://');
+      location.startsWith('content://') || location.startsWith('bookmark:');
 
   /// Prompt the user to pick an existing document (read/write). Null if
   /// cancelled.

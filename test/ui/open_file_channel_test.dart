@@ -46,6 +46,31 @@ void main() {
     expect(c.status, VaultStatus.noVault);
   });
 
+  test('iOS in-place open: a bookmark path loads without importing a copy',
+      () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final bytes = await buildTestVaultBytes();
+    // A security-scoped bookmark token → save writes back to the original, so
+    // the controller keeps the token as its path (no path_provider import).
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'getInitialFile') {
+        return {
+          'name': 'inplace.kdbx',
+          'bytes': bytes,
+          'path': 'bookmark:Ym9va21hcmtkYXRh',
+        };
+      }
+      return null;
+    });
+
+    final c = VaultController();
+    await OpenFileChannel(c).start();
+
+    expect(c.status, VaultStatus.locked);
+    expect(c.fileName, 'inplace.kdbx');
+    expect(c.path, 'bookmark:Ym9va21hcmtkYXRh');
+  });
+
   test('a pushed openFile call loads the vault while running', () async {
     final bytes = await buildTestVaultBytes();
     messenger.setMockMethodCallHandler(channel, (call) async => null);

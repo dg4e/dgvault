@@ -152,8 +152,9 @@ class VaultController extends ChangeNotifier {
   }
 
   /// Create a new empty vault at [location] protected by [password], and open
-  /// it. [location] is a filesystem path or an Android SAF `content://` URI;
-  /// [displayName] is the human-readable name for the latter.
+  /// it. [location] is a filesystem path or a mobile in-place document token
+  /// (Android SAF URI / iOS bookmark); [displayName] is the human-readable name
+  /// for the latter.
   Future<void> createNew(String location, String password,
       {String? displayName,}) async {
     status = VaultStatus.unlocking;
@@ -186,8 +187,9 @@ class VaultController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Write vault bytes to [location] — an Android SAF document URI (in place,
-  /// via the content resolver) or a plain filesystem path.
+  /// Write vault bytes to [location] — a mobile in-place document token (Android
+  /// SAF URI / iOS security-scoped bookmark, via the [Documents] bridge) or a
+  /// plain filesystem path.
   Future<void> _writeLocation(String location, Uint8List bytes) async {
     if (Documents.isDocumentUri(location)) {
       await Documents.write(location, bytes);

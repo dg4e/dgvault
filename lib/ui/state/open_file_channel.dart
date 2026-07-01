@@ -11,6 +11,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'documents.dart';
 import 'file_service.dart';
 import 'vault_controller.dart';
 
@@ -48,9 +49,15 @@ class OpenFileChannel {
     final bytes = data['bytes'];
     if (bytes is Uint8List) {
       if (defaultTargetPlatform == TargetPlatform.iOS) {
-        // iOS: import a working copy so the opened vault is editable + saveable.
-        final imported = await VaultFiles.importBytes(bytes, name);
-        await controller.openFile(imported);
+        if (path != null && Documents.isDocumentUri(path)) {
+          // Opened in place (LSSupportsOpeningDocumentsInPlace) → the native
+          // side sent a security-scoped bookmark; save writes back to it.
+          controller.loadBytes(bytes, name: name, path: path);
+        } else {
+          // No in-place grant → import a working copy so it stays editable.
+          final imported = await VaultFiles.importBytes(bytes, name);
+          await controller.openFile(imported);
+        }
       } else {
         // Android VIEW intents grant read-only access → open read-only. Desktop
         // passes a real path → saveable in place.
