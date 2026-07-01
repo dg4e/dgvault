@@ -3,6 +3,7 @@
 
 import 'package:dgvault/ui/state/open_file_channel.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,7 +15,13 @@ void main() {
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
-  tearDown(() => messenger.setMockMethodCallHandler(channel, null));
+  // Desktop path: bytes load directly (mobile would import via path_provider,
+  // which is covered on-device; the pure import helpers are in file_service_test).
+  setUp(() => debugDefaultTargetPlatformOverride = TargetPlatform.linux);
+  tearDown(() {
+    debugDefaultTargetPlatformOverride = null;
+    messenger.setMockMethodCallHandler(channel, null);
+  });
 
   test('start() loads the initial file (bytes) → locked unlock screen', () async {
     final bytes = await buildTestVaultBytes();

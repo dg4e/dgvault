@@ -10,6 +10,7 @@
 
 import 'package:flutter/services.dart';
 
+import 'file_service.dart';
 import 'vault_controller.dart';
 
 class OpenFileChannel {
@@ -25,7 +26,7 @@ class OpenFileChannel {
       final initial = await _channel.invokeMethod<Map<dynamic, dynamic>>(
         'getInitialFile',
       );
-      if (initial != null) _load(initial);
+      if (initial != null) await _load(initial);
     } on MissingPluginException {
       // Platform without the native side wired (e.g. web) — nothing to do.
     } catch (_) {
@@ -35,19 +36,25 @@ class OpenFileChannel {
 
   Future<dynamic> _onCall(MethodCall call) async {
     if (call.method == 'openFile' && call.arguments is Map) {
-      _load(call.arguments as Map<dynamic, dynamic>);
+      await _load(call.arguments as Map<dynamic, dynamic>);
     }
     return null;
   }
 
-  void _load(Map<dynamic, dynamic> data) {
+  Future<void> _load(Map<dynamic, dynamic> data) async {
     final name = (data['name'] as String?) ?? 'vault.kdbx';
     final path = data['path'] as String?;
     final bytes = data['bytes'];
     if (bytes is Uint8List) {
-      controller.loadBytes(bytes, name: name, path: path);
+      if (VaultFiles.isMobile) {
+        // Import a working copy so the opened vault is editable + saveable.
+        final imported = await VaultFiles.importBytes(bytes, name);
+        await controller.openFile(imported);
+      } else {
+        controller.loadBytes(bytes, name: name, path: path);
+      }
     } else if (path != null) {
-      controller.openFile(path);
+      await controller.openFile(path);
     }
   }
 }

@@ -1,5 +1,7 @@
 // dgvault — landing screen: open an existing .kdbx or create a new one.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../state/file_service.dart';
@@ -15,7 +17,16 @@ class LandingScreen extends StatelessWidget {
   Future<void> _open(BuildContext context) async {
     try {
       final path = await VaultFiles.pickOpen();
-      if (path != null) await controller.openFile(path);
+      if (path == null) return;
+      if (VaultFiles.isMobile) {
+        // Import a working copy into app storage so edits can be saved back.
+        final bytes = await File(path).readAsBytes();
+        final imported =
+            await VaultFiles.importBytes(bytes, path.split('/').last);
+        await controller.openFile(imported);
+      } else {
+        await controller.openFile(path);
+      }
     } catch (e) {
       controller.reportError('could not open file: $e');
     }
@@ -23,7 +34,15 @@ class LandingScreen extends StatelessWidget {
 
   Future<void> _new(BuildContext context) async {
     try {
-      final path = await VaultFiles.pickNew();
+      String? path;
+      if (VaultFiles.isMobile) {
+        final name = await _promptText(
+            context, 'name your vault', 'e.g. personal',);
+        if (name == null || name.trim().isEmpty) return;
+        path = await VaultFiles.newManagedVaultPath(name.trim());
+      } else {
+        path = await VaultFiles.pickNew();
+      }
       if (path == null) return;
       if (!context.mounted) return;
       final pw = await _promptNewPassword(context);
@@ -85,6 +104,7 @@ class LandingScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  _ManagedVaults(controller: controller),
                 ],
               ),
             ),
@@ -93,6 +113,108 @@ class LandingScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Mobile only: the vaults stored in app-managed storage, tap to open. (The
+/// system picker can't browse app-private storage, so this is how you reopen a
+/// vault you created or imported on the device.)
+class _ManagedVaults extends StatelessWidget {
+  const _ManagedVaults({required this.controller});
+  final VaultController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!VaultFiles.isMobile) return const SizedBox.shrink();
+    return FutureBuilder<List<File>>(
+      future: VaultFiles.listManagedVaults(),
+      builder: (context, snap) {
+        final files = snap.data ?? const <File>[];
+        if (files.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: TerminalPanel(
+            title: 'your vaults',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final f in files)
+                  InkWell(
+                    onTap: () => controller.openFile(f.path),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_outline,
+                              size: 16, color: TermColors.greenDim,),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              f.path.split('/').last,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  mono(size: 13, color: TermColors.textBright),
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right,
+                              size: 16, color: TermColors.textDim,),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A single-line text prompt (vault name).
+Future<String?> _promptText(
+    BuildContext context, String title, String hint,) {
+  final ctl = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: TerminalPanel(
+          title: title,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PromptField(
+                controller: ctl,
+                sigil: '›',
+                hint: hint,
+                autofocus: true,
+                onSubmitted: (_) => Navigator.pop(ctx, ctl.text.trim()),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  TermButton(
+                    label: 'CANCEL',
+                    color: TermColors.textDim,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                  const Spacer(),
+                  TermButton(
+                    label: 'NEXT',
+                    onPressed: () => Navigator.pop(ctx, ctl.text.trim()),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Modal: set the master password for a brand-new vault (with confirmation).
