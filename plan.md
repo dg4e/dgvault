@@ -145,7 +145,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 - [x] Entry History tracking — snapshot service + repository updateEntry wiring (Composer; Performer deferred duplicate)
 - [x] KeePass Field References & Placeholders resolver (Composer; +{URL:} components by Performer)
 - [x] Tags (KeePass) model + Custom Fields + Attachments — tag index/rename/remove + custom-field + attachment-pool services (Performer)
-- [ ] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history + XML-codec + VariantDictionary adversarial audits DONE; R13: full-pipeline end-to-end round-trip (rich db: nested groups/protected custom/history/unicode/metachars/whitespace) DONE with stub cipher; R22: real Argon2/AES body DONE. R23: ✅ GOLDEN INTEROP ACHIEVED — dgvault reads a pykeepass-written KDBX4 (AES/Argon2d/gzip/ChaCha20 inner stream) incl. the protected password (`kdbx_keepassxc_golden_test.dart`), and pykeepass reads a dgvault-written file (verified manually, see Performer-R23). This Critic golden item is COMPLETE.
+- [x] Core model unit tests + round-trip golden tests vs reference kdbx (Critic) — placeholder-resolver + entry-history + XML-codec + VariantDictionary adversarial audits DONE; R13: full-pipeline end-to-end round-trip (rich db: nested groups/protected custom/history/unicode/metachars/whitespace) DONE with stub cipher; R22: real Argon2/AES body DONE. R23: ✅ GOLDEN INTEROP ACHIEVED — dgvault reads a pykeepass-written KDBX4 (AES/Argon2d/gzip/ChaCha20 inner stream) incl. the protected password (`kdbx_keepassxc_golden_test.dart`), and pykeepass reads a dgvault-written file (verified manually, see Performer-R23). This Critic golden item is COMPLETE.
 - [x] ✅ INTEGRATION (round 7): `ensemble/Critic` now merged into master each round; all Critic CI gate + adversarial suites + reviews are on master (Critic)
 
 ### Phase 2 — Authentication & Lock (Rounds 3–4)
@@ -176,7 +176,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 5 — Database & Sync (Round 5)
 - [x] Compare databases / advanced merge (3-way) (Performer)
-- [ ] Offline editing + offline viewing (Performer)
+- [x] Offline editing + offline viewing (Performer) — INHERENT (local-first): open→decrypt-in-memory→mutate (add/update/delete/reorder/move)→`save()` re-encrypts to the local file; no connectivity anywhere in the view/edit/save path (networking lives only under `lib/data/sync/`, `lib/platform/sync/`, `lib/core/net/`). Offline is the default and only mode; cloud-backed vaults edit locally and reconcile later via the tested `SyncEngine` (`sync_engine_test.dart`).
 - [x] Large database handling (250MB+) — streaming/lazy load (Performer) — DESCOPED R23 (owner decision): not a priority. What shipped: KDBX HMAC block stream chunks at 1 MiB on write + verifies block-by-block on read (`kdbx_large_stream_test.dart`, multi-MB round-trip + per-block tamper detection). NOT pursued: lazy/streaming *read* (decrypt buffers the whole body) + lazy XML/entry loading — revisit only if very large DBs become a real requirement
 - [x] Rolling local backups — retention/rotation policy (keepLast + maxAge + maxTotalCount) + next-name (Performer)
 - [x] Move items between databases — cross-DB move service w/ binary-pool relink (Composer); copyEntry deep-clone source-corruption FIXED R9 (was Critic T1)
@@ -200,7 +200,7 @@ Tasks tagged `(shared)` may be claimed by whoever pulls first per §2 claim prot
 
 ### Phase 8 — Platform Integrations (Round 6–7)
 - [ ] AutoFill (Android/iOS) (Performer)
-- [ ] iOS Files integration (Performer)
+- [x] iOS Files integration (Performer) — DONE: `.kdbx` document type + `LSSupportsOpeningDocumentsInPlace` (open from Files launches to unlock), and in-place open/create/save via `UIDocumentPickerViewController` + security-scoped bookmarks (`ios/Runner/DocumentPickerBridge.swift`) over the shared `dgvault/documents` channel — saves back to the user's actual file (Files / iCloud / any provider), no managed copy. Verified by build + unit tests + live simulator launch; the Files-picker save round-trip is a manual on-device check (can't be scripted headlessly).
 - [ ] SSH agent (desktop) (Performer)
 - [ ] Platform integration smoke tests (Critic)
 
