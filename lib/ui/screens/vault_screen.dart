@@ -799,6 +799,13 @@ void _showSettings(BuildContext context, VaultController controller) {
     context: context,
     backgroundColor: TermColors.bg,
     isScrollControlled: true,
+    // A drag handle (swipe down to dismiss) + a height cap so the sheet never
+    // reaches the top of the screen: the close ✕ stays clear of the notch /
+    // Dynamic Island, and there's always a tappable scrim above it to dismiss.
+    showDragHandle: true,
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.of(context).size.height * 0.9,
+    ),
     builder: (_) => _SettingsSheet(controller: controller),
   );
 }
@@ -896,10 +903,11 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   const Expanded(child: SectionLabel('vault settings')),
                   InkWell(
                     onTap: () => Navigator.of(context).pop(),
+                    borderRadius: BorderRadius.circular(24),
                     child: const Padding(
-                      padding: EdgeInsets.all(4),
+                      padding: EdgeInsets.all(10), // ~44px tap target
                       child:
-                          Icon(Icons.close, size: 18, color: TermColors.textDim),
+                          Icon(Icons.close, size: 20, color: TermColors.textDim),
                     ),
                   ),
                 ],
