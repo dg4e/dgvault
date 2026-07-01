@@ -340,10 +340,25 @@ flutter build ios --release        # needs a signing team
 open ios/Runner.xcworkspace        # Xcode → Product → Archive → Distribute App
 ```
 
+**Deploy to a physical device.** With `DEVELOPMENT_TEAM` set (it is, in the
+Runner build configs), `flutter run --release -d <device-id>` builds and signs.
+On recent iOS (**26.x**) the tooling may finish the signed build but then fail at
+"Installing and launching…" — this is a `flutter`/`ios-deploy` gap, not a signing
+problem. Install the already-built `.app` directly with Apple's `devicectl`:
+
+```bash
+flutter build ios --release
+DEV=$(xcrun devicectl list devices | grep -i iphone | awk '{print $3}' | head -1)
+xcrun devicectl device install app --device "$DEV" build/ios/iphoneos/Runner.app
+xcrun devicectl device process launch --device "$DEV" com.dgvault.dgvault
+```
+
 Considerations:
-- Set the **signing team** and a distribution provisioning profile in Xcode
-  (bundle id `com.dgvault.dgvault`).
+- Set the **signing team** (Runner target → Signing & Capabilities → your Team)
+  and, for store builds, a distribution profile (bundle id `com.dgvault.dgvault`).
 - Deployment target is **iOS 13.0**.
+- First cold launch may need **Settings → General → VPN & Device Management →**
+  trust your developer cert.
 - The `.kdbx` document type and in-place save (§5–6) are already declared in
   `Info.plist`; no extra config for TestFlight / App Store.
 - The document-picker save-back is best verified on a **real device** (or

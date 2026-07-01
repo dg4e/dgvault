@@ -89,6 +89,13 @@ Note: `flutter emulators --launch` takes the **AVD name** (`pixel_api36`), but
 ### Physical devices
 
 - **iOS**: trust the Mac, select the device, `flutter run` (needs a signing team in Xcode for a real device).
+  - On recent iOS (26.x), `flutter run` may build + sign fine but fail at "Installing and launching…". Install the freshly-built app directly instead:
+    ```bash
+    flutter build ios --release                       # builds + signs with your team
+    DEV=$(xcrun devicectl list devices | grep -i iphone | awk '{print $3}' | head -1)
+    xcrun devicectl device install app --device "$DEV" build/ios/iphoneos/Runner.app
+    xcrun devicectl device process launch --device "$DEV" com.dgvault.dgvault
+    ```
 - **Android**: enable Developer Options → USB debugging, plug in, `flutter run`.
 
 ### First-time Android SDK setup (macOS, no Android Studio)
