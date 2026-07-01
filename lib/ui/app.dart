@@ -10,6 +10,7 @@ import 'screens/cracktro_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/unlock_screen.dart';
 import 'screens/vault_screen.dart';
+import 'state/documents.dart';
 import 'state/open_file_channel.dart';
 import 'state/recent_vaults.dart';
 import 'state/vault_controller.dart';
@@ -42,7 +43,7 @@ class _DgvaultAppState extends State<DgvaultApp> {
     // Handle a .kdbx that the OS opened with dgvault (file association).
     if (widget.controller == null) {
       // Remember opened/created vaults for one-tap reopen on the landing screen.
-      _controller.onVaultAccessed = RecentVaults.remember;
+      _controller.onVaultAccessed = _rememberRecent;
       OpenFileChannel(_controller).start(); // macOS/iOS/Android (channel)
       final initial = widget.initialFile; // Windows/Linux (command-line arg)
       if (initial != null) _controller.openFile(initial);
@@ -53,6 +54,18 @@ class _DgvaultAppState extends State<DgvaultApp> {
   void dispose() {
     if (widget.controller == null) _controller.dispose();
     super.dispose();
+  }
+
+  /// Record a just-opened vault as a recent. On sandboxed macOS a raw path
+  /// can't be reopened next session, so convert it to a security-scoped
+  /// bookmark first; on failure fall back to the raw path.
+  Future<void> _rememberRecent(String location, String name) async {
+    var loc = location;
+    if (Documents.bookmarksRecents && !Documents.isDocumentUri(location)) {
+      final token = await Documents.bookmark(location);
+      if (token != null) loc = token;
+    }
+    await RecentVaults.remember(loc, name);
   }
 
   // Triggered by the macOS "About dgvault" menu item; works on any screen.

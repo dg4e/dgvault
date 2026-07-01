@@ -33,4 +33,20 @@ void main() {
     }
     debugDefaultTargetPlatformOverride = null;
   });
+
+  test('bookmarksRecents only on macOS (sandbox needs security-scoped reopen)',
+      () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    expect(Documents.bookmarksRecents, isTrue);
+    for (final p in [
+      TargetPlatform.linux,
+      TargetPlatform.windows,
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    ]) {
+      debugDefaultTargetPlatformOverride = p;
+      expect(Documents.bookmarksRecents, isFalse, reason: '$p');
+    }
+    debugDefaultTargetPlatformOverride = null;
+  });
 }

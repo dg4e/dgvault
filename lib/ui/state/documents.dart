@@ -29,15 +29,28 @@ class CreatedDocument {
 class Documents {
   static const MethodChannel _ch = MethodChannel('dgvault/documents');
 
-  /// In-place documents are a mobile concept; desktop uses filesystem paths.
+  /// The native document picker drives open/new (Android SAF / iOS). Desktop
+  /// keeps using file_picker + filesystem paths.
   static bool get isSupported =>
       defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS;
 
+  /// Sandboxed macOS can't reopen a file by raw path in a later session (the
+  /// open-panel grant doesn't persist) — a "recent" needs a security-scoped
+  /// bookmark. [bookmark] converts a currently-accessible path into one.
+  static bool get bookmarksRecents =>
+      defaultTargetPlatform == TargetPlatform.macOS;
+
   /// A location that must be read/written through the bridge rather than
-  /// dart:io — an Android SAF URI or an iOS security-scoped bookmark token.
+  /// dart:io — an Android SAF URI or an iOS/macOS security-scoped bookmark.
   static bool isDocumentUri(String location) =>
       location.startsWith('content://') || location.startsWith('bookmark:');
+
+  /// Create a persistable security-scoped bookmark for [path] (macOS). Returns
+  /// a `bookmark:` token, or null if the platform/OS couldn't make one (the
+  /// caller then falls back to the raw path).
+  static Future<String?> bookmark(String path) =>
+      _ch.invokeMethod<String>('bookmark', {'path': path});
 
   /// Prompt the user to pick an existing document (read/write). Null if
   /// cancelled.
