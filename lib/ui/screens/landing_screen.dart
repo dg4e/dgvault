@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../state/documents.dart';
 import '../state/file_service.dart';
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
@@ -16,16 +17,22 @@ class LandingScreen extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     try {
-      final path = await VaultFiles.pickOpen();
-      if (path == null) return;
-      if (VaultFiles.isMobile) {
-        // Import a working copy into app storage so edits can be saved back.
+      if (Documents.isSupported) {
+        // Android SAF: read/write the file the user picks, in place.
+        final doc = await Documents.pickOpen();
+        if (doc == null) return;
+        controller.loadBytes(doc.bytes, name: doc.name, path: doc.uri);
+      } else if (VaultFiles.isMobile) {
+        // iOS: import a working copy so edits can be saved back.
+        final path = await VaultFiles.pickOpen();
+        if (path == null) return;
         final bytes = await File(path).readAsBytes();
         final imported =
             await VaultFiles.importBytes(bytes, path.split('/').last);
         await controller.openFile(imported);
       } else {
-        await controller.openFile(path);
+        final path = await VaultFiles.pickOpen();
+        if (path != null) await controller.openFile(path);
       }
     } catch (e) {
       controller.reportError('could not open file: $e');
@@ -34,20 +41,30 @@ class LandingScreen extends StatelessWidget {
 
   Future<void> _new(BuildContext context) async {
     try {
-      String? path;
-      if (VaultFiles.isMobile) {
-        final name = await _promptText(
-            context, 'name your vault', 'e.g. personal',);
+      if (Documents.isSupported) {
+        // Android SAF: set a password, then choose where to create the file.
+        final pw = await _promptNewPassword(context);
+        if (pw == null || pw.isEmpty) return;
+        final doc = await Documents.pickCreate('vault.kdbx');
+        if (doc == null) return;
+        await controller.createNew(doc.uri, pw, displayName: doc.name);
+      } else if (VaultFiles.isMobile) {
+        final name =
+            await _promptText(context, 'name your vault', 'e.g. personal');
         if (name == null || name.trim().isEmpty) return;
-        path = await VaultFiles.newManagedVaultPath(name.trim());
+        if (!context.mounted) return;
+        final pw = await _promptNewPassword(context);
+        if (pw == null || pw.isEmpty) return;
+        final path = await VaultFiles.newManagedVaultPath(name.trim());
+        await controller.createNew(path, pw);
       } else {
-        path = await VaultFiles.pickNew();
+        final path = await VaultFiles.pickNew();
+        if (path == null) return;
+        if (!context.mounted) return;
+        final pw = await _promptNewPassword(context);
+        if (pw == null || pw.isEmpty) return;
+        await controller.createNew(path, pw);
       }
-      if (path == null) return;
-      if (!context.mounted) return;
-      final pw = await _promptNewPassword(context);
-      if (pw == null || pw.isEmpty) return;
-      await controller.createNew(path, pw);
     } catch (e) {
       controller.reportError('could not create file: $e');
     }

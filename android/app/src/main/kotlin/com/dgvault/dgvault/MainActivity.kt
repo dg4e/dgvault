@@ -11,6 +11,13 @@ class MainActivity : FlutterActivity() {
     private val channelName = "dgvault/open_file"
     private var channel: MethodChannel? = null
 
+    // Storage Access Framework: open/create a document with persistable
+    // read/write so edits save back to the original file (no local copy).
+    private val docsChannelName = "dgvault/documents"
+    private var pendingResult: MethodChannel.Result? = null
+    private val rcOpen = 4011
+    private val rcCreate = 4012
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val ch = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
@@ -23,6 +30,86 @@ class MainActivity : FlutterActivity() {
                 result.notImplemented()
             }
         }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, docsChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "pickOpen" -> {
+                        if (pendingResult != null) { result.error("busy", "picker in progress", null) }
+                        else { pendingResult = result; launchOpen() }
+                    }
+                    "pickCreate" -> {
+                        if (pendingResult != null) { result.error("busy", "picker in progress", null) }
+                        else { pendingResult = result; launchCreate(call.argument<String>("name") ?: "vault.kdbx") }
+                    }
+                    "read" -> result.success(readUri(Uri.parse(call.argument<String>("uri"))))
+                    "write" -> {
+                        try {
+                            writeUri(Uri.parse(call.argument<String>("uri")), call.argument<ByteArray>("bytes")!!)
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("write_failed", e.message, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun launchOpen() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        startActivityForResult(i, rcOpen)
+    }
+
+    private fun launchCreate(name: String) {
+        val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, name)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        startActivityForResult(i, rcCreate)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val res = pendingResult ?: return
+        if (requestCode != rcOpen && requestCode != rcCreate) return
+        pendingResult = null
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) { res.success(null); return }
+        try {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        } catch (_: Exception) { /* best effort */ }
+        try {
+            if (requestCode == rcOpen) {
+                res.success(mapOf(
+                    "uri" to uri.toString(),
+                    "name" to displayName(uri),
+                    "bytes" to readUri(uri),
+                ))
+            } else {
+                res.success(mapOf("uri" to uri.toString(), "name" to displayName(uri)))
+            }
+        } catch (e: Exception) {
+            res.error("open_failed", e.message, null)
+        }
+    }
+
+    private fun readUri(uri: Uri): ByteArray? =
+        contentResolver.openInputStream(uri)?.use { it.readBytes() }
+
+    private fun writeUri(uri: Uri, bytes: ByteArray) {
+        // "wt" = write + truncate, so the file is fully replaced (not appended).
+        contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
+            ?: throw IllegalStateException("could not open output stream")
     }
 
     // Warm start: app already running, user opens another .kdbx (singleTop).

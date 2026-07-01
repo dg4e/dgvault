@@ -18,6 +18,8 @@ import 'package:dgvault/core/crypto/impl/kdbx4_body_cipher.dart';
 import 'package:dgvault/core/crypto/impl/kdf_registry.dart';
 import 'package:dgvault/data/format/gzip_compressor.dart';
 
+import 'documents.dart';
+
 enum VaultStatus { noVault, locked, unlocking, unlocked, saving }
 
 class VaultController extends ChangeNotifier {
@@ -137,7 +139,7 @@ class VaultController extends ChangeNotifier {
     try {
       final header = _freshHeader(h.kdf, h.cipher);
       final out = await _codec.write(db, header, cred);
-      await File(p).writeAsBytes(out, flush: true);
+      await _writeLocation(p, out);
       _bytes = out;
       _header = header;
       _dirty = _mutationSeq != seqAtStart; // edited during the write → still dirty
@@ -149,12 +151,15 @@ class VaultController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Create a new empty vault at [filePath] protected by [password], and open it.
-  Future<void> createNew(String filePath, String password) async {
+  /// Create a new empty vault at [location] protected by [password], and open
+  /// it. [location] is a filesystem path or an Android SAF `content://` URI;
+  /// [displayName] is the human-readable name for the latter.
+  Future<void> createNew(String location, String password,
+      {String? displayName,}) async {
     status = VaultStatus.unlocking;
     notifyListeners();
     try {
-      final name = filePath.split(Platform.pathSeparator).last;
+      final name = displayName ?? location.split(Platform.pathSeparator).last;
       final db = Database(
         meta: DatabaseMeta(name: name.replaceAll('.kdbx', '')),
         root: Group(uuid: _uuid(), name: 'Root'),
@@ -163,13 +168,13 @@ class VaultController extends ChangeNotifier {
       final header =
           _freshHeader(KdfParams.argon2idDefault(), DatabaseCipher.aes256);
       final out = await _codec.write(db, header, cred);
-      await File(filePath).writeAsBytes(out, flush: true);
+      await _writeLocation(location, out);
 
       _bytes = out;
       _header = header;
       _cred = cred;
       _db = db;
-      path = filePath;
+      path = location;
       fileName = name;
       _dirty = false;
       error = null;
@@ -179,6 +184,16 @@ class VaultController extends ChangeNotifier {
       error = 'create failed: $e';
     }
     notifyListeners();
+  }
+
+  /// Write vault bytes to [location] — an Android SAF document URI (in place,
+  /// via the content resolver) or a plain filesystem path.
+  Future<void> _writeLocation(String location, Uint8List bytes) async {
+    if (Documents.isDocumentUri(location)) {
+      await Documents.write(location, bytes);
+    } else {
+      await File(location).writeAsBytes(bytes, flush: true);
+    }
   }
 
   // ---- lifecycle ----------------------------------------------------------

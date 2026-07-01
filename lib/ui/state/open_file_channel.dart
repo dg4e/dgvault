@@ -8,6 +8,7 @@
 // The bytes (not a path) are passed so Android content:// URIs and iOS
 // security-scoped URLs work uniformly; an optional path lets desktop Save back.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'file_service.dart';
@@ -46,11 +47,13 @@ class OpenFileChannel {
     final path = data['path'] as String?;
     final bytes = data['bytes'];
     if (bytes is Uint8List) {
-      if (VaultFiles.isMobile) {
-        // Import a working copy so the opened vault is editable + saveable.
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        // iOS: import a working copy so the opened vault is editable + saveable.
         final imported = await VaultFiles.importBytes(bytes, name);
         await controller.openFile(imported);
       } else {
+        // Android VIEW intents grant read-only access → open read-only. Desktop
+        // passes a real path → saveable in place.
         controller.loadBytes(bytes, name: name, path: path);
       }
     } else if (path != null) {
