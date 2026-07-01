@@ -133,32 +133,42 @@ void main() {
 
   testWidgets('title bar shows version + filename; About opens the cracktro',
       (tester) async {
-    await _unlocked(tester);
-    expect(find.text(appTitle), findsOneWidget); // 'dgvault v0.1.0'
-    expect(find.textContaining('test.kdbx'), findsWidgets); // filename shown
+    // Desktop: the close ✕ chip is present (mobile drops it — see below).
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await _unlocked(tester);
+      expect(find.text(appTitle), findsOneWidget); // 'dgvault v0.1.0'
+      expect(find.textContaining('test.kdbx'), findsWidgets); // filename shown
 
-    await tester.tap(find.byTooltip('About dgvault'));
-    await tester.pump(); // start the route
-    await tester.pump(const Duration(milliseconds: 700)); // fade + fly-in
+      await tester.tap(find.byTooltip('About dgvault'));
+      await tester.pump(); // start the route
+      await tester.pump(const Duration(milliseconds: 700)); // fade + fly-in
 
-    expect(find.text('dgvault'), findsOneWidget); // gradient logo wordmark
-    expect(find.text(kAppCopyright), findsOneWidget);
-    expect(find.text(kAppAuthors), findsOneWidget);
+      expect(find.text('dgvault'), findsOneWidget); // gradient logo wordmark
+      expect(find.text(kAppCopyright), findsOneWidget);
+      expect(find.text(kAppAuthors), findsOneWidget);
 
-    // Close it (don't pumpAndSettle — the cracktro loops forever).
-    await tester.tap(find.byTooltip('Close (Esc)'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text(kAppCopyright), findsNothing);
+      // Close it (don't pumpAndSettle — the cracktro loops forever).
+      await tester.tap(find.byTooltip('Close (Esc)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text(kAppCopyright), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
-  testWidgets('About cracktro drops the Esc hint on mobile', (tester) async {
+  testWidgets('About cracktro: no close chip on mobile, tap-anywhere hint',
+      (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await tester.pumpWidget(const MaterialApp(home: CracktroScreen()));
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('tap ✕ to return'), findsOneWidget);
+      expect(find.text('tap anywhere to return'), findsOneWidget);
       expect(find.textContaining('esc'), findsNothing);
+      // The ✕ chip is dropped on touch (it collides with the notch; tapping
+      // anywhere dismisses instead).
+      expect(find.byTooltip('Close (Esc)'), findsNothing);
       await tester.pumpWidget(const SizedBox()); // dispose looping controllers
     } finally {
       debugDefaultTargetPlatformOverride = null;

@@ -153,12 +153,14 @@ class _CracktroScreenState extends State<CracktroScreen>
                   ),
                 ),
 
-                // Close affordance.
-                Positioned(
-                  top: 14,
-                  right: 16,
-                  child: _CloseChip(onTap: _close),
-                ),
+                // Close affordance (desktop only — on touch, tap anywhere to
+                // dismiss, and a top-corner chip collides with the notch).
+                if (!isMobilePlatform)
+                  Positioned(
+                    top: 14,
+                    right: 16,
+                    child: _CloseChip(onTap: _close),
+                  ),
                 Positioned(
                   left: 0,
                   right: 0,
@@ -167,7 +169,7 @@ class _CracktroScreenState extends State<CracktroScreen>
                     child: Text(
                       // No physical keyboard on phones/tablets — drop the Esc hint.
                       isMobilePlatform
-                          ? 'tap ✕ to return'
+                          ? 'tap anywhere to return'
                           : 'press [esc] or click ✕ to return',
                       style: mono(size: 11, color: TermColors.textFaint),
                     ),
