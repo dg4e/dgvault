@@ -17,6 +17,12 @@
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
+		DDIOS0100000000000000B001 /* kdbx_doc_64.png in Resources */ = {isa = PBXBuildFile; fileRef = DDIOS0100000000000000C001 /* kdbx_doc_64.png */; };
+		DDIOS0100000000000000B002 /* kdbx_doc_64@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = DDIOS0100000000000000C002 /* kdbx_doc_64@2x.png */; };
+		DDIOS0100000000000000B003 /* kdbx_doc_64@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = DDIOS0100000000000000C003 /* kdbx_doc_64@3x.png */; };
+		DDIOS0100000000000000B004 /* kdbx_doc_320.png in Resources */ = {isa = PBXBuildFile; fileRef = DDIOS0100000000000000C004 /* kdbx_doc_320.png */; };
+		DDIOS0100000000000000B005 /* kdbx_doc_320@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = DDIOS0100000000000000C005 /* kdbx_doc_320@2x.png */; };
+		DDIOS0100000000000000B006 /* kdbx_doc_320@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = DDIOS0100000000000000C006 /* kdbx_doc_320@3x.png */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		DDBB0100000000000000A001 /* DocumentPickerBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBB0100000000000000A002 /* DocumentPickerBridge.swift */; };
 /* End PBXBuildFile section */
@@ -65,6 +71,12 @@
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		97C146FB1CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DDIOS0100000000000000C001 /* kdbx_doc_64.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "DocumentIcons/kdbx_doc_64.png"; sourceTree = "<group>"; };
+		DDIOS0100000000000000C002 /* kdbx_doc_64@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "DocumentIcons/kdbx_doc_64@2x.png"; sourceTree = "<group>"; };
+		DDIOS0100000000000000C003 /* kdbx_doc_64@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "DocumentIcons/kdbx_doc_64@3x.png"; sourceTree = "<group>"; };
+		DDIOS0100000000000000C004 /* kdbx_doc_320.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "DocumentIcons/kdbx_doc_320.png"; sourceTree = "<group>"; };
+		DDIOS0100000000000000C005 /* kdbx_doc_320@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "DocumentIcons/kdbx_doc_320@2x.png"; sourceTree = "<group>"; };
+		DDIOS0100000000000000C006 /* kdbx_doc_320@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "DocumentIcons/kdbx_doc_320@3x.png"; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A14B3A4DDE3A6B94B425CF47 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -153,6 +165,12 @@
 			children = (
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
+				DDIOS0100000000000000C001 /* kdbx_doc_64.png */,
+				DDIOS0100000000000000C002 /* kdbx_doc_64@2x.png */,
+				DDIOS0100000000000000C003 /* kdbx_doc_64@3x.png */,
+				DDIOS0100000000000000C004 /* kdbx_doc_320.png */,
+				DDIOS0100000000000000C005 /* kdbx_doc_320@2x.png */,
+				DDIOS0100000000000000C006 /* kdbx_doc_320@3x.png */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
@@ -278,6 +296,12 @@
 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
+				DDIOS0100000000000000B001 /* kdbx_doc_64.png in Resources */,
+				DDIOS0100000000000000B002 /* kdbx_doc_64@2x.png in Resources */,
+				DDIOS0100000000000000B003 /* kdbx_doc_64@3x.png in Resources */,
+				DDIOS0100000000000000B004 /* kdbx_doc_320.png in Resources */,
+				DDIOS0100000000000000B005 /* kdbx_doc_320@2x.png in Resources */,
+				DDIOS0100000000000000B006 /* kdbx_doc_320@3x.png in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

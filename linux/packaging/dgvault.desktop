@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=dgvault
+GenericName=Password Manager
+Comment=KeePass-compatible password manager
+Exec=dgvault %f
+Icon=dgvault
+Terminal=false
+Categories=Utility;Security;
+# Declaring the MIME type here is what makes dgvault a candidate handler for
+# .kdbx files; `xdg-mime default` (see install-associations.sh) makes it THE
+# default that file managers open on double-click.
+MimeType=application/x-keepass2;

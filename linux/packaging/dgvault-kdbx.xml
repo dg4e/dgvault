@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- shared-mime-info: ensure .kdbx is recognised as application/x-keepass2 so
+     the file manager gives it the mimetypes/application-x-keepass2 icon.
+     (KeePass/KeePassXC packages usually register this already; this is a
+     self-contained fallback for systems that don't.) -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-keepass2">
+    <comment>KeePass database</comment>
+    <glob pattern="*.kdbx"/>
+    <!-- KDBX magic: 0x9AA2D903 little-endian at offset 0. -->
+    <magic priority="60">
+      <match type="little32" offset="0" value="0x9AA2D903"/>
+    </magic>
+    <icon name="application-x-keepass2"/>
+  </mime-type>
+</mime-info>

@@ -250,6 +250,58 @@ the unlock screen. This is wired per platform and normalized in
 Bytes (not just a path) are passed so Android `content://` URIs and iOS
 security-scoped URLs work uniformly.
 
+### How association actually works (declare → default → icon)
+
+There are three separate things, and it helps to keep them apart:
+
+1. **Declare** that the app *can* open the type. This is what the manifests do
+   (`Info.plist` `CFBundleDocumentTypes` on Apple, the `intent-filter` on
+   Android, the `.desktop` `MimeType=` on Linux, the registry ProgID on
+   Windows). Declaring only makes the app a *candidate* — it shows up in
+   "Open With", and the file *can* be opened, but double-click may still go to
+   another app (e.g. KeePassXC).
+2. **Become the default.** The OS keeps a per-type default handler that respects
+   installed apps and the user's choice. Declaring doesn't set it; you set it
+   explicitly (below). This is why "open by hand" worked before dgvault was the
+   default.
+3. **The document icon.** On Apple this ships *inside the app* (an icon named in
+   the doc-type entry). On Linux/Windows the icon is keyed to the *type*, not the
+   app, and is installed/registered separately.
+
+The `.kdbx` UTI `org.keepass.kdbx` is **imported**, not exported — KeePass owns
+the type; dgvault just declares support and provides its own document icon.
+
+### Document icons
+
+Generated from one source by `tool/gen_icon.py` (`_document()` — a dark page with
+a folded corner, the vault mark, and a `KDBX` label):
+
+| Platform | Icon artifact | Wired by |
+|---|---|---|
+| macOS | `macos/Runner/DocumentIcon.icns` | `CFBundleTypeIconFile` + bundled as a Resource |
+| iOS | `ios/Runner/DocumentIcons/kdbx_doc_{64,320}{,@2x,@3x}.png` | `CFBundleTypeIconFiles` + bundled (flattened to the app root) |
+| Windows | `windows/runner/resources/kdbx_document.ico` | installer registry `DefaultIcon` |
+| Linux | `linux/packaging/icons/<size>/mimetypes/application-x-keepass2.png` | hicolor icon theme, keyed to the MIME type |
+| Android | — (none) | the file manager uses the handler app's launcher icon |
+
+### Making dgvault the default handler
+
+- **macOS** — `macos/packaging/set-default-handler.sh` (registers with
+  `lsregister`, sets the default via `duti` if present, clears the icon cache).
+  Or by hand: a `.kdbx` → Get Info → Open with → dgvault → **Change All…**.
+  `LSHandlerRank` is set to `Owner` to bias selection.
+- **Linux** — `linux/packaging/install-associations.sh` (installs the MIME XML,
+  the icon into hicolor, the `.desktop`, then `xdg-mime default`).
+- **Windows** — the installer writes the ProgID + `.kdbx` association
+  (`windows/packaging/file-association.iss` for Inno Setup, or the dev
+  `.reg` template); Explorer is refreshed with `ie4uinit.exe -show`.
+- **iOS / Android** — the user picks the default when opening (iOS: "Copy to
+  dgvault" / Files default; Android: the app chooser's "Always"). There's no
+  programmatic force, by design.
+
+Icons are OS-cached; a logout/restart of Finder/Explorer/the file manager may be
+needed before a changed icon shows.
+
 ---
 
 ## 7. Security model — things to be considerate of

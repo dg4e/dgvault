@@ -152,6 +152,70 @@ def gen_macos():
     for s in (16, 32, 64, 128, 256, 512, 1024):
         _save(m.resize((s, s), Image.LANCZOS),
               os.path.join(base, f"app_icon_{s}.png"))
+    gen_macos_document()
+
+
+def _document(D):
+    """A Finder document icon: a dark page (folded corner) badged with the vault
+    mark and a KDBX label, so .kdbx files read as dgvault vaults, DxD."""
+    img = Image.new("RGBA", (D, D), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Portrait page, centered, with a little breathing room.
+    mx, top, bot = D * 0.17, D * 0.06, D * 0.06
+    left, right = mx, D - mx
+    fold = D * 0.20  # folded-corner size (top-right)
+    radius = max(1, int(D * 0.045))
+
+    # Page body (rounded), with the top-right corner cut for the fold.
+    page = [left, top, right, D - bot]
+    d.rounded_rectangle(page, radius, fill=DOOR, outline=GREEN_DIM,
+                        width=max(1, int(D * 0.006)))
+    # Mask off the corner and redraw the fold as a lighter triangle.
+    d.polygon([(right - fold, top), (right, top), (right, top + fold)],
+              fill=(0, 0, 0, 0))
+    d.polygon([(right - fold, top), (right, top + fold),
+               (right - fold, top + fold)], fill=PANEL, outline=GREEN,
+              width=max(1, int(D * 0.005)))
+    d.line([(right - fold, top), (right - fold, top + fold),
+            (right, top + fold)], fill=GREEN, width=max(1, int(D * 0.005)))
+
+    # Vault mark badged in the upper half of the page.
+    s = int((right - left) * 0.66)
+    mark = _design(s)
+    img.alpha_composite(mark, (int((D - s) / 2), int(top + D * 0.10)))
+
+    # "KDBX" wordmark along the bottom of the page.
+    font = ImageFont.truetype(FONT, int(D * 0.13))
+    bbox = d.textbbox((0, 0), "KDBX", font=font)
+    tw = bbox[2] - bbox[0]
+    d.text(((D - tw) / 2 - bbox[0], D - bot - D * 0.20), "KDBX",
+           font=font, fill=GREEN)
+    return img
+
+
+def gen_macos_document():
+    """Write macos/Runner/DocumentIcon.icns (Finder icon for .kdbx files)."""
+    import shutil
+    import subprocess
+    if not shutil.which("iconutil"):
+        print("skip DocumentIcon.icns (no iconutil — macOS only)")
+        return
+    runner = os.path.join(ROOT, "macos", "Runner")
+    iconset = os.path.join(runner, "DocumentIcon.iconset")
+    os.makedirs(iconset, exist_ok=True)
+    master = _document(1024)
+    # Apple's required iconset members (1x + @2x).
+    for base_px, name in ((16, "16x16"), (32, "32x32"), (128, "128x128"),
+                          (256, "256x256"), (512, "512x512")):
+        master.resize((base_px, base_px), Image.LANCZOS).save(
+            os.path.join(iconset, f"icon_{name}.png"))
+        master.resize((base_px * 2, base_px * 2), Image.LANCZOS).save(
+            os.path.join(iconset, f"icon_{name}@2x.png"))
+    out = os.path.join(runner, "DocumentIcon.icns")
+    subprocess.run(["iconutil", "-c", "icns", iconset, "-o", out], check=True)
+    shutil.rmtree(iconset)
+    print("wrote", os.path.relpath(out, ROOT))
 
 
 def gen_ios():
@@ -193,16 +257,39 @@ def gen_android():
               os.path.join(d, "ic_launcher_foreground.png"))
 
 
+def gen_ios_document():
+    """iOS document-type icons (shown in Files) → ios/Runner/DocumentIcons/."""
+    base = os.path.join(ROOT, "ios", "Runner")
+    if not os.path.isdir(base):
+        return
+    out = os.path.join(base, "DocumentIcons")
+    os.makedirs(out, exist_ok=True)
+    master = _document(1024)
+    # CFBundleTypeIconFiles picks the best match; provide 64pt & 320pt @1x/@2x/@3x.
+    for pt in (64, 320):
+        for scale in (1, 2, 3):
+            px = pt * scale
+            suffix = "" if scale == 1 else f"@{scale}x"
+            master.resize((px, px), Image.LANCZOS).save(
+                os.path.join(out, f"kdbx_doc_{pt}{suffix}.png"))
+    print("wrote", os.path.relpath(out, ROOT) + "/kdbx_doc_*.png")
+
+
 def gen_windows():
-    path = os.path.join(ROOT, "windows", "runner", "resources",
-                        "app_icon.ico")
-    if not os.path.isdir(os.path.dirname(path)):
+    resdir = os.path.join(ROOT, "windows", "runner", "resources")
+    if not os.path.isdir(resdir):
         return
     m = _master("square", 256)
-    m.save(path, format="ICO",
+    m.save(os.path.join(resdir, "app_icon.ico"), format="ICO",
            sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64),
                   (128, 128), (256, 256)])
-    print("wrote", os.path.relpath(path, ROOT))
+    print("wrote windows/runner/resources/app_icon.ico")
+    # Document icon for the .kdbx association (installer sets DefaultIcon → this).
+    doc = _document(256)
+    doc.save(os.path.join(resdir, "kdbx_document.ico"), format="ICO",
+             sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64),
+                    (128, 128), (256, 256)])
+    print("wrote windows/runner/resources/kdbx_document.ico")
 
 
 def gen_linux():
@@ -211,11 +298,21 @@ def gen_linux():
     m = _master("rounded")
     _save(m.resize((512, 512), Image.LANCZOS),
           os.path.join(ROOT, "linux", "dgvault.png"))
+    # MIME-type icon: freedesktop names it after the type (slashes → dashes),
+    # so the file manager shows it for every .kdbx file. Installed into
+    # hicolor/<size>/mimetypes/. .kdbx is the de-facto application/x-keepass2.
+    doc = _document(512)
+    packaging = os.path.join(ROOT, "linux", "packaging", "icons")
+    for s in (16, 24, 32, 48, 64, 128, 256, 512):
+        _save(doc.resize((s, s), Image.LANCZOS),
+              os.path.join(packaging, f"{s}x{s}", "mimetypes",
+                           "application-x-keepass2.png"))
 
 
 def main():
     gen_macos()
     gen_ios()
+    gen_ios_document()
     gen_android()
     gen_windows()
     gen_linux()

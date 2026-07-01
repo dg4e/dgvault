@@ -79,6 +79,11 @@
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
+			<key>CFBundleTypeIconFiles</key>
+			<array>
+				<string>kdbx_doc_64</string>
+				<string>kdbx_doc_320</string>
+			</array>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>org.keepass.kdbx</string>

@@ -1,0 +1,21 @@
+Windows Registry Editor Version 5.00
+
+; Dev/manual .kdbx association for dgvault (no installer needed).
+; EDIT the two paths below to your actual install location, then double-click
+; this file. Uses HKEY_CURRENT_USER so it needs no admin rights.
+; Note: .reg escaping doubles every backslash.
+
+[HKEY_CURRENT_USER\Software\Classes\dgvault.kdbx]
+@="KeePass Database"
+
+[HKEY_CURRENT_USER\Software\Classes\dgvault.kdbx\DefaultIcon]
+@="C:\\Program Files\\dgvault\\kdbx_document.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\dgvault.kdbx\shell\open\command]
+@="\"C:\\Program Files\\dgvault\\dgvault.exe\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.kdbx]
+@="dgvault.kdbx"
+
+[HKEY_CURRENT_USER\Software\Classes\.kdbx\OpenWithProgids]
+"dgvault.kdbx"=""
