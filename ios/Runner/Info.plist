@@ -70,6 +70,10 @@
 	<string>Use Face ID to unlock your vault.</string>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<!-- Expose the app's Documents folder in the Files app (On My iPhone →
+	     dgvault), so it's clear where vaults live and users can manage them. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

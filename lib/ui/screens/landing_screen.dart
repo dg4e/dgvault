@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../state/documents.dart';
@@ -34,14 +35,26 @@ class LandingScreen extends StatelessWidget {
 
   Future<void> _new(BuildContext context) async {
     try {
-      if (Documents.isSupported) {
-        // Mobile (Android SAF / iOS bookmark): set a password, then choose
-        // where to create the file — saved back there in place.
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        // Android SAF: pick where to create it; saved back there in place.
         final pw = await _promptNewPassword(context);
         if (pw == null || pw.isEmpty) return;
         final doc = await Documents.pickCreate('vault.kdbx');
         if (doc == null) return;
         await controller.createNew(doc.uri, pw, displayName: doc.name);
+      } else if (VaultFiles.isMobile) {
+        // iOS: create in the app's own Documents folder — visible in Files
+        // under "On My iPhone → dgvault", a real path (no security-scoped
+        // bookmark, so deleting it in Files actually removes it), always
+        // writable in place.
+        final name =
+            await _promptText(context, 'name your vault', 'e.g. personal');
+        if (name == null || name.trim().isEmpty) return;
+        if (!context.mounted) return;
+        final pw = await _promptNewPassword(context);
+        if (pw == null || pw.isEmpty) return;
+        final path = await VaultFiles.newManagedVaultPath(name.trim());
+        await controller.createNew(path, pw);
       } else {
         final path = await VaultFiles.pickNew();
         if (path == null) return;
@@ -253,6 +266,52 @@ class _ManagedVaults extends StatelessWidget {
       },
     );
   }
+}
+
+/// A single-line text prompt (e.g. name a new vault).
+Future<String?> _promptText(
+    BuildContext context, String title, String hint,) {
+  final ctl = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: TerminalPanel(
+          title: title,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PromptField(
+                controller: ctl,
+                sigil: '›',
+                hint: hint,
+                autofocus: true,
+                onSubmitted: (_) => Navigator.pop(ctx, ctl.text.trim()),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  TermButton(
+                    label: 'CANCEL',
+                    color: TermColors.textDim,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                  const Spacer(),
+                  TermButton(
+                    label: 'NEXT',
+                    onPressed: () => Navigator.pop(ctx, ctl.text.trim()),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Modal: set the master password for a brand-new vault (with confirmation).
