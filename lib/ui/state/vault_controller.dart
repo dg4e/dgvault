@@ -35,6 +35,11 @@ class VaultController extends ChangeNotifier {
   VoidCallback? onGenerate;
   VoidCallback? onCopyPassword;
 
+  /// Fired when a reopenable vault is opened/created, with its location token
+  /// (filesystem path or mobile in-place document token) and display name. The
+  /// app wires this to the recent-vaults store; null in tests / read-only opens.
+  void Function(String location, String name)? onVaultAccessed;
+
   VaultStatus status = VaultStatus.noVault;
   String? path; // file on disk (null for an in-memory/test vault)
   String? fileName; // for display
@@ -88,6 +93,8 @@ class VaultController extends ChangeNotifier {
     fileName = name;
     error = null;
     status = VaultStatus.locked;
+    // A path means the file can be reopened later → offer it as a recent.
+    if (path != null) onVaultAccessed?.call(path, name);
     notifyListeners();
   }
 
@@ -180,6 +187,7 @@ class VaultController extends ChangeNotifier {
       _dirty = false;
       error = null;
       status = VaultStatus.unlocked;
+      onVaultAccessed?.call(location, name);
     } catch (e) {
       status = VaultStatus.noVault;
       error = 'create failed: $e';

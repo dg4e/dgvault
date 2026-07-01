@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../state/documents.dart';
 import '../state/file_service.dart';
+import '../state/recent_vaults.dart';
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
 import '../widgets/banner_logo.dart';
@@ -105,6 +106,7 @@ class LandingScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  _RecentVaults(controller: controller),
                   _ManagedVaults(controller: controller),
                 ],
               ),
@@ -112,6 +114,87 @@ class LandingScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Reopen a recent vault from its stored location token. Handles the three
+/// location kinds (mobile in-place document token vs. desktop path) and prunes
+/// the entry if the file has gone away.
+Future<void> _openRecent(
+    BuildContext context, VaultController controller, RecentVault r,) async {
+  try {
+    if (Documents.isDocumentUri(r.location)) {
+      final bytes = await Documents.read(r.location);
+      if (bytes == null) {
+        await RecentVaults.forget(r.location);
+        controller.reportError('${r.name} is no longer available');
+        return;
+      }
+      controller.loadBytes(bytes, name: r.name, path: r.location);
+    } else {
+      if (!File(r.location).existsSync()) {
+        await RecentVaults.forget(r.location);
+        controller.reportError('${r.name} is no longer at that location');
+        return;
+      }
+      await controller.openFile(r.location);
+    }
+  } catch (e) {
+    controller.reportError('could not open ${r.name}: $e');
+  }
+}
+
+/// The most-recently-accessed vaults (all platforms), newest first — one tap to
+/// reopen. The first row is the most recent vault.
+class _RecentVaults extends StatelessWidget {
+  const _RecentVaults({required this.controller});
+  final VaultController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<RecentVault>>(
+      future: RecentVaults.list(),
+      builder: (context, snap) {
+        final items = snap.data ?? const <RecentVault>[];
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: TerminalPanel(
+            title: 'recent',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final r in items)
+                  InkWell(
+                    onTap: () => _openRecent(context, controller, r),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.history,
+                              size: 16, color: TermColors.greenDim,),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              r.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  mono(size: 13, color: TermColors.textBright),
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right,
+                              size: 16, color: TermColors.textDim,),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

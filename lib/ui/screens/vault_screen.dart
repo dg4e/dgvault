@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:dgvault/core/core.dart';
 
 import '../app_info.dart';
+import '../state/recent_vaults.dart';
 import '../state/sorting.dart';
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
@@ -823,6 +824,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   late final _focusLock =
       TextEditingController(text: '${widget.controller.focusLockMinutes}');
   bool _benchmarking = false;
+  bool _recentsCleared = false;
 
   @override
   void dispose() {
@@ -1077,11 +1079,42 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 'Changes are saved with the vault${hotkeyHint('S')}.',
                 style: mono(size: 11, color: TermColors.textFaint),
               ),
+              const _SettingsDivider(),
+
+              // Recent vaults
+              const SectionLabel('recent vaults'),
+              const SizedBox(height: 6),
+              Text(
+                'The landing screen lists the last ${RecentVaults.maxEntries} '
+                'vaults you opened, for one-tap reopen. Clear that list here.',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  TermButton(
+                    label: 'CLEAR RECENTS',
+                    color: TermColors.red,
+                    tooltip: 'Forget the recently-opened vault list',
+                    onPressed: _clearRecents,
+                  ),
+                  if (_recentsCleared) ...[
+                    const SizedBox(width: 12),
+                    Text('cleared ✓',
+                        style: mono(size: 12, color: TermColors.green),),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _clearRecents() async {
+    await RecentVaults.clear();
+    if (mounted) setState(() => _recentsCleared = true);
   }
 
   Widget _settingText(String title, String desc) => Column(

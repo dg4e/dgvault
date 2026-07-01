@@ -11,6 +11,7 @@ import 'screens/landing_screen.dart';
 import 'screens/unlock_screen.dart';
 import 'screens/vault_screen.dart';
 import 'state/open_file_channel.dart';
+import 'state/recent_vaults.dart';
 import 'state/vault_controller.dart';
 import 'theme/terminal_theme.dart';
 import 'widgets/app_menu.dart';
@@ -40,6 +41,8 @@ class _DgvaultAppState extends State<DgvaultApp> {
     super.initState();
     // Handle a .kdbx that the OS opened with dgvault (file association).
     if (widget.controller == null) {
+      // Remember opened/created vaults for one-tap reopen on the landing screen.
+      _controller.onVaultAccessed = RecentVaults.remember;
       OpenFileChannel(_controller).start(); // macOS/iOS/Android (channel)
       final initial = widget.initialFile; // Windows/Linux (command-line arg)
       if (initial != null) _controller.openFile(initial);

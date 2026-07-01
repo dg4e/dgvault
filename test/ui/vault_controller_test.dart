@@ -39,6 +39,22 @@ void main() {
     expect(hits.single.title, 'GitHub');
   });
 
+  test('onVaultAccessed fires with a path (recents), not for pathless loads',
+      () async {
+    final seen = <String>[];
+    final c = VaultController()
+      ..onVaultAccessed = (loc, name) => seen.add('$loc|$name');
+
+    // Pathless load (e.g. Android read-only VIEW / tests) → not reopenable.
+    c.loadBytes(await buildTestVaultBytes(), name: 'ro.kdbx');
+    expect(seen, isEmpty);
+
+    // A load with a location → recorded for one-tap reopen.
+    c.loadBytes(await buildTestVaultBytes(),
+        name: 'saved.kdbx', path: '/vaults/saved.kdbx',);
+    expect(seen, ['/vaults/saved.kdbx|saved.kdbx']);
+  });
+
   test('wrong password is denied (real authenticated decrypt)', () async {
     final c = VaultController();
     c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
