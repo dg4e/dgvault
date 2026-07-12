@@ -432,6 +432,48 @@ void main() {
     expect(c.search('Unsaved').isNotEmpty, isTrue);
   });
 
+  test('save writes atomically and keeps a pre-overwrite backup', () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_atomic');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+
+    final c = VaultController();
+    await c.createNew(path, 'pw');
+    final firstBytes = await File(path).readAsBytes();
+
+    // Edit + save → the prior file is snapshotted as a .kdbx.bak backup, and the
+    // live file holds the new (re-encrypted) content.
+    c.addEntry(Entry(uuid: 'a', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('Added')),
+    },),);
+    await c.save();
+    expect(c.error, isNull);
+
+    // A backup of the pre-save file now exists next to the vault.
+    final backups = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.kdbx.bak'))
+        .toList();
+    expect(backups, isNotEmpty, reason: 'a pre-overwrite backup must be kept');
+    // The live file changed (fresh seed/IV + new entry), no stray .tmp left.
+    final liveBytes = await File(path).readAsBytes();
+    expect(liveBytes, isNot(equals(firstBytes)));
+    expect(
+      dir.listSync().whereType<File>().any((f) => f.path.contains('.tmp-')),
+      isFalse,
+      reason: 'the temp file must be renamed away, not left behind',
+    );
+
+    // The backup is a valid, openable vault (the pre-edit state).
+    final c2 = VaultController();
+    await c2.openFile(backups.first.path);
+    await c2.unlock('pw');
+    expect(c2.status, VaultStatus.unlocked, reason: c2.error);
+    expect(c2.search('Added'), isEmpty); // backup predates the edit
+  });
+
   test('lock keeps the file loaded; close drops it', () async {
     final c = VaultController();
     c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');

@@ -11,6 +11,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:dgvault/core/backup/backup_rotation.dart';
 import 'package:dgvault/core/core.dart';
 import 'package:dgvault/core/crypto/impl/argon2_kdf.dart';
 import 'package:dgvault/core/crypto/impl/kdbx3_reader.dart';
@@ -212,11 +213,74 @@ class VaultController extends ChangeNotifier {
   /// Write vault bytes to [location] — a mobile in-place document token (Android
   /// SAF URI / iOS security-scoped bookmark, via the [Documents] bridge) or a
   /// plain filesystem path.
+  ///
+  /// Mobile document-bridge tokens are opaque handles that cannot be temp-file +
+  /// renamed, so they keep the existing in-place write. Plain filesystem paths
+  /// (desktop) get a crash-safe atomic write with a pre-overwrite backup.
   Future<void> _writeLocation(String location, Uint8List bytes) async {
     if (Documents.isDocumentUri(location)) {
+      // The bridge owns the file; it can't be renamed over. Write in place.
       await Documents.write(location, bytes);
     } else {
-      await File(location).writeAsBytes(bytes, flush: true);
+      await _writeFileAtomic(location, bytes);
+    }
+  }
+
+  /// Backup-rotation policy for pre-overwrite safety copies (keep the last 5).
+  static const _backupRotator = BackupRotator();
+
+  /// Crash-safe write for a filesystem path: snapshot the current file as a
+  /// timestamped backup, write the new bytes to a temp file (fsync'd), then
+  /// atomically rename it over the target so a crash / disk-full mid-write can
+  /// never leave a truncated or partial vault. Old backups are rotated.
+  Future<void> _writeFileAtomic(String location, Uint8List bytes) async {
+    final target = File(location);
+
+    // 1. Pre-overwrite backup of the existing vault (best effort — a missing
+    //    target just means there's nothing to back up yet, e.g. createNew).
+    if (target.existsSync()) {
+      try {
+        final now = DateTime.now();
+        final name = _backupRotator.nextBackupName(location, now);
+        await target.copy(name);
+        await _rotateBackups(target, now);
+      } catch (_) {
+        // A failed backup must not block the save itself.
+      }
+    }
+
+    // 2. Write to a sibling temp file and fsync it before the rename.
+    final tmp = File('$location.tmp-${_rand(6).map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
+    try {
+      await tmp.writeAsBytes(bytes, flush: true);
+      // 3. Atomic replace: rename over the target on the same filesystem.
+      await tmp.rename(location);
+    } catch (e) {
+      if (tmp.existsSync()) {
+        try {
+          await tmp.delete();
+        } catch (_) {/* best effort cleanup */}
+      }
+      rethrow;
+    }
+  }
+
+  /// Delete backups beyond the retention policy for [target].
+  Future<void> _rotateBackups(File target, DateTime now) async {
+    final dir = target.parent;
+    final base = target.path.split(Platform.pathSeparator).last;
+    final prefix = '$base.';
+    final entries = <BackupEntry>[];
+    for (final f in dir.listSync().whereType<File>()) {
+      final name = f.path.split(Platform.pathSeparator).last;
+      if (name.startsWith(prefix) && name.endsWith('.kdbx.bak')) {
+        entries.add(BackupEntry(id: f.path, createdAt: f.statSync().modified));
+      }
+    }
+    for (final e in _backupRotator.selectForDeletion(entries, now: now)) {
+      try {
+        await File(e.id).delete();
+      } catch (_) {/* best effort */}
     }
   }
 
