@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart' show WindowListener;
 
 import 'app_info.dart';
 import 'screens/cracktro_screen.dart';
@@ -34,7 +35,7 @@ class DgvaultApp extends StatefulWidget {
   State<DgvaultApp> createState() => _DgvaultAppState();
 }
 
-class _DgvaultAppState extends State<DgvaultApp> {
+class _DgvaultAppState extends State<DgvaultApp> with WindowListener {
   late final VaultController _controller =
       widget.controller ?? VaultController();
   final _navKey = GlobalKey<NavigatorState>();
@@ -50,7 +51,11 @@ class _DgvaultAppState extends State<DgvaultApp> {
       _controller.onLockClearClipboard = clipboardService.clearNow;
       // A manual lock with unsaved edits prompts save/discard/cancel rather than
       // silently discarding them.
-      _controller.onManualLockWhileDirty = _resolveDirtyLock;
+      _controller.onManualLockWhileDirty = () => _resolveDirtyPrompt('lock');
+      // Guard the desktop window close so quitting with unsaved edits prompts
+      // the same save/discard/cancel choice instead of silently dropping them.
+      addWindowListener(this);
+      unawaited(setWindowPreventClose(true));
       OpenFileChannel(_controller).start(); // macOS/iOS/Android (channel)
       final initial = widget.initialFile; // Windows/Linux (command-line arg)
       if (initial != null) _controller.openFile(initial);
@@ -59,8 +64,22 @@ class _DgvaultAppState extends State<DgvaultApp> {
 
   @override
   void dispose() {
-    if (widget.controller == null) _controller.dispose();
+    if (widget.controller == null) {
+      removeWindowListener(this);
+      _controller.dispose();
+    }
     super.dispose();
+  }
+
+  /// Native desktop window-close request. With prevent-close enabled the window
+  /// won't close until we explicitly destroy it, so guard unsaved edits first.
+  @override
+  void onWindowClose() async {
+    if (_controller.isDirty) {
+      final proceed = await _resolveDirtyPrompt('quit');
+      if (!proceed) return; // cancelled or save failed — keep the window open
+    }
+    await destroyWindow();
   }
 
   /// Record a just-opened vault as a recent. On sandboxed macOS a raw path
@@ -75,11 +94,11 @@ class _DgvaultAppState extends State<DgvaultApp> {
     await RecentVaults.remember(loc, name);
   }
 
-  /// Prompt the user before a manual lock discards unsaved edits. Returns true
-  /// to proceed with the lock (after saving, or on an explicit discard), false
-  /// to cancel and stay unlocked. If there is no writable location we can't save
-  /// or discard blindly, so default to save-if-possible.
-  Future<bool> _resolveDirtyLock() async {
+  /// Prompt the user before an action ([actionVerb], e.g. "lock" or "quit")
+  /// discards unsaved edits. Returns true to proceed (after saving, or on an
+  /// explicit discard), false to cancel. If there is no writable location we
+  /// can't save or discard blindly, so default to save-if-possible.
+  Future<bool> _resolveDirtyPrompt(String actionVerb) async {
     final ctx = _navKey.currentContext;
     if (ctx == null) {
       // No UI available — save if we can, otherwise abort (never lose edits).
@@ -91,22 +110,22 @@ class _DgvaultAppState extends State<DgvaultApp> {
       context: ctx,
       barrierDismissible: false,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Unsaved changes'),
-        content: const Text(
-          'You have unsaved edits. Save before locking, or discard them?',
+        title: const Text('unsaved changes'),
+        content: Text(
+          'you have unsaved edits. save before you $actionVerb, or discard them?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop('cancel'),
-            child: const Text('Cancel'),
+            child: const Text('cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop('discard'),
-            child: const Text('Discard'),
+            child: const Text('discard'),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop('save'),
-            child: const Text('Save & lock'),
+            child: Text('save & $actionVerb'),
           ),
         ],
       ),
@@ -117,7 +136,7 @@ class _DgvaultAppState extends State<DgvaultApp> {
         await _controller.save();
         return _controller.error == null;
       case 'discard':
-        return true; // proceed with the lock, dropping the edits
+        return true; // proceed with the action, dropping the edits
       default:
         return false; // cancel / dismissed
     }

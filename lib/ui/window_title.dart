@@ -38,3 +38,27 @@ Future<void> setWindowTitle(String title) async {
   _lastTitle = title;
   await windowManager.setTitle(title);
 }
+
+/// Prevent the native window from closing on its own so the app can intercept
+/// the close and guard unsaved edits (desktop only; no-op elsewhere/pre-init).
+Future<void> setWindowPreventClose(bool prevent) async {
+  if (!_ready) return;
+  await windowManager.setPreventClose(prevent);
+}
+
+/// Register/unregister a native window listener (desktop only).
+void addWindowListener(WindowListener listener) {
+  if (!_isDesktop) return;
+  windowManager.addListener(listener);
+}
+
+void removeWindowListener(WindowListener listener) {
+  if (!_isDesktop) return;
+  windowManager.removeListener(listener);
+}
+
+/// Actually close the window once our pre-close checks pass (desktop only).
+Future<void> destroyWindow() async {
+  if (!_ready) return;
+  await windowManager.destroy();
+}
