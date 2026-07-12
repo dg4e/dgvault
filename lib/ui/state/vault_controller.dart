@@ -35,6 +35,11 @@ class VaultController extends ChangeNotifier {
   VoidCallback? onGenerate;
   VoidCallback? onCopyPassword;
 
+  /// Wipe any auto-clearing clipboard secret when the vault locks. Wired to the
+  /// app-wide ClipboardService; null in tests / headless use. The service guards
+  /// the wipe so it only clears if the clipboard still holds our copied secret.
+  Future<void> Function()? onLockClearClipboard;
+
   /// Fired when a reopenable vault is opened/created, with its location token
   /// (filesystem path or mobile in-place document token) and display name. The
   /// app wires this to the recent-vaults store; null in tests / read-only opens.
@@ -214,8 +219,11 @@ class VaultController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Lock the open database (keep the file loaded for re-unlock).
+  /// Lock the open database (keep the file loaded for re-unlock). Wipes any
+  /// auto-clearing clipboard secret (guarded, so it won't clobber a value the
+  /// user has since copied).
   void lock() {
+    onLockClearClipboard?.call();
     _wipeSecrets();
     _db = null;
     _cred = null;

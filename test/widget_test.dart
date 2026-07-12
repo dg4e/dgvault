@@ -2,10 +2,12 @@
 
 import 'package:dgvault/ui/app.dart';
 import 'package:dgvault/ui/app_info.dart';
+import 'package:dgvault/ui/state/clipboard_service.dart';
 import 'package:dgvault/ui/screens/cracktro_screen.dart';
 import 'package:dgvault/ui/state/vault_controller.dart';
 import 'package:dgvault/ui/theme/terminal_theme.dart';
 import 'package:dgvault/ui/widgets/folder_tree.dart';
+import 'package:dgvault/ui/widgets/terminal_widgets.dart' show clipboardService;
 import 'package:dgvault/ui/window_title.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -380,6 +382,11 @@ void main() {
     // Mock the platform clipboard channel so Clipboard.setData succeeds.
     tester.binding.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async => null);
+    // Swap the app-wide auto-clear service for one whose scheduler doesn't leave
+    // a real Timer pending past the test (the copy still runs through it).
+    final saved = clipboardService;
+    clipboardService = ClipboardService(scheduler: (_, __) async {});
+    addTearDown(() => clipboardService = saved);
     await _unlocked(tester);
 
     await _ctrl(tester, LogicalKeyboardKey.keyC);

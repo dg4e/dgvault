@@ -13,6 +13,7 @@ import 'screens/vault_screen.dart';
 import 'state/documents.dart';
 import 'state/open_file_channel.dart';
 import 'state/recent_vaults.dart';
+import 'widgets/terminal_widgets.dart' show clipboardService;
 import 'state/vault_controller.dart';
 import 'theme/terminal_theme.dart';
 import 'widgets/app_menu.dart';
@@ -44,6 +45,8 @@ class _DgvaultAppState extends State<DgvaultApp> {
     if (widget.controller == null) {
       // Remember opened/created vaults for one-tap reopen on the landing screen.
       _controller.onVaultAccessed = _rememberRecent;
+      // Wipe an auto-clearing clipboard secret when the vault locks.
+      _controller.onLockClearClipboard = clipboardService.clearNow;
       OpenFileChannel(_controller).start(); // macOS/iOS/Android (channel)
       final initial = widget.initialFile; // Windows/Linux (command-line arg)
       if (initial != null) _controller.openFile(initial);

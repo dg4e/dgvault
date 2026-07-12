@@ -1,9 +1,13 @@
 // dgvault — reusable terminal-UI chrome.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../state/clipboard_service.dart';
 import '../theme/terminal_theme.dart';
+
+/// App-wide clipboard service so every [copyWithFlash] copy is auto-cleared and
+/// a lock can wipe the last copied secret. Overridable in tests.
+ClipboardService clipboardService = ClipboardService();
 
 /// A blinking block cursor.
 class BlinkingCursor extends StatefulWidget {
@@ -335,13 +339,14 @@ class TagChip extends StatelessWidget {
       );
 }
 
-/// Copy [value] to the clipboard and flash a status snackbar.
+/// Copy [value] to the clipboard and flash a status snackbar. The copy is
+/// auto-cleared after a timeout (and on vault lock) via [clipboardService].
 Future<void> copyWithFlash(
   BuildContext context,
   String value,
   String label,
 ) async {
-  await Clipboard.setData(ClipboardData(text: value));
+  await clipboardService.copy(value);
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..clearSnackBars()
