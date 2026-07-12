@@ -427,10 +427,12 @@ class VaultController extends ChangeNotifier {
   }
 
   /// Entries matching [query] (empty → all), via the real search engine.
-  List<Entry> search(String query) {
+  /// [scope], when given, limits the search to that folder and its subfolders;
+  /// otherwise the whole vault is searched.
+  List<Entry> search(String query, {Group? scope}) {
     final db = _db;
     if (db == null) return const [];
-    return EntrySearch.searchGroup(db.root, SearchQuery(query))
+    return EntrySearch.searchGroup(scope ?? db.root, SearchQuery(query))
         .map((m) => m.entry)
         .toList();
   }

@@ -39,6 +39,25 @@ void main() {
     expect(hits.single.title, 'GitHub');
   });
 
+  test('search scoped to a folder only searches that folder', () async {
+    final c = await _open();
+    final root = c.rootGroup!;
+    final personal = root.groups.firstWhere((g) => g.name == 'Personal');
+    final work = root.groups.firstWhere((g) => g.name == 'Work');
+
+    // Unscoped searches the whole vault.
+    expect(c.search('mail').map((e) => e.title), contains('Proton Mail'));
+    expect(c.search('jira').single.title, 'Jira');
+
+    // Scoped to a folder: matches inside it are returned, matches in other
+    // folders are not.
+    expect(c.search('mail', scope: personal).map((e) => e.title),
+        contains('Proton Mail'));
+    expect(c.search('mail', scope: work), isEmpty); // Proton Mail is in Personal
+    expect(c.search('jira', scope: work).single.title, 'Jira');
+    expect(c.search('jira', scope: personal), isEmpty); // Jira is in Work
+  });
+
   test('onVaultAccessed fires with a path (recents), not for pathless loads',
       () async {
     final seen = <String>[];

@@ -59,9 +59,20 @@ class _VaultScreenState extends State<VaultScreen> {
   /// Entries to show. Searching → results across the vault. The root/"All" view
   /// aggregates every live entry (excluding the Recycle Bin). A selected folder
   /// shows its own direct entries (drill into subfolders via the tree).
+  /// The folder a search is scoped to: a specific selected folder (its subtree
+  /// is searched), or null for the root/"All" view (the whole vault is searched).
+  Group? get _scopeGroup {
+    final root = widget.controller.rootGroup;
+    final g = _group;
+    if (g == null || (root != null && identical(g, root))) return null;
+    return g;
+  }
+
   List<Entry> get _entries {
     if (_query.isNotEmpty) {
-      return _entrySort.apply(widget.controller.search(_query));
+      return _entrySort.apply(
+        widget.controller.search(_query, scope: _scopeGroup),
+      );
     }
     final root = widget.controller.rootGroup;
     if (root == null) return const [];
@@ -634,7 +645,10 @@ class _VaultScreenState extends State<VaultScreen> {
                   left: [
                     if (_query.isEmpty) '⌂ $folderName',
                     '${entries.length}/${widget.controller.entryCount} entries',
-                    if (_query.isNotEmpty) 'filter:"$_query"',
+                    if (_query.isNotEmpty)
+                      _scopeGroup == null
+                          ? 'filter:"$_query"'
+                          : 'filter:"$_query" in ${_scopeGroup!.name}',
                   ],
                   // Keyboard-shortcut hints are meaningless on touch devices.
                   right: isMobilePlatform
