@@ -48,7 +48,14 @@ class Argon2KeyDerivation implements KeyDerivation {
       throw ArgumentError('unsupported KDF algorithm ${params.algorithm}');
     }
     if (!params.isValid) {
-      throw ArgumentError('invalid/under-strength Argon2 params');
+      // Rejected BEFORE allocating Argon2's memory blocks: a hostile header can
+      // otherwise demand multi-GiB memory / pathological passes to OOM on open.
+      throw ArgumentError(
+        'rejected KDF parameters: out of accepted bounds '
+        '(memory <= ${KdfParams.maxMemoryKib} KiB, '
+        'Argon2 passes <= ${KdfParams.maxArgon2Iterations}, '
+        'lanes <= ${KdfParams.maxParallelism})',
+      );
     }
 
     final composite = keepassCompositeKey(credential);

@@ -62,6 +62,58 @@ void main() {
       );
       expect(bad.isValid, isFalse);
     });
+
+    test('rejects hostile over-strength argon2 memory (DoS ceiling)', () {
+      // A malicious header demanding ~4 GiB of Argon2 memory would OOM on open.
+      const hostile = KdfParams(
+        algorithm: KdfAlgorithm.argon2id,
+        iterations: 3,
+        memoryKib: 4 * 1024 * 1024, // 4 GiB, above the 1 GiB ceiling
+        parallelism: 4,
+      );
+      expect(hostile.isValid, isFalse);
+
+      // At the ceiling it is accepted; just over it is rejected.
+      expect(
+        const KdfParams(
+          algorithm: KdfAlgorithm.argon2id,
+          iterations: 3,
+          memoryKib: KdfParams.maxMemoryKib,
+          parallelism: 4,
+        ).isValid,
+        isTrue,
+      );
+      expect(
+        const KdfParams(
+          algorithm: KdfAlgorithm.argon2id,
+          iterations: 3,
+          memoryKib: KdfParams.maxMemoryKib + 1,
+          parallelism: 4,
+        ).isValid,
+        isFalse,
+      );
+    });
+
+    test('rejects hostile argon2 iteration and parallelism counts', () {
+      expect(
+        const KdfParams(
+          algorithm: KdfAlgorithm.argon2id,
+          iterations: KdfParams.maxArgon2Iterations + 1,
+          memoryKib: 64 * 1024,
+          parallelism: 4,
+        ).isValid,
+        isFalse,
+      );
+      expect(
+        const KdfParams(
+          algorithm: KdfAlgorithm.argon2id,
+          iterations: 3,
+          memoryKib: 64 * 1024,
+          parallelism: KdfParams.maxParallelism + 1,
+        ).isValid,
+        isFalse,
+      );
+    });
   });
 
   group('SecureKey', () {

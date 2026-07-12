@@ -42,14 +42,42 @@ class KdfParams {
   bool get isArgon2 =>
       algorithm == KdfAlgorithm.argon2d || algorithm == KdfAlgorithm.argon2id;
 
-  /// Guards against malformed/under-strength headers before deriving a key.
+  // ---- defensible ceilings (DoS hardening) --------------------------------
+  //
+  // A malicious .kdbx header can demand absurd KDF cost to exhaust memory / CPU
+  // on open (Argon2 allocates `memoryKib` up front → multi-GiB OOM). Reject
+  // anything above these ceilings BEFORE allocating. They sit far above any
+  // legitimate interactive/paranoid setting, so real vaults are unaffected.
+
+  /// Max Argon2 memory: 1 GiB (in KiB). Well above paranoid real-world configs.
+  static const int maxMemoryKib = 1024 * 1024;
+
+  /// Max Argon2 passes. KeePass benchmarks land in the low tens; 4096 is a very
+  /// generous ceiling that still bounds per-open cost.
+  static const int maxArgon2Iterations = 4096;
+
+  /// Max AES-KDF transform rounds. Legitimate benchmarks reach a few million;
+  /// this cap bounds a header that demands billions.
+  static const int maxAesKdfIterations = 100000000;
+
+  /// Max Argon2 lanes / parallelism. RFC 9106 allows up to 2^24 but no real
+  /// vault needs more than this; a huge value is a red flag.
+  static const int maxParallelism = 1024;
+
+  /// Guards against malformed/under-strength AND hostile/over-strength headers
+  /// before deriving a key. Enforces both minimums (correctness) and maximums
+  /// (DoS hardening — a header must not be able to demand multi-GiB memory or
+  /// pathological iteration counts that OOM / hang the app on open).
   bool get isValid {
     if (iterations < 1) return false;
     if (isArgon2) {
       final mem = memoryKib;
       final par = parallelism;
-      if (mem == null || mem < 8) return false;
-      if (par == null || par < 1) return false;
+      if (mem == null || mem < 8 || mem > maxMemoryKib) return false;
+      if (par == null || par < 1 || par > maxParallelism) return false;
+      if (iterations > maxArgon2Iterations) return false;
+    } else {
+      if (iterations > maxAesKdfIterations) return false;
     }
     return true;
   }
