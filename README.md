@@ -6,9 +6,11 @@ Zero-knowledge: your vault is encrypted locally with vetted crypto
 (Argon2 / AES-256 / ChaCha20); dgvault never phones home.
 
 ```
-   _|  _ \ \   / _` |  |  | | __|
-  / _` (   |\ V / (   |  |  | |\__ \
-\__,_|\___/  \_/ \__,_| \__,_|_|___/   secure vault · kdbx4 · zero-knowledge
+    _                    _ _
+ __| |__ ___ ____ _ _  _| | |_
+/ _` / _` \ V / _` | || | |  _|
+\__,_\__, |\_/\__,_|\_,_|_|\__|
+     |___/   secure vault · kdbx4 · zero-knowledge
 ```
 
 Runs on **macOS, Windows, Linux, iOS, and Android** from a single codebase.
