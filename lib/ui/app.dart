@@ -13,6 +13,7 @@ import 'screens/vault_screen.dart';
 import 'state/documents.dart';
 import 'state/open_file_channel.dart';
 import 'state/recent_vaults.dart';
+import 'widgets/privacy_gate.dart';
 import 'widgets/terminal_widgets.dart' show clipboardService;
 import 'state/vault_controller.dart';
 import 'theme/terminal_theme.dart';
@@ -136,10 +137,14 @@ class _DgvaultAppState extends State<DgvaultApp> {
       debugShowCheckedModeBanner: false,
       theme: buildTerminalTheme(),
       // Wrap everything (screens + dialogs/sheets) so auto-lock sees activity
-      // everywhere and can re-lock on idle / loss of focus.
-      builder: (context, child) => AutoLockGate(
-        controller: _controller,
-        child: child ?? const SizedBox.shrink(),
+      // everywhere and can re-lock on idle / loss of focus. PrivacyGate covers
+      // the UI when the app backgrounds so the switcher/recents snapshot (iOS in
+      // particular, which has no FLAG_SECURE) never captures vault contents.
+      builder: (context, child) => PrivacyGate(
+        child: AutoLockGate(
+          controller: _controller,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       // Single, always-mounted menu bar (macOS) — Flutter allows only one
       // PlatformMenuBar at a time, so it lives here above the screen switch.
