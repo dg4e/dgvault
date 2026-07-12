@@ -47,6 +47,9 @@ class _DgvaultAppState extends State<DgvaultApp> {
       _controller.onVaultAccessed = _rememberRecent;
       // Wipe an auto-clearing clipboard secret when the vault locks.
       _controller.onLockClearClipboard = clipboardService.clearNow;
+      // A manual lock with unsaved edits prompts save/discard/cancel rather than
+      // silently discarding them.
+      _controller.onManualLockWhileDirty = _resolveDirtyLock;
       OpenFileChannel(_controller).start(); // macOS/iOS/Android (channel)
       final initial = widget.initialFile; // Windows/Linux (command-line arg)
       if (initial != null) _controller.openFile(initial);
@@ -69,6 +72,54 @@ class _DgvaultAppState extends State<DgvaultApp> {
       if (token != null) loc = token;
     }
     await RecentVaults.remember(loc, name);
+  }
+
+  /// Prompt the user before a manual lock discards unsaved edits. Returns true
+  /// to proceed with the lock (after saving, or on an explicit discard), false
+  /// to cancel and stay unlocked. If there is no writable location we can't save
+  /// or discard blindly, so default to save-if-possible.
+  Future<bool> _resolveDirtyLock() async {
+    final ctx = _navKey.currentContext;
+    if (ctx == null) {
+      // No UI available — save if we can, otherwise abort (never lose edits).
+      if (_controller.path == null) return false;
+      await _controller.save();
+      return _controller.error == null;
+    }
+    final choice = await showDialog<String>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Unsaved changes'),
+        content: const Text(
+          'You have unsaved edits. Save before locking, or discard them?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop('cancel'),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop('discard'),
+            child: const Text('Discard'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop('save'),
+            child: const Text('Save & lock'),
+          ),
+        ],
+      ),
+    );
+    switch (choice) {
+      case 'save':
+        if (_controller.path == null) return false; // nowhere to save → abort
+        await _controller.save();
+        return _controller.error == null;
+      case 'discard':
+        return true; // proceed with the lock, dropping the edits
+      default:
+        return false; // cancel / dismissed
+    }
   }
 
   // Triggered by the macOS "About dgvault" menu item; works on any screen.

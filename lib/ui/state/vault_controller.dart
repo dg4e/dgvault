@@ -40,6 +40,15 @@ class VaultController extends ChangeNotifier {
   /// the wipe so it only clears if the clipboard still holds our copied secret.
   Future<void> Function()? onLockClearClipboard;
 
+  /// Invoked when a MANUAL lock is requested while the vault has unsaved edits,
+  /// so the UI can surface a save/discard/cancel decision instead of silently
+  /// destroying the edits. Wired by the app; when null (tests / headless) the
+  /// controller falls back to saving-before-lock if a writable path is known,
+  /// so data is never lost by default. Return true to proceed with the lock
+  /// (the caller has handled the edits, e.g. saved or the user chose discard),
+  /// false to abort the lock and stay unlocked.
+  Future<bool> Function()? onManualLockWhileDirty;
+
   /// Fired when a reopenable vault is opened/created, with its location token
   /// (filesystem path or mobile in-place document token) and display name. The
   /// app wires this to the recent-vaults store; null in tests / read-only opens.
@@ -222,7 +231,63 @@ class VaultController extends ChangeNotifier {
   /// Lock the open database (keep the file loaded for re-unlock). Wipes any
   /// auto-clearing clipboard secret (guarded, so it won't clobber a value the
   /// user has since copied).
-  void lock() {
+  ///
+  /// Unsaved edits are never silently lost:
+  ///   • AUTO lock (idle / refocus, driven by AutoLockGate): if the vault is
+  ///     dirty and a writable location is known, it is saved before locking.
+  ///     If the save fails the lock is aborted (the vault stays unlocked) so the
+  ///     edits survive rather than being wiped.
+  ///   • MANUAL lock while dirty: the UI hook (onManualLockWhileDirty) decides
+  ///     save/discard/cancel; with no hook the controller saves-before-lock when
+  ///     a writable path is known (never discards by default). A cancel aborts.
+  ///
+  /// Returns true if the vault locked, false if the lock was aborted (still
+  /// unlocked, edits preserved).
+  Future<bool> lock({bool auto = false}) async {
+    // Nothing open → just clear clipboard and settle state.
+    if (_db == null) {
+      _finishLock();
+      return true;
+    }
+    if (_dirty) {
+      final proceed = auto ? await _saveBeforeAutoLock() : await _resolveDirtyManualLock();
+      if (!proceed) {
+        // Abort: keep the vault unlocked so the unsaved edits are not lost.
+        notifyListeners();
+        return false;
+      }
+    }
+    _finishLock();
+    return true;
+  }
+
+  /// Save the dirty vault before an automatic lock. Auto-lock is a SECURITY
+  /// control (idle / refocus timeout), so it always proceeds to lock; it just
+  /// persists the edits first when a writable location is known. If the save
+  /// fails the lock is aborted so the in-memory edits are not wiped along with
+  /// the secrets — the user gets another chance to save.
+  Future<bool> _saveBeforeAutoLock() async {
+    if (path == null) {
+      // No writable location (e.g. a pathless/imported load): nothing to persist
+      // to. A security timeout must still lock — proceed.
+      return true;
+    }
+    await save();
+    return error == null; // save() reports failures via `error`
+  }
+
+  /// Resolve a manual lock on a dirty vault. Defers to the UI hook if wired
+  /// (save/discard/cancel); otherwise saves-before-lock when a writable path is
+  /// known and never silently discards edits — if it can't save, it aborts.
+  Future<bool> _resolveDirtyManualLock() async {
+    final hook = onManualLockWhileDirty;
+    if (hook != null) return hook();
+    if (path == null) return false; // can't save & won't discard → abort
+    await save();
+    return error == null;
+  }
+
+  void _finishLock() {
     onLockClearClipboard?.call();
     _wipeSecrets();
     _db = null;

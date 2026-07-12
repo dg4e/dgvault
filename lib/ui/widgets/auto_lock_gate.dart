@@ -51,7 +51,7 @@ class _AutoLockGateState extends State<AutoLockGate>
     final c = widget.controller;
     if (!c.isUnlocked) return;
     if (c.autoLockPolicy.shouldLockOnIdle(_lastActivity, widget.now())) {
-      c.lock();
+      unawaited(c.lock(auto: true));
     }
   }
 
@@ -65,7 +65,7 @@ class _AutoLockGateState extends State<AutoLockGate>
         if (c.isUnlocked &&
             lostAt != null &&
             c.autoLockPolicy.shouldLockOnRefocus(lostAt, widget.now())) {
-          c.lock();
+          unawaited(c.lock(auto: true));
         }
         _markActivity();
       case AppLifecycleState.inactive:

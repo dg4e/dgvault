@@ -367,6 +367,71 @@ void main() {
         reason: 'edit during save must not be silently marked clean',);
   });
 
+  test('auto-lock of a dirty vault saves the edits before wiping (no loss)',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_dirtylock');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+    final c = VaultController();
+    await c.createNew(path, 'pw');
+
+    c.addEntry(Entry(uuid: 'keep', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('KeepMe')),
+    },),);
+    expect(c.isDirty, isTrue);
+
+    final locked = await c.lock(auto: true);
+    expect(locked, isTrue);
+    expect(c.status, VaultStatus.locked);
+    expect(c.database, isNull); // secrets wiped
+
+    // The unsaved edit must have been persisted to disk before the wipe.
+    final c2 = VaultController();
+    await c2.openFile(path);
+    await c2.unlock('pw');
+    expect(c2.search('KeepMe').isNotEmpty, isTrue,
+        reason: 'auto-lock must save dirty edits, not discard them',);
+  });
+
+  test('manual lock of a dirty vault saves rather than silently discarding',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_manuallock');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+    final c = VaultController();
+    await c.createNew(path, 'pw');
+    c.addEntry(Entry(uuid: 'keep', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('Draft')),
+    },),);
+
+    final locked = await c.lock(); // manual, no onManualLockWhileDirty hook
+    expect(locked, isTrue);
+    expect(c.database, isNull);
+
+    final c2 = VaultController();
+    await c2.openFile(path);
+    await c2.unlock('pw');
+    expect(c2.search('Draft').isNotEmpty, isTrue);
+  });
+
+  test('manual lock while dirty defers to the UI hook (can cancel)', () async {
+    final c = await _open();
+    c.addEntry(Entry(uuid: 'x', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('Unsaved')),
+    },),);
+    expect(c.isDirty, isTrue);
+
+    // The user cancels the lock at the save/discard prompt.
+    c.onManualLockWhileDirty = () async => false;
+    final locked = await c.lock();
+    expect(locked, isFalse);
+    expect(c.status, VaultStatus.unlocked); // stayed open, edits intact
+    expect(c.search('Unsaved').isNotEmpty, isTrue);
+  });
+
   test('lock keeps the file loaded; close drops it', () async {
     final c = VaultController();
     c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');
