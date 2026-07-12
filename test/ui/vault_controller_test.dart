@@ -474,6 +474,20 @@ void main() {
     expect(c2.search('Added'), isEmpty); // backup predates the edit
   });
 
+  test('saved vault file is owner-only (0600) on POSIX desktop', () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_perm');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+
+    final c = VaultController();
+    await c.createNew(path, 'pw'); // first write goes through _writeFileAtomic
+
+    // Mode bits: expect owner rw only (0600 → last three octal digits 600).
+    final mode = File(path).statSync().mode & 0x1FF; // low 9 permission bits
+    expect(mode, 0x180, // 0600
+        reason: 'vault must be readable/writable by owner only',);
+  }, skip: !(Platform.isLinux || Platform.isMacOS),);
+
   test('lock keeps the file loaded; close drops it', () async {
     final c = VaultController();
     c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');

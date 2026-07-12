@@ -255,6 +255,10 @@ class VaultController extends ChangeNotifier {
       await tmp.writeAsBytes(bytes, flush: true);
       // 3. Atomic replace: rename over the target on the same filesystem.
       await tmp.rename(location);
+      // 4. POSIX desktop: restrict the vault to owner-only (0600) so other
+      //    local users can't read the encrypted blob. Best effort; Windows has
+      //    no POSIX mode and is skipped.
+      await _restrictPosixPermissions(location);
     } catch (e) {
       if (tmp.existsSync()) {
         try {
@@ -263,6 +267,15 @@ class VaultController extends ChangeNotifier {
       }
       rethrow;
     }
+  }
+
+  /// Restrict [location] to owner read/write only (0600) on POSIX desktops.
+  /// Best effort — a failure (e.g. an odd filesystem) must not fail the save.
+  Future<void> _restrictPosixPermissions(String location) async {
+    if (!(Platform.isLinux || Platform.isMacOS)) return;
+    try {
+      await Process.run('chmod', ['600', location]);
+    } catch (_) {/* best effort */}
   }
 
   /// Delete backups beyond the retention policy for [target].

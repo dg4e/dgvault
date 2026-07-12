@@ -20,7 +20,7 @@ Runs on **macOS, Windows, Linux, iOS, and Android** from a single codebase.
 - Registered `.kdbx` file type: open a vault from Finder/Files/a file manager and it launches dgvault straight to the unlock screen (macOS/iOS/Android wired in-app; Windows/Linux via command-line arg + an install-time file association).
 - Folders with add / rename / delete / **drag-to-reorder** / move-to.
 - Entries with editing, history (view + restore), delete → Recycle Bin, **drag-to-reorder**, move-to, sort.
-- Password generator (charset + diceware), TOTP, password audit.
+- Charset password generator (surfaced in the UI). *Core implemented, UI pending:* diceware passphrases, TOTP code generation, and password audit — the engines exist and are tested under `lib/core/`, but are not yet wired into the UI.
 - Resizable panes (desktop); responsive two-pane / stacked layouts.
 - Settings: KDF transform rounds with a **Benchmark** button, history limits, recycle bin toggle.
 - Native desktop window title shows `dgvault vX.Y.Z — <file>`; an Amiga-style **About** cracktro.
