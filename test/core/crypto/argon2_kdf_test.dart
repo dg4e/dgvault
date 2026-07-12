@@ -46,6 +46,27 @@ void main() {
     });
   });
 
+  group('hostile-parameter rejection (DoS hardening)', () {
+    test('deriveKey rejects multi-GiB Argon2 memory instead of OOMing', () {
+      // A malicious header could demand ~4 GiB of Argon2 memory; deriveKey must
+      // reject it up front (before allocating), not attempt the allocation.
+      const hostile = KdfParams(
+        algorithm: KdfAlgorithm.argon2id,
+        iterations: 3,
+        memoryKib: 4 * 1024 * 1024, // 4 GiB
+        parallelism: 4,
+      );
+      expect(
+        () => kdf.deriveKey(
+          CompositeCredential(password: _pw('password')),
+          hostile,
+          salt,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
   group('composite-key wiring', () {
     test('password-only == Argon2(SHA256(SHA256(pw)), salt) computed independently',
         () async {

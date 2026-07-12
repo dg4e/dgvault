@@ -11,6 +11,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:dgvault/core/backup/backup_rotation.dart';
 import 'package:dgvault/core/core.dart';
 import 'package:dgvault/core/crypto/impl/argon2_kdf.dart';
 import 'package:dgvault/core/crypto/impl/kdbx3_reader.dart';
@@ -34,6 +35,20 @@ class VaultController extends ChangeNotifier {
   // Hooks the VaultScreen registers while mounted (for the app-level menu).
   VoidCallback? onGenerate;
   VoidCallback? onCopyPassword;
+
+  /// Wipe any auto-clearing clipboard secret when the vault locks. Wired to the
+  /// app-wide ClipboardService; null in tests / headless use. The service guards
+  /// the wipe so it only clears if the clipboard still holds our copied secret.
+  Future<void> Function()? onLockClearClipboard;
+
+  /// Invoked when a MANUAL lock is requested while the vault has unsaved edits,
+  /// so the UI can surface a save/discard/cancel decision instead of silently
+  /// destroying the edits. Wired by the app; when null (tests / headless) the
+  /// controller falls back to saving-before-lock if a writable path is known,
+  /// so data is never lost by default. Return true to proceed with the lock
+  /// (the caller has handled the edits, e.g. saved or the user chose discard),
+  /// false to abort the lock and stay unlocked.
+  Future<bool> Function()? onManualLockWhileDirty;
 
   /// Fired when a reopenable vault is opened/created, with its location token
   /// (filesystem path or mobile in-place document token) and display name. The
@@ -198,11 +213,87 @@ class VaultController extends ChangeNotifier {
   /// Write vault bytes to [location] — a mobile in-place document token (Android
   /// SAF URI / iOS security-scoped bookmark, via the [Documents] bridge) or a
   /// plain filesystem path.
+  ///
+  /// Mobile document-bridge tokens are opaque handles that cannot be temp-file +
+  /// renamed, so they keep the existing in-place write. Plain filesystem paths
+  /// (desktop) get a crash-safe atomic write with a pre-overwrite backup.
   Future<void> _writeLocation(String location, Uint8List bytes) async {
     if (Documents.isDocumentUri(location)) {
+      // The bridge owns the file; it can't be renamed over. Write in place.
       await Documents.write(location, bytes);
     } else {
-      await File(location).writeAsBytes(bytes, flush: true);
+      await _writeFileAtomic(location, bytes);
+    }
+  }
+
+  /// Backup-rotation policy for pre-overwrite safety copies (keep the last 5).
+  static const _backupRotator = BackupRotator();
+
+  /// Crash-safe write for a filesystem path: snapshot the current file as a
+  /// timestamped backup, write the new bytes to a temp file (fsync'd), then
+  /// atomically rename it over the target so a crash / disk-full mid-write can
+  /// never leave a truncated or partial vault. Old backups are rotated.
+  Future<void> _writeFileAtomic(String location, Uint8List bytes) async {
+    final target = File(location);
+
+    // 1. Pre-overwrite backup of the existing vault (best effort — a missing
+    //    target just means there's nothing to back up yet, e.g. createNew).
+    if (target.existsSync()) {
+      try {
+        final now = DateTime.now();
+        final name = _backupRotator.nextBackupName(location, now);
+        await target.copy(name);
+        await _rotateBackups(target, now);
+      } catch (_) {
+        // A failed backup must not block the save itself.
+      }
+    }
+
+    // 2. Write to a sibling temp file and fsync it before the rename.
+    final tmp = File('$location.tmp-${_rand(6).map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
+    try {
+      await tmp.writeAsBytes(bytes, flush: true);
+      // 3. Atomic replace: rename over the target on the same filesystem.
+      await tmp.rename(location);
+      // 4. POSIX desktop: restrict the vault to owner-only (0600) so other
+      //    local users can't read the encrypted blob. Best effort; Windows has
+      //    no POSIX mode and is skipped.
+      await _restrictPosixPermissions(location);
+    } catch (e) {
+      if (tmp.existsSync()) {
+        try {
+          await tmp.delete();
+        } catch (_) {/* best effort cleanup */}
+      }
+      rethrow;
+    }
+  }
+
+  /// Restrict [location] to owner read/write only (0600) on POSIX desktops.
+  /// Best effort — a failure (e.g. an odd filesystem) must not fail the save.
+  Future<void> _restrictPosixPermissions(String location) async {
+    if (!(Platform.isLinux || Platform.isMacOS)) return;
+    try {
+      await Process.run('chmod', ['600', location]);
+    } catch (_) {/* best effort */}
+  }
+
+  /// Delete backups beyond the retention policy for [target].
+  Future<void> _rotateBackups(File target, DateTime now) async {
+    final dir = target.parent;
+    final base = target.path.split(Platform.pathSeparator).last;
+    final prefix = '$base.';
+    final entries = <BackupEntry>[];
+    for (final f in dir.listSync().whereType<File>()) {
+      final name = f.path.split(Platform.pathSeparator).last;
+      if (name.startsWith(prefix) && name.endsWith('.kdbx.bak')) {
+        entries.add(BackupEntry(id: f.path, createdAt: f.statSync().modified));
+      }
+    }
+    for (final e in _backupRotator.selectForDeletion(entries, now: now)) {
+      try {
+        await File(e.id).delete();
+      } catch (_) {/* best effort */}
     }
   }
 
@@ -214,8 +305,67 @@ class VaultController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Lock the open database (keep the file loaded for re-unlock).
-  void lock() {
+  /// Lock the open database (keep the file loaded for re-unlock). Wipes any
+  /// auto-clearing clipboard secret (guarded, so it won't clobber a value the
+  /// user has since copied).
+  ///
+  /// Unsaved edits are never silently lost:
+  ///   • AUTO lock (idle / refocus, driven by AutoLockGate): if the vault is
+  ///     dirty and a writable location is known, it is saved before locking.
+  ///     If the save fails the lock is aborted (the vault stays unlocked) so the
+  ///     edits survive rather than being wiped.
+  ///   • MANUAL lock while dirty: the UI hook (onManualLockWhileDirty) decides
+  ///     save/discard/cancel; with no hook the controller saves-before-lock when
+  ///     a writable path is known (never discards by default). A cancel aborts.
+  ///
+  /// Returns true if the vault locked, false if the lock was aborted (still
+  /// unlocked, edits preserved).
+  Future<bool> lock({bool auto = false}) async {
+    // Nothing open → just clear clipboard and settle state.
+    if (_db == null) {
+      _finishLock();
+      return true;
+    }
+    if (_dirty) {
+      final proceed = auto ? await _saveBeforeAutoLock() : await _resolveDirtyManualLock();
+      if (!proceed) {
+        // Abort: keep the vault unlocked so the unsaved edits are not lost.
+        notifyListeners();
+        return false;
+      }
+    }
+    _finishLock();
+    return true;
+  }
+
+  /// Save the dirty vault before an automatic lock. Auto-lock is a SECURITY
+  /// control (idle / refocus timeout), so it always proceeds to lock; it just
+  /// persists the edits first when a writable location is known. If the save
+  /// fails the lock is aborted so the in-memory edits are not wiped along with
+  /// the secrets — the user gets another chance to save.
+  Future<bool> _saveBeforeAutoLock() async {
+    if (path == null) {
+      // No writable location (e.g. a pathless/imported load): nothing to persist
+      // to. A security timeout must still lock — proceed.
+      return true;
+    }
+    await save();
+    return error == null; // save() reports failures via `error`
+  }
+
+  /// Resolve a manual lock on a dirty vault. Defers to the UI hook if wired
+  /// (save/discard/cancel); otherwise saves-before-lock when a writable path is
+  /// known and never silently discards edits — if it can't save, it aborts.
+  Future<bool> _resolveDirtyManualLock() async {
+    final hook = onManualLockWhileDirty;
+    if (hook != null) return hook();
+    if (path == null) return false; // can't save & won't discard → abort
+    await save();
+    return error == null;
+  }
+
+  void _finishLock() {
+    onLockClearClipboard?.call();
     _wipeSecrets();
     _db = null;
     _cred = null;

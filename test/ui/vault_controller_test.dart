@@ -367,6 +367,127 @@ void main() {
         reason: 'edit during save must not be silently marked clean',);
   });
 
+  test('auto-lock of a dirty vault saves the edits before wiping (no loss)',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_dirtylock');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+    final c = VaultController();
+    await c.createNew(path, 'pw');
+
+    c.addEntry(Entry(uuid: 'keep', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('KeepMe')),
+    },),);
+    expect(c.isDirty, isTrue);
+
+    final locked = await c.lock(auto: true);
+    expect(locked, isTrue);
+    expect(c.status, VaultStatus.locked);
+    expect(c.database, isNull); // secrets wiped
+
+    // The unsaved edit must have been persisted to disk before the wipe.
+    final c2 = VaultController();
+    await c2.openFile(path);
+    await c2.unlock('pw');
+    expect(c2.search('KeepMe').isNotEmpty, isTrue,
+        reason: 'auto-lock must save dirty edits, not discard them',);
+  });
+
+  test('manual lock of a dirty vault saves rather than silently discarding',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_manuallock');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+    final c = VaultController();
+    await c.createNew(path, 'pw');
+    c.addEntry(Entry(uuid: 'keep', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('Draft')),
+    },),);
+
+    final locked = await c.lock(); // manual, no onManualLockWhileDirty hook
+    expect(locked, isTrue);
+    expect(c.database, isNull);
+
+    final c2 = VaultController();
+    await c2.openFile(path);
+    await c2.unlock('pw');
+    expect(c2.search('Draft').isNotEmpty, isTrue);
+  });
+
+  test('manual lock while dirty defers to the UI hook (can cancel)', () async {
+    final c = await _open();
+    c.addEntry(Entry(uuid: 'x', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('Unsaved')),
+    },),);
+    expect(c.isDirty, isTrue);
+
+    // The user cancels the lock at the save/discard prompt.
+    c.onManualLockWhileDirty = () async => false;
+    final locked = await c.lock();
+    expect(locked, isFalse);
+    expect(c.status, VaultStatus.unlocked); // stayed open, edits intact
+    expect(c.search('Unsaved').isNotEmpty, isTrue);
+  });
+
+  test('save writes atomically and keeps a pre-overwrite backup', () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_atomic');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+
+    final c = VaultController();
+    await c.createNew(path, 'pw');
+    final firstBytes = await File(path).readAsBytes();
+
+    // Edit + save → the prior file is snapshotted as a .kdbx.bak backup, and the
+    // live file holds the new (re-encrypted) content.
+    c.addEntry(Entry(uuid: 'a', fields: {
+      Field.title:
+          Field(key: Field.title, value: InMemoryProtectedValue.plain('Added')),
+    },),);
+    await c.save();
+    expect(c.error, isNull);
+
+    // A backup of the pre-save file now exists next to the vault.
+    final backups = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.kdbx.bak'))
+        .toList();
+    expect(backups, isNotEmpty, reason: 'a pre-overwrite backup must be kept');
+    // The live file changed (fresh seed/IV + new entry), no stray .tmp left.
+    final liveBytes = await File(path).readAsBytes();
+    expect(liveBytes, isNot(equals(firstBytes)));
+    expect(
+      dir.listSync().whereType<File>().any((f) => f.path.contains('.tmp-')),
+      isFalse,
+      reason: 'the temp file must be renamed away, not left behind',
+    );
+
+    // The backup is a valid, openable vault (the pre-edit state).
+    final c2 = VaultController();
+    await c2.openFile(backups.first.path);
+    await c2.unlock('pw');
+    expect(c2.status, VaultStatus.unlocked, reason: c2.error);
+    expect(c2.search('Added'), isEmpty); // backup predates the edit
+  });
+
+  test('saved vault file is owner-only (0600) on POSIX desktop', () async {
+    final dir = await Directory.systemTemp.createTemp('dgvault_perm');
+    addTearDown(() => dir.delete(recursive: true));
+    final path = '${dir.path}/v.kdbx';
+
+    final c = VaultController();
+    await c.createNew(path, 'pw'); // first write goes through _writeFileAtomic
+
+    // Mode bits: expect owner rw only (0600 → last three octal digits 600).
+    final mode = File(path).statSync().mode & 0x1FF; // low 9 permission bits
+    expect(mode, 0x180, // 0600
+        reason: 'vault must be readable/writable by owner only',);
+  }, skip: !(Platform.isLinux || Platform.isMacOS),);
+
   test('lock keeps the file loaded; close drops it', () async {
     final c = VaultController();
     c.loadBytes(await buildTestVaultBytes(), name: 'test.kdbx');

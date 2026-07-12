@@ -1,5 +1,7 @@
 // dgvault — vault: responsive master/detail (two-pane wide, stacked narrow).
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -170,7 +172,7 @@ class _VaultScreenState extends State<VaultScreen> {
       _search.clear();
       setState(() => _query = '');
     } else {
-      widget.controller.lock();
+      unawaited(widget.controller.lock());
     }
   }
 
@@ -760,7 +762,7 @@ class _Header extends StatelessWidget {
           case 'about':
             showCracktro(context);
           case 'lock':
-            controller.lock();
+            unawaited(controller.lock());
         }
       },
       itemBuilder: (_) => [

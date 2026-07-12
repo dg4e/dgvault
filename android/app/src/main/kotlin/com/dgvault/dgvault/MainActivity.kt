@@ -2,7 +2,9 @@ package com.dgvault.dgvault
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.provider.OpenableColumns
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -10,6 +12,16 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "dgvault/open_file"
     private var channel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // FLAG_SECURE keeps the vault out of the recents-screen thumbnail and
+        // blocks screenshots / screen recording of the app window.
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE,
+        )
+        super.onCreate(savedInstanceState)
+    }
 
     // Storage Access Framework: open/create a document with persistable
     // read/write so edits save back to the original file (no local copy).

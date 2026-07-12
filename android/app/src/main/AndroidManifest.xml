@@ -2,7 +2,9 @@
     <application
         android:label="dgvault"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"><!-- vault must not leak into cloud/adb backups -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
