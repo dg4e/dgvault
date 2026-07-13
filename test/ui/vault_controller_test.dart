@@ -52,7 +52,7 @@ void main() {
     // Scoped to a folder: matches inside it are returned, matches in other
     // folders are not.
     expect(c.search('mail', scope: personal).map((e) => e.title),
-        contains('Proton Mail'));
+        contains('Proton Mail'),);
     expect(c.search('mail', scope: work), isEmpty); // Proton Mail is in Personal
     expect(c.search('jira', scope: work).single.title, 'Jira');
     expect(c.search('jira', scope: personal), isEmpty); // Jira is in Work
