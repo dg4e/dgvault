@@ -1,4 +1,4 @@
-# ADR-0001 — Stack & Architecture
+# ADR-0001: Stack & Architecture
 
 **Status:** Accepted (Round 1, reaffirmed Round 2)
 **Authors:** Composer; approved by Performer (review round 1).
@@ -12,7 +12,7 @@ We must ship one KeePass-compatible password manager across desktop
 - **Flutter (Dart)** single codebase. One UI + business layer; platform channels
   for OS-specific features.
 - **KDBX 4.x** as the native database format, interoperable with KeePass 2.x XML.
-- **Vetted crypto only** — Argon2 (KDF), AES-256 and ChaCha20 (cipher) via
+- **Vetted crypto only** - Argon2 (KDF), AES-256 and ChaCha20 (cipher) via
   `cryptography` / `pointycastle` / kdbx. No hand-rolled primitives, ever.
 - **Layered architecture** with a hard dependency rule:
 

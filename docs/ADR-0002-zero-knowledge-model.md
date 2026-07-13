@@ -1,4 +1,4 @@
-# ADR-0002 — Zero-Knowledge & Key-Lifecycle Model
+# ADR-0002: Zero-Knowledge & Key-Lifecycle Model
 
 **Status:** Accepted
 **Authors:** Composer.

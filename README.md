@@ -17,15 +17,15 @@ Runs on **macOS, Windows, Linux, iOS, and Android** from a single codebase.
 
 ## Features
 
-- Open/create real `.kdbx` files (KDBX 3 read, KDBX 4 read/write) — interops with KeePass / KeePassXC.
-- **In-place save on mobile**: Open/New go through the OS document picker and save straight back to the file you chose — no shadow copy. Android uses the Storage Access Framework (persistable `content://` grant); iOS uses a security-scoped bookmark (Files / iCloud / any provider). Desktop edits in place on the filesystem.
+- Open/create real `.kdbx` files (KDBX 3 read, KDBX 4 read/write) - interops with KeePass / KeePassXC.
+- **In-place save on mobile**: Open/New go through the OS document picker and save straight back to the file you chose - no shadow copy. Android uses the Storage Access Framework (persistable `content://` grant); iOS uses a security-scoped bookmark (Files / iCloud / any provider). Desktop edits in place on the filesystem.
 - Registered `.kdbx` file type: open a vault from Finder/Files/a file manager and it launches dgvault straight to the unlock screen (macOS/iOS/Android wired in-app; Windows/Linux via command-line arg + an install-time file association).
 - Folders with add / rename / delete / **drag-to-reorder** / move-to.
 - Entries with editing, history (view + restore), delete → Recycle Bin, **drag-to-reorder**, move-to, sort.
-- Charset password generator (surfaced in the UI). *Core implemented, UI pending:* diceware passphrases, TOTP code generation, and password audit — the engines exist and are tested under `lib/core/`, but are not yet wired into the UI.
+- Charset password generator (surfaced in the UI). *Core implemented, UI pending:* diceware passphrases, TOTP code generation, and password audit - the engines exist and are tested under `lib/core/`, but are not yet wired into the UI.
 - Resizable panes (desktop); responsive two-pane / stacked layouts.
 - Settings: KDF transform rounds with a **Benchmark** button, history limits, recycle bin toggle.
-- Native desktop window title shows `dgvault vX.Y.Z — <file>`; an Amiga-style **About** cracktro.
+- Native desktop window title shows `dgvault vX.Y.Z - <file>`; an Amiga-style **About** cracktro.
 
 ## Requirements
 
@@ -85,8 +85,8 @@ flutter run -d emulator-5554
 ```
 
 Note: `flutter emulators --launch` takes the **AVD name** (`pixel_api36`), but
-`flutter run -d` takes the **device id** from `flutter devices` (`emulator-5554`)
-— they are different identifiers.
+`flutter run -d` takes the **device id** from `flutter devices`
+(`emulator-5554`). They are different identifiers.
 
 ### Physical devices
 
@@ -149,10 +149,10 @@ python3 tool/gen_icon.py     # writes macOS/iOS/Android/Windows/Linux icons
 
 Layered so the security core stays pure and testable headless:
 
-- `lib/core/` — platform-agnostic Dart: KDBX format, crypto, model, generators, search, diff/merge.
-- `lib/data/` — `dart:io`-backed: repositories, sync, import/export, compression.
-- `lib/platform/` — device adapters (secure storage, biometrics, WebDAV sync).
-- `lib/ui/` — Flutter UI (terminal theme, screens, widgets).
+- `lib/core/` - platform-agnostic Dart: KDBX format, crypto, model, generators, search, diff/merge.
+- `lib/data/` - `dart:io`-backed: repositories, sync, import/export, compression.
+- `lib/platform/` - device adapters (secure storage, biometrics, WebDAV sync).
+- `lib/ui/` - Flutter UI (terminal theme, screens, widgets).
 
 See `docs/ADR-0001-stack-and-architecture.md` and
 `docs/ADR-0002-zero-knowledge-model.md` for the rationale.
@@ -160,6 +160,16 @@ See `docs/ADR-0001-stack-and-architecture.md` and
 ## Security
 
 Zero-knowledge, local-first. No telemetry. Crypto uses vetted primitives
-(pointycastle / cryptography) — no hand-rolled crypto. Untrusted file parsers
-are bounds-checked; sync credentials are never sent over plaintext HTTP. See the
-audits in `reviews/`.
+(pointycastle / cryptography) with no hand-rolled crypto. Untrusted file parsers
+are bounds-checked; sync credentials are never sent over plaintext HTTP.
+
+## License
+
+dgvault is free software, released under the **GNU General Public License v3.0**.
+See [LICENSE](LICENSE) for the full text.
+
+## Credits
+
+Written by **ytcracker and clord**.
+
+(c)2026 digital gangster enterprises, llc
