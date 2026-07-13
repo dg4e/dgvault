@@ -4,8 +4,10 @@
 // a time — two instances assert). So it lives at the app root, always mounted,
 // and routes the Vault commands through controller hooks the VaultScreen
 // registers while it is on screen. ⌘ key-equivalents declared here are processed
-// by AppKit before Flutter, so they work regardless of focus and override the
-// default menu's conflicting items (⌘G "Find Next", ⌘C "Copy").
+// by AppKit before Flutter, so they work regardless of focus (e.g. ⌘G Generate
+// overrides the default ⌘G "Find Next"). ⌘C is deliberately NOT declared here:
+// an accelerator would hijack normal text copy regardless of focus, so
+// Copy Password is a plain menu item and ⌘C stays as standard text copy.
 //
 // No-op on non-macOS (those use Ctrl via CallbackShortcuts).
 
