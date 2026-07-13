@@ -177,6 +177,46 @@ void main() {
     }
   });
 
+  testWidgets('About cracktro: donation chips; crypto tap copies the address',
+      (tester) async {
+    // Tall viewport so the chips don't sit under the bottom scroller band.
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    // Capture Clipboard.setData calls (donation copies bypass the auto-clear
+    // service on purpose — the address must survive an app switch).
+    final copied = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied.add((call.arguments as Map)['text'] as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null),);
+
+    await tester.pumpWidget(const MaterialApp(home: CracktroScreen()));
+    await tester.pump(const Duration(milliseconds: 1500)); // intro fade-in
+
+    // All six ways to donate are shown.
+    for (final label in ['paypal', 'venmo', 'cashapp', 'btc', 'eth', 'sol']) {
+      expect(find.text(label), findsOneWidget, reason: label);
+    }
+
+    await tester.tap(find.text('btc'));
+    expect(copied, ['1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ']);
+    await tester.tap(find.text('eth'));
+    expect(copied.last, 'ytcracker.eth');
+
+    await tester.pumpWidget(const SizedBox()); // dispose looping controllers
+  });
+
   testWidgets('tapping the cracktro dismisses it on mobile', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     tester.view.physicalSize = const Size(390, 844);

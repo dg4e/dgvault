@@ -24,6 +24,8 @@ dependencies:
   package_info_plus: ^9.0.1
   window_manager: ^0.5.1
   path_provider: ^2.1.6
+  # Open donation profile links (About screen) in the system browser.
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -33,6 +35,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # Donation brand logos (Simple Icons, CC0) shown on the About screen.
+    - assets/brands/
   # Bundled monospace (OFL) so the terminal glyphs (box-drawing, arrows, ⌘)
   # render identically on every platform instead of falling back to a system
   # font that may lack them (renders as "?").

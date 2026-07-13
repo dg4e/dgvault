@@ -6,6 +6,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_info.dart';
 import '../theme/terminal_theme.dart';
@@ -131,6 +132,8 @@ class _CracktroScreenState extends State<CracktroScreen>
                             _credit(kAppCopyright, TermColors.cyan, 13),
                             const SizedBox(height: 4),
                             _credit(kAppAuthors, TermColors.magenta, 13),
+                            const SizedBox(height: 22),
+                            const _DonationSection(),
                           ],
                         ),
                       ),
@@ -380,6 +383,150 @@ class _ScrollerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ScrollerPainter old) => old.t != t;
+}
+
+/// One way to send a donation: a brand logo + label chip. Tapping either opens
+/// the profile page (fiat) or copies the address to the clipboard (crypto).
+class _DonationTarget {
+  const _DonationTarget(
+    this.asset,
+    this.label,
+    this.detail, {
+    this.url,
+    this.copyValue,
+  });
+  final String asset; // assets/brands/<name>.png
+  final String label;
+  final String detail; // handle/address, shown in the tooltip
+  final String? url; // open in browser…
+  final String? copyValue; // …or copy to clipboard
+}
+
+const List<_DonationTarget> _kDonationTargets = [
+  _DonationTarget(
+    'assets/brands/paypal.png',
+    'paypal',
+    'sales@digitalgangster.com',
+    url: 'https://www.paypal.com/donate/?business=sales%40digitalgangster.com',
+  ),
+  _DonationTarget(
+    'assets/brands/venmo.png',
+    'venmo',
+    '@dge-llc',
+    url: 'https://venmo.com/u/dge-llc',
+  ),
+  _DonationTarget(
+    'assets/brands/cashapp.png',
+    'cashapp',
+    r'$dgeternal',
+    url: r'https://cash.app/$dgeternal',
+  ),
+  _DonationTarget(
+    'assets/brands/bitcoin.png',
+    'btc',
+    '1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ',
+    copyValue: '1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ',
+  ),
+  _DonationTarget(
+    'assets/brands/ethereum.png',
+    'eth',
+    'ytcracker.eth',
+    copyValue: 'ytcracker.eth',
+  ),
+  _DonationTarget(
+    'assets/brands/solana.png',
+    'sol',
+    '1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ',
+    copyValue: '1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ',
+  ),
+];
+
+/// "support the scene" — donation chips under the credits.
+class _DonationSection extends StatelessWidget {
+  const _DonationSection();
+
+  Future<void> _activate(BuildContext context, _DonationTarget t) async {
+    if (t.url != null) {
+      await launchUrl(Uri.parse(t.url!), mode: LaunchMode.externalApplication);
+      return;
+    }
+    // Plain copy, NOT the auto-clearing ClipboardService — a donation address
+    // must survive switching to a wallet app to paste it.
+    await Clipboard.setData(ClipboardData(text: t.copyValue!));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: TermColors.surfaceAlt,
+          duration: const Duration(seconds: 2),
+          content: Text(
+            '✓ copied ${t.label} address to clipboard',
+            style: mono(size: 12, color: TermColors.green),
+          ),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 460),
+      child: Column(
+        children: [
+          Text(
+            '// support the scene',
+            style: mono(size: 12, color: TermColors.textDim, letterSpacing: 1),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final t in _kDonationTargets)
+                Tooltip(
+                  message: t.url != null ? t.detail : '${t.detail} (tap to copy)',
+                  child: InkWell(
+                    onTap: () => _activate(context, t),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        border: Border.all(color: TermColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(t.asset, width: 16, height: 16),
+                          const SizedBox(width: 7),
+                          Text(
+                            t.label,
+                            style: mono(size: 12, color: TermColors.text),
+                          ),
+                          if (t.copyValue != null) ...[
+                            const SizedBox(width: 5),
+                            const Icon(
+                              Icons.content_copy_outlined,
+                              size: 11,
+                              color: TermColors.textFaint,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CloseChip extends StatelessWidget {
