@@ -436,8 +436,8 @@ const List<_DonationTarget> _kDonationTargets = [
   _DonationTarget(
     'assets/brands/solana.png',
     'sol',
-    '1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ',
-    copyValue: '1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ',
+    'ytcdgu2BmXeqfiLR6v4Y1FMwezjL6CUNR1fy928aToQ',
+    copyValue: 'ytcdgu2BmXeqfiLR6v4Y1FMwezjL6CUNR1fy928aToQ',
   ),
 ];
 

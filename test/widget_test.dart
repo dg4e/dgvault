@@ -213,6 +213,8 @@ void main() {
     expect(copied, ['1ytcdgNzF3ygR8faAcFhu3SjoexhmwdAJ']);
     await tester.tap(find.text('eth'));
     expect(copied.last, 'ytcracker.eth');
+    await tester.tap(find.text('sol'));
+    expect(copied.last, 'ytcdgu2BmXeqfiLR6v4Y1FMwezjL6CUNR1fy928aToQ');
 
     await tester.pumpWidget(const SizedBox()); // dispose looping controllers
   });
