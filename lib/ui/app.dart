@@ -60,6 +60,12 @@ class _DgvaultAppState extends State<DgvaultApp> with WindowListener {
       final initial = widget.initialFile; // Windows/Linux (command-line arg)
       if (initial != null) _controller.openFile(initial);
     }
+    // Debug/dev hook: jump straight to the About cracktro on launch, so it can
+    // be eyeballed on simulators where taps can't be scripted:
+    //   flutter run --dart-define=DGVAULT_OPEN_ABOUT=true
+    if (const bool.fromEnvironment('DGVAULT_OPEN_ABOUT')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showAbout());
+    }
   }
 
   @override
