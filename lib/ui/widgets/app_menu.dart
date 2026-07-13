@@ -70,10 +70,11 @@ Widget appMenuBar({
                 const SingleActivator(LogicalKeyboardKey.keyG, meta: true),
             onSelected: () => controller.onGenerate?.call(),
           ),
+          // No ⌘C accelerator: it would hijack normal text copy (e.g. selecting
+          // part of a notes field). Password-copy stays a menu action + the
+          // per-field copy icon.
           PlatformMenuItem(
             label: 'Copy Password',
-            shortcut:
-                const SingleActivator(LogicalKeyboardKey.keyC, meta: true),
             onSelected: () => controller.onCopyPassword?.call(),
           ),
           PlatformMenuItem(

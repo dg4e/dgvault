@@ -518,10 +518,9 @@ class _VaultScreenState extends State<VaultScreen> {
         const SingleActivator(LogicalKeyboardKey.keyG, meta: true): gen,
         const SingleActivator(LogicalKeyboardKey.keyL, control: true): lock,
         const SingleActivator(LogicalKeyboardKey.keyL, meta: true): lock,
-        const SingleActivator(LogicalKeyboardKey.keyC, control: true):
-            _copyPassword,
-        const SingleActivator(LogicalKeyboardKey.keyC, meta: true):
-            _copyPassword,
+        // ⌘/Ctrl+C is intentionally NOT bound to password-copy so it stays as
+        // normal text copy (e.g. selecting part of a notes field). Copy a
+        // password via the per-field copy icon or the Vault ▸ Copy Password menu.
         const SingleActivator(LogicalKeyboardKey.keyS, control: true):
             widget.controller.save,
         const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
@@ -656,7 +655,6 @@ class _VaultScreenState extends State<VaultScreen> {
                       : [
                           '/ find',
                           '↑↓ nav',
-                          '${hotkey('C')} copy',
                           '${hotkey('G')} gen',
                           '${hotkey('L')} lock',
                           'esc',

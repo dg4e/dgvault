@@ -378,20 +378,23 @@ void main() {
     expect(find.byTooltip('tag: dev'), findsWidgets);
   });
 
-  testWidgets('Ctrl+C copies the selected entry password', (tester) async {
+  testWidgets('Ctrl+C is normal copy, not password-copy (no hijack)',
+      (tester) async {
     // Mock the platform clipboard channel so Clipboard.setData succeeds.
     tester.binding.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async => null);
     // Swap the app-wide auto-clear service for one whose scheduler doesn't leave
-    // a real Timer pending past the test (the copy still runs through it).
+    // a real Timer pending past the test.
     final saved = clipboardService;
     clipboardService = ClipboardService(scheduler: (_, __) async {});
     addTearDown(() => clipboardService = saved);
     await _unlocked(tester);
 
     await _ctrl(tester, LogicalKeyboardKey.keyC);
-    await tester.pump(); // let the snackbar appear
+    await tester.pump();
 
-    expect(find.textContaining('copied password'), findsOneWidget);
+    // ⌘/Ctrl+C must no longer copy the entry password — it stays as normal
+    // text copy so selecting part of a field isn't overwritten by the password.
+    expect(find.textContaining('copied password'), findsNothing);
   });
 }
