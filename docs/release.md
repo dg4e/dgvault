@@ -15,7 +15,7 @@ Version comes from `pubspec.yaml` (`version: X.Y.Z` → build name; append
 
 ### One-time setup
 
-1. Generate the upload keystore (do this once, back it up somewhere safe —
+1. Generate the upload keystore (do this once and back it up somewhere safe;
    losing it is recoverable only because Play App Signing holds the real key):
 
    ```sh
@@ -50,7 +50,7 @@ flutter build appbundle --release
 
 Upload the `.aab` in Play Console. First submission also requires:
 
-- **Data safety form** — dgvault is zero-knowledge: no data collected, no
+- **Data safety form**: dgvault is zero-knowledge: no data collected, no
   data shared, all vault data encrypted locally.
 - **Content rating** questionnaire.
 - Privacy policy URL (required even with no data collection).
@@ -82,7 +82,7 @@ Upload with the Transporter app, or via Xcode Organizer
 
 First submission also requires:
 
-- App Privacy "nutrition label" — same zero-knowledge answers as Play.
+- App Privacy "nutrition label": same zero-knowledge answers as Play.
 - Privacy policy URL.
 - Screenshots: 6.9-inch iPhone (mandatory), 13-inch iPad if iPad is enabled.
 - Export compliance: `ITSAppUsesNonExemptEncryption=false` is already set in
@@ -94,11 +94,11 @@ First submission also requires:
 Ready-to-upload screenshots live in `store/screenshots/` (iPhone 6.9",
 iPad 13", Android phone, Android 10" tablet). To regenerate: build with
 `--dart-define=DGVAULT_DEMO=vault|locked|detail|generator` (seeds a demo
-vault and stages that screen — see `lib/ui/dev/demo_vault.dart`), or
+vault and stages that screen, see `lib/ui/dev/demo_vault.dart`), or
 `DGVAULT_OPEN_ABOUT=true` for the cracktro, then capture:
 
 - iOS: `xcrun simctl io <udid> screenshot out.png`
-- Android: `adb -s <dev> emu screenrecord screenshot <dir>` — plain
+- Android: `adb -s <dev> emu screenrecord screenshot <dir>`, plain
   `adb screencap` returns black because the app sets FLAG_SECURE
   (intentional; the emulator framebuffer capture bypasses it).
 

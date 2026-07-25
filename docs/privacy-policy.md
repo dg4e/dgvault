@@ -1,50 +1,49 @@
 # dgvault Privacy Policy
 
-_Last updated: July 25, 2026_
+Last updated: July 25, 2026
 
 dgvault is a zero-knowledge, KeePass-compatible password manager. This policy
 covers the dgvault apps for iOS, Android, and desktop.
 
-## The short version
-
-We collect nothing. Your data never leaves your device unless you explicitly
-sync it somewhere, and even then it is encrypted before it leaves.
-
-## What data dgvault handles
-
-- **Your vault** (passwords, notes, attachments) is stored in a KeePass
-  `.kdbx` file on your device, encrypted with keys derived from your master
-  password (Argon2 + AES/ChaCha20). We cannot read it. There is no account,
-  no server-side copy, and no recovery mechanism — that is the point.
-- **Biometric unlock** (Face ID / Touch ID / fingerprint) is handled entirely
-  by your operating system. dgvault never sees biometric data; it only
-  receives a yes/no from the OS.
-- **Sync**, if you enable it, transfers your already-encrypted vault file to
-  a destination you choose (e.g. your own WebDAV server). dgvault has no
-  sync service of its own and the destination provider's privacy policy
-  applies to the encrypted blob they store.
-
 ## What we collect
 
-Nothing. dgvault has no analytics, no telemetry, no crash reporting, no ads,
-no third-party SDKs that phone home, and no accounts. The app makes no
-network connections except the sync destinations you configure yourself and
-links you explicitly tap (which open in your browser).
+Nothing. dgvault has no accounts, no servers, no analytics, no telemetry, no
+crash reporting, no ads, and no third-party SDKs that phone home.
 
-## Data sharing and sale
+## Where your data lives
 
-We hold no data about you, so there is nothing to share or sell.
+Your vault is a standard KeePass `.kdbx` file stored on your device, encrypted
+with keys derived from your master password (Argon2, AES, ChaCha20). We never
+see your master password or anything inside your vault. There is no cloud
+copy and no recovery backdoor. If you lose your master password, nobody can
+recover your data, including us. That is the point.
+
+Biometric unlock (Face ID, Touch ID, fingerprint) is handled entirely by your
+operating system. The app only gets a yes or no back. It never sees
+biometric data.
+
+If you set up sync, your already-encrypted vault file is sent to a
+destination you pick, such as your own WebDAV server. dgvault runs no sync
+service of its own. Whatever provider you choose stores an encrypted blob it
+cannot read, under its own privacy policy.
+
+The only network connections the app makes are the sync destinations you
+configure yourself and links you tap, which open in your browser.
+
+## Sharing and selling
+
+We hold nothing about you, so there is nothing to share or sell.
 
 ## Children
 
-dgvault does not collect data from anyone, including children.
+Same answer: no data is collected from anyone, kids included.
 
 ## Changes
 
-Changes to this policy will be published at this URL and noted in the app's
+Updates to this policy are published at this URL and noted in the app's
 release notes.
 
 ## Contact
 
-Questions: open an issue at the dgvault repository, or email the address
-listed on the app's About screen.
+Open an issue on the dgvault repository, or email the address on the app's
+About screen.
