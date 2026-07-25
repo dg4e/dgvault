@@ -2,7 +2,9 @@
 
 Privacy policy URL (both store consoles):
 <https://dg4e.github.io/dgvault/privacy-policy.html>
-(GitHub Pages, published from `docs/` on master.)
+(GitHub Pages serves the orphan `gh-pages` branch, which holds only the
+policy so the rest of `docs/` stays off the site. After editing
+`docs/privacy-policy.md`, copy it onto `gh-pages` and push.)
 
 Targets for store distribution: **iOS (App Store)** and **Android (Google Play)**.
 macOS desktop is intentionally not App-Store-distributed; Windows/Linux/web are
