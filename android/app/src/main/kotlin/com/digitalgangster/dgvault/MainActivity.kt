@@ -1,4 +1,4 @@
-package com.dgvault.dgvault
+package com.digitalgangster.dgvault
 
 import android.content.Intent
 import android.net.Uri

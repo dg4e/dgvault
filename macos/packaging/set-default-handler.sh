@@ -8,7 +8,7 @@ set -euo pipefail
 APP="${1:-build/macos/Build/Products/Release/dgvault.app}"
 LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 UTI="org.keepass.kdbx"
-BUNDLE_ID="com.dgvault.dgvault"
+BUNDLE_ID="com.digitalgangster.dgvault"
 
 [ -d "$APP" ] || { echo "not found: $APP (build it first: flutter build macos)"; exit 1; }
 

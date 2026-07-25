@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.dgvault" "\0"
+            VALUE "CompanyName", "com.digitalgangster" "\0"
             VALUE "FileDescription", "dgvault" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "dgvault" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.dgvault. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.digitalgangster. All rights reserved." "\0"
             VALUE "OriginalFilename", "dgvault.exe" "\0"
             VALUE "ProductName", "dgvault" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

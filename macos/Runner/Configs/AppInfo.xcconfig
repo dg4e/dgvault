@@ -8,7 +8,7 @@
 PRODUCT_NAME = dgvault
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.dgvault.dgvault
+PRODUCT_BUNDLE_IDENTIFIER = com.digitalgangster.dgvault
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.dgvault. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.digitalgangster. All rights reserved.

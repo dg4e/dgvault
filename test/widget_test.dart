@@ -47,7 +47,7 @@ void main() {
     // Feed package_info_plus a known version so appTitle resolves in tests.
     PackageInfo.setMockInitialValues(
       appName: 'dgvault',
-      packageName: 'com.dgvault.dgvault',
+      packageName: 'com.digitalgangster.dgvault',
       version: '0.1.0',
       buildNumber: '1',
       buildSignature: '',

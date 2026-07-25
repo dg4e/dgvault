@@ -66,7 +66,7 @@ Upload the `.aab` in Play Console. First submission also requires:
 ### One-time setup
 
 1. In [App Store Connect](https://appstoreconnect.apple.com): Certificates →
-   the bundle ID `com.dgvault.dgvault` is registered automatically by Xcode,
+   the bundle ID `com.digitalgangster.dgvault` is registered automatically by Xcode,
    then create the app record (Apps → +).
 2. In Xcode (`open ios/Runner.xcworkspace`): select the Runner target →
    Signing & Capabilities → set your Team, keep "Automatically manage
