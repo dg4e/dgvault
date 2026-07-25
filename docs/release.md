@@ -113,7 +113,6 @@ be emailed to US BIS/NSA once a year (by Feb 1) covering mass-market crypto:
 
 ## Licensing note
 
-dgvault is GPL-3.0. The copyright holder can publish to the App Store freely
-(the license binds licensees, not the author). If outside contributions are
-ever accepted, contributors must grant an App Store distribution exception
-(or sign a CLA), because stock GPL-3 terms conflict with Apple's.
+dgvault is Apache-2.0 (relicensed from GPL-3.0 in July 2026, pre-release).
+Apache 2.0 has no App Store distribution conflict, so outside contributions
+need no special exception or CLA for store publishing.

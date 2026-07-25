@@ -165,7 +165,7 @@ are bounds-checked; sync credentials are never sent over plaintext HTTP.
 
 ## License
 
-dgvault is free software, released under the **GNU General Public License v3.0**.
+dgvault is free software, released under the **Apache License 2.0**.
 See [LICENSE](LICENSE) for the full text.
 
 ## Credits
