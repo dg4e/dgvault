@@ -8,7 +8,7 @@
 
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -19,27 +19,30 @@ class VaultFiles {
 
   // ---- native pickers ------------------------------------------------------
 
+  static const _kdbxGroup = XTypeGroup(
+    label: 'KDBX vault',
+    extensions: ['kdbx'],
+  );
+
   /// Pick an existing `.kdbx`. Mobile can't filter by the custom extension, so
   /// pick "any" there (the KDBX header check on load rejects non-vault files).
   static Future<String?> pickOpen() async {
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Open KDBX vault',
-      type: isMobile ? FileType.any : FileType.custom,
-      allowedExtensions: isMobile ? null : ['kdbx'],
+    final file = await openFile(
+      confirmButtonText: 'Open',
+      acceptedTypeGroups: isMobile ? const <XTypeGroup>[] : [_kdbxGroup],
     );
-    return result?.files.single.path;
+    return file?.path;
   }
 
   /// Desktop: pick a save location for a new `.kdbx`. (Mobile uses the managed
   /// vaults folder instead — see [newManagedVaultPath].)
   static Future<String?> pickNew() async {
-    final path = await FilePicker.platform.saveFile(
-      dialogTitle: 'Create new vault',
-      fileName: 'vault.kdbx',
-      type: FileType.custom,
-      allowedExtensions: ['kdbx'],
+    final location = await getSaveLocation(
+      suggestedName: 'vault.kdbx',
+      acceptedTypeGroups: [_kdbxGroup],
     );
-    if (path == null) return null;
+    if (location == null) return null;
+    final path = location.path;
     return path.endsWith('.kdbx') ? path : '$path.kdbx';
   }
 

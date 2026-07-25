@@ -30,7 +30,7 @@ class Documents {
   static const MethodChannel _ch = MethodChannel('dgvault/documents');
 
   /// The native document picker drives open/new (Android SAF / iOS). Desktop
-  /// keeps using file_picker + filesystem paths.
+  /// keeps using file_selector + filesystem paths.
   static bool get isSupported =>
       defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS;
