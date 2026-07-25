@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart' show WindowListener;
 
 import 'app_info.dart';
+import 'dev/demo_vault.dart';
 import 'screens/cracktro_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/unlock_screen.dart';
@@ -65,6 +66,14 @@ class _DgvaultAppState extends State<DgvaultApp> with WindowListener {
     //   flutter run --dart-define=DGVAULT_OPEN_ABOUT=true
     if (const bool.fromEnvironment('DGVAULT_OPEN_ABOUT')) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showAbout());
+    }
+    // Same idea for store screenshots: seed a demo vault and stage a screen.
+    //   flutter run --dart-define=DGVAULT_DEMO=vault|locked|detail|generator
+    const demoStage = String.fromEnvironment('DGVAULT_DEMO');
+    if (demoStage.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => stageDemo(_controller, demoStage, _navKey),
+      );
     }
   }
 
