@@ -45,5 +45,5 @@ release notes.
 
 ## Contact
 
-Open an issue on the dgvault repository, or email the address on the app's
-About screen.
+Email <support@digitalgangster.com> or open an issue on the dgvault
+repository.
