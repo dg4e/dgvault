@@ -16,8 +16,9 @@ zero-knowledge password vault
 
 **Promotional text** (170, changeable anytime without review)
 ```
-just a standard keepass vault, encrypted on your device. no account, no
-cloud, no nag-screens. open-source. hack the planet.
+yet another boring password vault, encrypted on your device. keepass-backed.
+no account, no cloud, no nag-screens. open source. free. i like computers.
+hack the planet.
 ```
 
 **Keywords** (100, comma-separated, no need to repeat the app name)
