@@ -68,6 +68,10 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to unlock your vault.</string>
+	<!-- Standard crypto (AES/ChaCha20/Argon2) used only to protect the user's
+	     own data — qualifies for the App Store export-compliance exemption. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<!-- Expose the app's Documents folder in the Files app (On My iPhone →

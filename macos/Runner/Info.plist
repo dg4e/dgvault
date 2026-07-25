@@ -30,6 +30,10 @@
 	<string>NSApplication</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Touch ID to unlock your vault.</string>
+	<!-- Standard crypto (AES/ChaCha20/Argon2) used only to protect the user's
+	     own data — qualifies for the App Store export-compliance exemption. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
