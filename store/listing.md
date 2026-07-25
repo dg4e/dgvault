@@ -29,31 +29,35 @@ keepass,kdbx,password,manager,vault,offline,totp,2fa,authenticator,encrypted,loc
 **Description** (4000)
 ```
 dgvault is a keepass-compatible password manager. your vault is a normal
-.kdbx file encrypted on your device with argon2 and aes or chacha20. there
-is no account and no server. we never see your data.
+.kdbx file encrypted on your device. there is no account and no server. we
+never see your data.
 
-since it's the standard keepass format, your vault also opens in dozens of
-other apps on any platform. if you ever want to leave, just take the file.
+since it's the standard keepass format, your vault also opens in any other
+compatible application.
 
 features:
 
-- face id / touch id unlock
 - totp (2fa) secrets stored next to your logins
 - password generator with an entropy readout
 - folders, search, custom sorting
 - entry history, so every save keeps old versions you can restore
 - recycle bin
-- file attachments
-- auto-lock on idle and when the app goes to background
+- configurable auto-lock on idle and when the app goes to background
 - vault contents hidden from the app switcher
-- clipboard clears itself after you copy a secret
 - open vaults from the files app
+- super sick about screen
+- chungus
 
 crypto notes: vetted primitives only (argon2, aes-256, chacha20), nothing
 hand-rolled. biometric unlock happens in the os, the app just gets a yes or
-no. dgvault makes no network connections except ones you set up yourself.
+no.
+
+dgvault requires zero network garbage.
 
 open source under apache 2.0: https://github.com/dg4e/dgvault
+
+digital gangster for eternity. rip to the fallen homies. momino is beautiful
+and amazing.
 
 written by ytcracker and clord. (c)2026 digital gangster enterprises, llc
 ```
