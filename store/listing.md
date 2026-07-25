@@ -16,8 +16,8 @@ zero-knowledge password vault
 
 **Promotional text** (170, changeable anytime without review)
 ```
-your passwords, your device, your rules. a standard keepass vault, encrypted
-locally with argon2. no account, no cloud, no telemetry. hack the planet.
+a standard keepass vault, encrypted on your device. no account, no cloud.
+hack the planet.
 ```
 
 **Keywords** (100, comma-separated, no need to repeat the app name)
@@ -27,42 +27,34 @@ keepass,kdbx,password,manager,vault,offline,totp,2fa,authenticator,encrypted,loc
 
 **Description** (4000)
 ```
-dgvault is a zero-knowledge, KeePass-compatible password manager. your vault
-is a standard .kdbx file, encrypted on your device with argon2 key derivation
-and aes or chacha20. there is no account, no server, and no telemetry. nobody
-can read your vault but you. not even us. that is the point.
+dgvault is a keepass-compatible password manager. your vault is a normal
+.kdbx file encrypted on your device with argon2 and aes or chacha20. there
+is no account and no server. we never see your data.
 
-OPEN FORMAT, NO LOCK-IN
-your data lives in the KeePass kdbx format, readable by dozens of apps on
-every platform. leave whenever you want and take your vault with you.
+since it's the standard keepass format, your vault also opens in dozens of
+other apps on any platform. if you ever want to leave, just take the file.
 
-FEATURES
-- unlock with face id or touch id
-- store TOTP (2fa) secrets alongside your logins
-- password generator with a live entropy meter
-- folders, search, and custom sorting
-- entry history: every save keeps prior versions you can restore
-- recycle bin for deleted entries
-- file attachments on entries
-- auto-lock on idle or when the app goes to background
-- app contents hidden from the app switcher
-- clipboard auto-clear after copying secrets
-- open vaults from the files app; vaults you create live in an app-managed
-  folder you control
+features:
 
-SECURITY, PLAINLY
-- vetted crypto primitives only, no hand-rolled crypto
-- argon2 key derivation against brute force
-- aes-256 / chacha20 vault encryption
-- biometric unlock is handled by the operating system; dgvault never sees
-  biometric data
-- the app makes no network connections except destinations you explicitly
-  configure
+- face id / touch id unlock
+- totp (2fa) secrets stored next to your logins
+- password generator with an entropy readout
+- folders, search, custom sorting
+- entry history, so every save keeps old versions you can restore
+- recycle bin
+- file attachments
+- auto-lock on idle and when the app goes to background
+- vault contents hidden from the app switcher
+- clipboard clears itself after you copy a secret
+- open vaults from the files app
 
-open source under the apache 2.0 license. read the code, file an issue, or
-build it yourself: https://github.com/dg4e/dgvault
+crypto notes: vetted primitives only (argon2, aes-256, chacha20), nothing
+hand-rolled. biometric unlock happens in the os, the app just gets a yes or
+no. dgvault makes no network connections except ones you set up yourself.
 
-written by ytcracker and clord. (c)2026 digital gangster enterprises, llc.
+open source under apache 2.0: https://github.com/dg4e/dgvault
+
+written by ytcracker and clord. (c)2026 digital gangster enterprises, llc
 ```
 
 **Support URL**: https://github.com/dg4e/dgvault/issues
@@ -81,7 +73,7 @@ initial release. hack the planet.
 
 **Short description** (80)
 ```
-zero-knowledge keepass password manager. offline, encrypted, no account needed.
+keepass password manager. offline, encrypted, zero-knowledge. no account.
 ```
 
 **Full description** (4000): same as the App Store description above.
