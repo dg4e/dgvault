@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:dgvault/core/core.dart';
 
+import '../anim/fx.dart';
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
 import '../widgets/terminal_widgets.dart';
@@ -16,10 +17,9 @@ Future<void> openEntryEditor(
   Entry? entry,
   Group? group,
 }) {
-  return Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) =>
-        EntryEditor(controller: controller, entry: entry, group: group),
-  ),);
+  return Navigator.of(context).push(
+    fxRoute(EntryEditor(controller: controller, entry: entry, group: group)),
+  );
 }
 
 class EntryEditor extends StatefulWidget {

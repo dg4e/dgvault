@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../anim/fx.dart';
 import '../state/clipboard_service.dart';
 import '../theme/terminal_theme.dart';
 
@@ -186,8 +187,9 @@ class _TermButtonState extends State<TermButton> {
         ),
       ),
     );
-    if (widget.tooltip == null) return button;
-    return Tooltip(message: widget.tooltip!, child: button);
+    final fx = FxTap(child: button);
+    if (widget.tooltip == null) return fx;
+    return Tooltip(message: widget.tooltip!, child: fx);
   }
 }
 

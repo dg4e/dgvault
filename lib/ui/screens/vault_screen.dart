@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import 'package:dgvault/core/core.dart';
 
+import '../anim/fx.dart';
 import '../app_info.dart';
 import '../state/recent_vaults.dart';
 import '../state/sorting.dart';
@@ -38,6 +39,11 @@ class _VaultScreenState extends State<VaultScreen> {
   // Resizable pane widths (wide/two-pane layout), dragged via the dividers.
   double _folderW = 200;
   double _listW = 320;
+
+  // Screen-effects: a fresh entrance "batch" each time the entry list
+  // repopulates (folder switch, search, add/delete) so it re-cascades.
+  FxBatch _listBatch = Fx.instance.nextBatch();
+  String _listSig = '';
 
   @override
   void initState() {
@@ -203,8 +209,8 @@ class _VaultScreenState extends State<VaultScreen> {
       setState(() => _selected = e);
     } else {
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => Scaffold(
+        fxRoute(
+          Scaffold(
             appBar: AppBar(
               backgroundColor: TermColors.surface,
               title: Text(
@@ -568,6 +574,13 @@ class _VaultScreenState extends State<VaultScreen> {
     final wide = isWide(context);
     final root = widget.controller.rootGroup;
     final entries = _entries;
+    // New entrance batch whenever the list's contents change (folder/search/
+    // count) — drives the staggered fly-in cascade for the rows.
+    final sig = '${_group?.uuid ?? "all"}|$_query|${entries.length}';
+    if (sig != _listSig) {
+      _listSig = sig;
+      _listBatch = Fx.instance.nextBatch();
+    }
     final folderName =
         (_group == null || (root != null && identical(_group, root)))
             ? 'All'
@@ -606,7 +619,10 @@ class _VaultScreenState extends State<VaultScreen> {
           body: SafeArea(
             child: Column(
               children: [
-                _Header(controller: widget.controller),
+                FlyIn(
+                  style: FxStyle.fromTop,
+                  child: _Header(controller: widget.controller),
+                ),
                 Expanded(
                   child: wide
                       ? LayoutBuilder(builder: (context, c) {
@@ -675,6 +691,7 @@ class _VaultScreenState extends State<VaultScreen> {
                                     _reorderGroup == null ? null : _reorderEntries,
                                 onQuery: (q) => setState(() => _query = q),
                                 onSelect: (e) => _onSelect(e, true),
+                                fxBatch: _listBatch,
                               ),
                             ),
                             _ResizeHandle(
@@ -716,6 +733,7 @@ class _VaultScreenState extends State<VaultScreen> {
                               _reorderGroup == null ? null : _reorderEntries,
                           onQuery: (q) => setState(() => _query = q),
                           onSelect: (e) => _onSelect(e, false),
+                          fxBatch: _listBatch,
                         ),
                 ),
                 StatusBar(
@@ -1038,6 +1056,28 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
               const _SettingsDivider(),
 
+              // Screen effects (app-wide, persisted; default on)
+              Row(
+                children: [
+                  Expanded(
+                    child: _settingText(
+                      'Screen effects',
+                      'Demoscene-style motion: elements fly, zoom, spin and '
+                          'shimmer in as screens and folders populate.',
+                    ),
+                  ),
+                  Switch(
+                    value: Fx.instance.on,
+                    activeThumbColor: TermColors.green,
+                    onChanged: (v) {
+                      Fx.instance.set(v);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+              const _SettingsDivider(),
+
               // Auto-lock
               const SectionLabel('auto-lock'),
               const SizedBox(height: 6),
@@ -1263,20 +1303,22 @@ class _HeaderBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip ?? label,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border.all(color: color.withValues(alpha: 0.5)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Text(label, style: mono(size: 12, color: color)),
-            ],
+      child: FxTap(
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: color.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 6),
+                Text(label, style: mono(size: 12, color: color)),
+              ],
+            ),
           ),
         ),
       ),
@@ -1299,12 +1341,14 @@ class _ListPane extends StatelessWidget {
     this.onAdd,
     this.folderActions,
     this.onReorder,
+    this.fxBatch,
   });
 
   final TextEditingController search;
   final FocusNode searchFocus;
   final List<Entry> entries;
   final Entry? selected;
+  final FxBatch? fxBatch; // entrance batch for the row fly-in cascade
   final String folderName;
   final EntrySort sort;
   final ValueChanged<EntrySort> onSortChanged;
@@ -1404,30 +1448,40 @@ class _ListPane extends StatelessWidget {
                     style: mono(color: TermColors.textFaint),
                   ),
                 )
-              : onReorder != null
-                  ? ReorderableListView.builder(
-                      buildDefaultDragHandles: false,
-                      itemCount: entries.length,
-                      // Pre-removal index convention matches reorderEntries.
-                      // ignore: deprecated_member_use
-                      onReorder: onReorder!,
-                      itemBuilder: (_, i) => _EntryRow(
-                        key: ValueKey('entry-${entries[i].uuid}'),
-                        entry: entries[i],
-                        selected: entries[i] == selected,
-                        reorderIndex: i,
-                        onTap: () => onSelect(entries[i]),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: entries.length,
-                      itemBuilder: (_, i) => _EntryRow(
-                        key: ValueKey('entry-${entries[i].uuid}'),
-                        entry: entries[i],
-                        selected: entries[i] == selected,
-                        onTap: () => onSelect(entries[i]),
-                      ),
-                    ),
+              : FlyInScope(
+                  batch:
+                      fxBatch ?? const FxBatch(style: FxStyle.fromLeft, seed: 0),
+                  child: onReorder != null
+                      ? ReorderableListView.builder(
+                          buildDefaultDragHandles: false,
+                          itemCount: entries.length,
+                          // Pre-removal index convention matches reorderEntries.
+                          // ignore: deprecated_member_use
+                          onReorder: onReorder!,
+                          itemBuilder: (_, i) => FlyIn(
+                            key: ValueKey('entry-${entries[i].uuid}'),
+                            index: i,
+                            child: _EntryRow(
+                              entry: entries[i],
+                              selected: entries[i] == selected,
+                              reorderIndex: i,
+                              onTap: () => onSelect(entries[i]),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: entries.length,
+                          itemBuilder: (_, i) => FlyIn(
+                            key: ValueKey('entry-${entries[i].uuid}'),
+                            index: i,
+                            child: _EntryRow(
+                              entry: entries[i],
+                              selected: entries[i] == selected,
+                              onTap: () => onSelect(entries[i]),
+                            ),
+                          ),
+                        ),
+                ),
         ),
       ],
     );
@@ -1436,7 +1490,6 @@ class _ListPane extends StatelessWidget {
 
 class _EntryRow extends StatefulWidget {
   const _EntryRow({
-    super.key,
     required this.entry,
     required this.selected,
     required this.onTap,

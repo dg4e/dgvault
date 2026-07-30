@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart' show WindowListener;
 
+import 'anim/fx.dart';
 import 'app_info.dart';
 import 'dev/demo_vault.dart';
 import 'screens/cracktro_screen.dart';
@@ -44,6 +45,8 @@ class _DgvaultAppState extends State<DgvaultApp> with WindowListener {
   @override
   void initState() {
     super.initState();
+    // Load the persisted "screen effects" preference (default on).
+    unawaited(Fx.instance.load());
     // Handle a .kdbx that the OS opened with dgvault (file association).
     if (widget.controller == null) {
       // Remember opened/created vaults for one-tap reopen on the landing screen.
@@ -185,22 +188,27 @@ class _DgvaultAppState extends State<DgvaultApp> with WindowListener {
       home: appMenuBar(
         controller: _controller,
         onAbout: _showAbout,
-        child: ListenableBuilder(
-          listenable: _controller,
-          builder: (context, _) {
-            // Mirror the in-app header onto the native desktop title bar.
-            unawaited(setWindowTitle(windowTitleFor(_controller.fileName)));
-            switch (_controller.status) {
-              case VaultStatus.noVault:
-                return LandingScreen(controller: _controller);
-              case VaultStatus.locked:
-              case VaultStatus.unlocking:
-                return UnlockScreen(controller: _controller);
-              case VaultStatus.unlocked:
-              case VaultStatus.saving:
-                return VaultScreen(controller: _controller);
-            }
-          },
+        // Rebuild the whole tree when "screen effects" is toggled so the FX
+        // helpers below pick up the new setting immediately.
+        child: ValueListenableBuilder<bool>(
+          valueListenable: Fx.instance.enabled,
+          builder: (context, _, __) => ListenableBuilder(
+            listenable: _controller,
+            builder: (context, _) {
+              // Mirror the in-app header onto the native desktop title bar.
+              unawaited(setWindowTitle(windowTitleFor(_controller.fileName)));
+              switch (_controller.status) {
+                case VaultStatus.noVault:
+                  return LandingScreen(controller: _controller);
+                case VaultStatus.locked:
+                case VaultStatus.unlocking:
+                  return UnlockScreen(controller: _controller);
+                case VaultStatus.unlocked:
+                case VaultStatus.saving:
+                  return VaultScreen(controller: _controller);
+              }
+            },
+          ),
         ),
       ),
     );
