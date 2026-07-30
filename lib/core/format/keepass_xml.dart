@@ -97,6 +97,11 @@ class KeePassXml {
       if (group.customIconUuid != null) {
         _textEl(builder, 'CustomIconUUID', group.customIconUuid!);
       }
+      // KeePass per-group search flag; omit when inheriting (null).
+      if (group.enableSearching != null) {
+        _textEl(builder, 'EnableSearching',
+            group.enableSearching! ? _true : _false,);
+      }
       for (final entry in group.entries) {
         _buildEntry(builder, entry);
       }
@@ -183,6 +188,15 @@ class KeePassXml {
     }
   }
 
+  /// KeePass tri-state bool: "True"/"False" → the bool; "null"/empty/absent →
+  /// null (inherit from parent). Case-insensitive.
+  static bool? _parseNullableBool(String? text) {
+    final t = text?.trim().toLowerCase();
+    if (t == 'true') return true;
+    if (t == 'false') return false;
+    return null;
+  }
+
   DatabaseMeta _parseMeta(XmlElement? metaEl) {
     final customData = <String, String>{};
     final cd = metaEl?.getElement('CustomData');
@@ -247,6 +261,8 @@ class KeePassXml {
       notes: el.getElement('Notes')?.innerText,
       iconId: int.tryParse(el.getElement('IconID')?.innerText ?? '') ?? 48,
       customIconUuid: el.getElement('CustomIconUUID')?.innerText,
+      enableSearching: _parseNullableBool(
+          el.getElement('EnableSearching')?.innerText,),
     );
     for (final entryEl in el.findElements('Entry')) {
       group.entries.add(_parseEntry(entryEl));

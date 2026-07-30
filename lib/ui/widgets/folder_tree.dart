@@ -29,6 +29,8 @@ class FolderTree extends StatelessWidget {
     this.onRenameFolder,
     this.onMoveFolder,
     this.onDeleteFolder,
+    this.onToggleSearchable,
+    this.isSearchable,
     this.onReorder,
     this.selectableFilter,
   });
@@ -46,6 +48,13 @@ class FolderTree extends StatelessWidget {
   final ValueChanged<Group>? onRenameFolder;
   final ValueChanged<Group>? onMoveFolder;
   final ValueChanged<Group>? onDeleteFolder;
+
+  /// Toggle a folder's "exclude from whole-vault search" state.
+  final ValueChanged<Group>? onToggleSearchable;
+
+  /// Whether a folder currently appears in whole-vault search (drives the
+  /// exclude/include menu label). Defaults to searchable when null.
+  final bool Function(Group group)? isSearchable;
 
   /// Reorder a folder among its siblings (drag). Receives the parent and the
   /// from/to indices into `parent.groups`.
@@ -89,6 +98,8 @@ class FolderTree extends StatelessWidget {
         onRenameFolder: onRenameFolder,
         onMoveFolder: onMoveFolder,
         onDeleteFolder: onDeleteFolder,
+        onToggleSearchable: onToggleSearchable,
+        searchable: isSearchable?.call(n.group) ?? true,
       );
     }
 
@@ -241,6 +252,8 @@ class _FolderRow extends StatefulWidget {
     this.onRenameFolder,
     this.onMoveFolder,
     this.onDeleteFolder,
+    this.onToggleSearchable,
+    this.searchable = true,
   });
 
   final Group group;
@@ -256,12 +269,15 @@ class _FolderRow extends StatefulWidget {
   final ValueChanged<Group>? onRenameFolder;
   final ValueChanged<Group>? onMoveFolder;
   final ValueChanged<Group>? onDeleteFolder;
+  final ValueChanged<Group>? onToggleSearchable;
+  final bool searchable;
 
   bool get hasMenu =>
       onAddFolder != null ||
       onRenameFolder != null ||
       onMoveFolder != null ||
-      onDeleteFolder != null;
+      onDeleteFolder != null ||
+      onToggleSearchable != null;
 
   @override
   State<_FolderRow> createState() => _FolderRowState();
@@ -335,10 +351,12 @@ class _FolderRowState extends State<_FolderRow> {
                                 _FolderMenu(
                                   group: w.group,
                                   isRoot: w.isRoot,
+                                  searchable: w.searchable,
                                   onAddFolder: w.onAddFolder,
                                   onRenameFolder: w.onRenameFolder,
                                   onMoveFolder: w.onMoveFolder,
                                   onDeleteFolder: w.onDeleteFolder,
+                                  onToggleSearchable: w.onToggleSearchable,
                                 ),
                             ],
                           )
@@ -369,17 +387,21 @@ class _FolderMenu extends StatelessWidget {
   const _FolderMenu({
     required this.group,
     required this.isRoot,
+    required this.searchable,
     this.onAddFolder,
     this.onRenameFolder,
     this.onMoveFolder,
     this.onDeleteFolder,
+    this.onToggleSearchable,
   });
   final Group group;
   final bool isRoot;
+  final bool searchable;
   final ValueChanged<Group>? onAddFolder;
   final ValueChanged<Group>? onRenameFolder;
   final ValueChanged<Group>? onMoveFolder;
   final ValueChanged<Group>? onDeleteFolder;
+  final ValueChanged<Group>? onToggleSearchable;
 
   @override
   Widget build(BuildContext context) {
@@ -403,6 +425,8 @@ class _FolderMenu extends StatelessWidget {
             onRenameFolder?.call(group);
           case 'move':
             onMoveFolder?.call(group);
+          case 'search':
+            onToggleSearchable?.call(group);
           case 'delete':
             onDeleteFolder?.call(group);
         }
@@ -416,6 +440,13 @@ class _FolderMenu extends StatelessWidget {
         if (onMoveFolder != null && canEdit)
           _item('move', Icons.drive_file_move_outline, 'Move to…',
               TermColors.text,),
+        if (onToggleSearchable != null && canEdit)
+          _item(
+            'search',
+            searchable ? Icons.search_off : Icons.search,
+            searchable ? 'Exclude from search' : 'Include in search',
+            TermColors.text,
+          ),
         if (onDeleteFolder != null && canEdit)
           _item('delete', Icons.delete_outline, 'Delete', TermColors.red),
       ],

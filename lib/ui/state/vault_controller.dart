@@ -427,14 +427,69 @@ class VaultController extends ChangeNotifier {
   }
 
   /// Entries matching [query] (empty → all), via the real search engine.
-  /// [scope], when given, limits the search to that folder and its subfolders;
-  /// otherwise the whole vault is searched.
+  /// [scope], when given, limits the search to that folder and its subfolders
+  /// and searches all of it (so you can search inside an otherwise-excluded
+  /// folder like the Recycle Bin or Backup); otherwise the whole vault is
+  /// searched with non-searchable folders skipped.
   List<Entry> search(String query, {Group? scope}) {
     final db = _db;
     if (db == null) return const [];
-    return EntrySearch.searchGroup(scope ?? db.root, SearchQuery(query))
+    if (scope != null) {
+      return EntrySearch.searchGroup(scope, SearchQuery(query))
+          .map((m) => m.entry)
+          .toList();
+    }
+    return EntrySearch.searchGroup(db.root, SearchQuery(query),
+            nonSearchable: nonSearchableGroupUuids(),)
         .map((m) => m.entry)
         .toList();
+  }
+
+  /// UUIDs of groups excluded from whole-vault ("All") search. A group is
+  /// excluded when its effective KeePass `EnableSearching` resolves to false:
+  /// an explicit flag wins; otherwise the Recycle Bin and a top-level folder
+  /// named "Backup" default to off, and everything else inherits from its
+  /// parent (root defaults to on). Children inherit the resolved value, so an
+  /// excluded subtree stays excluded unless a descendant explicitly re-enables.
+  Set<String> nonSearchableGroupUuids() {
+    final db = _db;
+    if (db == null) return const {};
+    final binUuid = db.meta.recycleBinUuid;
+    final out = <String>{};
+
+    bool resolve(Group g, bool inherited, bool isTopLevel) {
+      final self = g.enableSearching ??
+          (g.uuid == binUuid ||
+                  (isTopLevel && g.name.trim().toLowerCase() == 'backup')
+              ? false
+              : inherited);
+      if (!self) out.add(g.uuid);
+      for (final c in g.groups) {
+        resolve(c, self, false);
+      }
+      return self;
+    }
+
+    final rootSearchable = db.root.enableSearching ?? true;
+    if (!rootSearchable) out.add(db.root.uuid);
+    for (final c in db.root.groups) {
+      resolve(c, rootSearchable, true);
+    }
+    return out;
+  }
+
+  /// Whether [group] currently appears in whole-vault search (its effective
+  /// searchability). Drives the folder "Exclude from search" toggle.
+  bool isGroupSearchable(Group group) =>
+      !nonSearchableGroupUuids().contains(group.uuid);
+
+  /// Set [group]'s KeePass `EnableSearching` flag: false hides it from the
+  /// "All"/search view, true forces it in (even under an excluded parent or a
+  /// default-off folder), null restores inherit/default behavior.
+  void setGroupSearchable(Group group, bool? value) {
+    if (_db == null) return;
+    group.enableSearching = value;
+    _touch();
   }
 
   // ---- mutations ----------------------------------------------------------

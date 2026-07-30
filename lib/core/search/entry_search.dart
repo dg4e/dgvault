@@ -70,8 +70,22 @@ class SearchMatch {
 class EntrySearch {
   /// Searches every entry in [group]'s subtree. A blank query returns all
   /// entries (so a cleared search box shows everything) with no matched fields.
-  static List<SearchMatch> searchGroup(Group group, SearchQuery query) =>
-      search(group.allEntries, query);
+  ///
+  /// Groups whose UUID is in [nonSearchable] contribute none of their own
+  /// entries (e.g. the Recycle Bin or an archive folder marked
+  /// `EnableSearching=false`), but the walk still descends into their children
+  /// so a re-enabled subfolder is still found.
+  static List<SearchMatch> searchGroup(
+    Group group,
+    SearchQuery query, {
+    Set<String> nonSearchable = const {},
+  }) =>
+      search(
+        nonSearchable.isEmpty
+            ? group.allEntries
+            : group.searchableEntries(nonSearchable),
+        query,
+      );
 
   static List<SearchMatch> search(Iterable<Entry> entries, SearchQuery query) {
     final terms = query.terms;

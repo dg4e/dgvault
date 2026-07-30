@@ -124,4 +124,60 @@ void main() {
       expect(r.map((m) => m.entry.uuid), ['deep']);
     });
   });
+
+  group('non-searchable groups (Recycle Bin / Backup) stay out of results', () {
+    // A live "gmail" plus an archived copy in a folder marked non-searchable.
+    final backup = Group(
+      uuid: 'backup',
+      name: 'Backup',
+      entries: [_e('archived', title: 'gmail')],
+    );
+    final root = Group(
+      uuid: 'root',
+      name: 'Root',
+      entries: [_e('live', title: 'gmail')],
+      groups: [backup],
+    );
+
+    test('without exclusion, the archived copy leaks into search', () {
+      final r = EntrySearch.searchGroup(root, const SearchQuery('gmail'));
+      expect(r.map((m) => m.entry.uuid).toSet(), {'live', 'archived'});
+    });
+
+    test('excluding the folder returns only the live entry', () {
+      final r = EntrySearch.searchGroup(
+        root,
+        const SearchQuery('gmail'),
+        nonSearchable: {'backup'},
+      );
+      expect(r.map((m) => m.entry.uuid), ['live']);
+    });
+
+    test('a blank query also skips the excluded folder', () {
+      final r = EntrySearch.searchGroup(
+        root,
+        const SearchQuery(''),
+        nonSearchable: {'backup'},
+      );
+      expect(r.map((m) => m.entry.uuid), ['live']);
+    });
+
+    test('a re-enabled subfolder under an excluded parent is still reached',
+        () {
+      // Excluded parent, but a child NOT in the set contributes its entries.
+      final child = _group([_e('kept', title: 'gmail')]);
+      final parent = Group(
+        uuid: 'parent',
+        name: 'Archive',
+        entries: [_e('hidden', title: 'gmail')],
+        groups: [child],
+      );
+      final r = EntrySearch.searchGroup(
+        Group(uuid: 'root', name: 'Root', groups: [parent]),
+        const SearchQuery('gmail'),
+        nonSearchable: {'parent'}, // 'r' (child) not excluded
+      );
+      expect(r.map((m) => m.entry.uuid), ['kept']);
+    });
+  });
 }

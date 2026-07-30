@@ -11,6 +11,7 @@ class Group {
     this.iconId = 48, // KeePass default folder icon
     this.customIconUuid,
     this.notes,
+    this.enableSearching,
   })  : groups = groups ?? <Group>[],
         entries = entries ?? <Entry>[];
 
@@ -23,6 +24,12 @@ class Group {
 
   int iconId;
   String? customIconUuid;
+
+  /// KeePass per-group search flag (`EnableSearching`): whether this group's
+  /// entries appear in whole-vault search. `null` = inherit from the parent
+  /// (root defaults to searchable). `false` keeps the subtree out of the
+  /// "All"/search view (e.g. an archive folder) while it stays fully browsable.
+  bool? enableSearching;
 
   /// Depth-first walk over every entry in this subtree.
   Iterable<Entry> get allEntries sync* {
@@ -39,6 +46,17 @@ class Group {
     yield* entries;
     for (final child in groups) {
       yield* child.entriesExcluding(exclude);
+    }
+  }
+
+  /// Entries in this subtree that are searchable from the root/"All" view.
+  /// A group in [nonSearchable] contributes none of its own entries, but the
+  /// walk still descends into its children — so a child that re-enables
+  /// searching (not in the set) is reached even under an excluded parent.
+  Iterable<Entry> searchableEntries(Set<String> nonSearchable) sync* {
+    if (!nonSearchable.contains(uuid)) yield* entries;
+    for (final child in groups) {
+      yield* child.searchableEntries(nonSearchable);
     }
   }
 

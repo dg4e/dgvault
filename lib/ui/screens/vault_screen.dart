@@ -140,6 +140,11 @@ class _VaultScreenState extends State<VaultScreen> {
             Navigator.pop(context);
             _deleteFolder(g);
           },
+          onToggleSearchable: (g) {
+            Navigator.pop(context);
+            _toggleSearchable(g);
+          },
+          isSearchable: widget.controller.isGroupSearchable,
           onReorder: _reorderFolders,
           onSelect: (g) {
             Navigator.pop(context);
@@ -353,6 +358,71 @@ class _VaultScreenState extends State<VaultScreen> {
         _selected = null;
       });
     }
+  }
+
+  /// Toggle whether [g] appears in whole-vault ("All") search, persisting the
+  /// KeePass EnableSearching flag. Excluded folders stay fully browsable.
+  Future<void> _toggleSearchable(Group g) async {
+    final nowSearchable = widget.controller.isGroupSearchable(g);
+    widget.controller.setGroupSearchable(g, !nowSearchable);
+    if (mounted) setState(() {});
+    await widget.controller.save();
+  }
+
+  /// The ⋮ folder-actions menu shown in the list toolbar for the currently
+  /// selected folder [g] — mirrors the per-row menu in the tree, so folder
+  /// actions (notably "Exclude from search") are reachable on a touch phone in
+  /// portrait where the tree's hover-only row menu isn't. Null on root/"All".
+  Widget _folderActionsMenu(Group g) {
+    final searchable = widget.controller.isGroupSearchable(g);
+    PopupMenuItem<String> item(
+        String v, IconData icon, String label, Color color,) {
+      return PopupMenuItem<String>(
+        value: v,
+        height: 38,
+        child: Row(children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 10),
+          Text(label, style: mono(size: 12, color: color)),
+        ],),
+      );
+    }
+
+    return Tooltip(
+      message: 'Folder actions',
+      child: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, size: 16, color: TermColors.textDim),
+        tooltip: '',
+        padding: EdgeInsets.zero,
+        splashRadius: 18,
+        constraints: const BoxConstraints(),
+        color: TermColors.surfaceAlt,
+        onSelected: (v) {
+          switch (v) {
+            case 'search':
+              _toggleSearchable(g);
+            case 'rename':
+              _renameFolder(g);
+            case 'move':
+              _moveFolder(g);
+            case 'delete':
+              _deleteFolder(g);
+          }
+        },
+        itemBuilder: (_) => [
+          item(
+            'search',
+            searchable ? Icons.search_off : Icons.search,
+            searchable ? 'Exclude from search' : 'Include in search',
+            TermColors.text,
+          ),
+          item('rename', Icons.edit_outlined, 'Rename', TermColors.text),
+          item('move', Icons.drive_file_move_outline, 'Move to…',
+              TermColors.text,),
+          item('delete', Icons.delete_outline, 'Delete', TermColors.red),
+        ],
+      ),
+    );
   }
 
   void _reorderFolders(Group parent, int oldIndex, int newIndex) {
@@ -573,6 +643,9 @@ class _VaultScreenState extends State<VaultScreen> {
                                   onRenameFolder: _renameFolder,
                                   onMoveFolder: _moveFolder,
                                   onDeleteFolder: _deleteFolder,
+                                  onToggleSearchable: _toggleSearchable,
+                                  isSearchable:
+                                      widget.controller.isGroupSearchable,
                                   onReorder: _reorderFolders,
                                 ),
                               ),
@@ -595,6 +668,9 @@ class _VaultScreenState extends State<VaultScreen> {
                                 onSortChanged: (s) =>
                                     setState(() => _entrySort = s),
                                 onAdd: _addEntry,
+                                folderActions: _scopeGroup == null
+                                    ? null
+                                    : _folderActionsMenu(_scopeGroup!),
                                 onReorder:
                                     _reorderGroup == null ? null : _reorderEntries,
                                 onQuery: (q) => setState(() => _query = q),
@@ -633,6 +709,9 @@ class _VaultScreenState extends State<VaultScreen> {
                               setState(() => _entrySort = s),
                           onFolderTap: _pickFolder,
                           onAdd: _addEntry,
+                          folderActions: _scopeGroup == null
+                              ? null
+                              : _folderActionsMenu(_scopeGroup!),
                           onReorder:
                               _reorderGroup == null ? null : _reorderEntries,
                           onQuery: (q) => setState(() => _query = q),
@@ -686,30 +765,39 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Text(
-            appTitle, // dgvault v0.1.0
-            style: mono(
-              size: 15,
-              color: TermColors.green,
-              weight: FontWeight.w700,
+          // Title + filename take all the space the action buttons don't need,
+          // so the filename only ellipsizes when the bar is genuinely full
+          // (a plain Spacer here would split the free width and truncate early).
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  appTitle, // dgvault v0.1.0
+                  style: mono(
+                    size: 15,
+                    color: TermColors.green,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+                if (controller.fileName != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '— ${controller.fileName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: mono(size: 13, color: TermColors.textDim),
+                    ),
+                  ),
+                ],
+                if (controller.status == VaultStatus.saving) ...[
+                  const SizedBox(width: 8),
+                  Text('saving…',
+                      style: mono(size: 11, color: TermColors.amber),),
+                ],
+              ],
             ),
           ),
-          if (controller.fileName != null) ...[
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                '— ${controller.fileName}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: mono(size: 13, color: TermColors.textDim),
-              ),
-            ),
-          ],
-          if (controller.status == VaultStatus.saving) ...[
-            const SizedBox(width: 8),
-            Text('saving…', style: mono(size: 11, color: TermColors.amber)),
-          ],
-          const Spacer(),
           // Wide: a row of labelled buttons. Narrow (phone): one overflow menu
           // so the actions never overflow the bar.
           if (isWide(context)) ..._actions(context) else _overflow(context),
@@ -1209,6 +1297,7 @@ class _ListPane extends StatelessWidget {
     required this.onSortChanged,
     this.onFolderTap,
     this.onAdd,
+    this.folderActions,
     this.onReorder,
   });
 
@@ -1221,6 +1310,8 @@ class _ListPane extends StatelessWidget {
   final ValueChanged<EntrySort> onSortChanged;
   final VoidCallback? onFolderTap; // non-null on narrow → opens the folder picker
   final VoidCallback? onAdd; // create a new entry in this folder
+  final Widget? folderActions; // ⋮ menu for the current folder (e.g. exclude
+  //                              from search); null on the root/"All" view
   final void Function(int oldIndex, int newIndex)? onReorder; // drag-to-reorder
   final ValueChanged<String> onQuery;
   final ValueChanged<Entry> onSelect;
@@ -1288,6 +1379,7 @@ class _ListPane extends StatelessWidget {
                       ),
                     ),
                   ),
+                if (folderActions != null) folderActions!,
               ],
             ),
           ),

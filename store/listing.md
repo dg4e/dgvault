@@ -67,7 +67,14 @@ written by ytcracker and clord. (c)2026 digital gangster enterprises, llc
 **Privacy Policy URL**: https://dg4e.github.io/dgvault/privacy-policy.html
 **Copyright**: 2026 digital gangster enterprises, llc
 
-**What's New** (first release)
+**What's New** (0.8.3)
+```
+search skips your backup and recycle bin folders now, so old archived copies
+stop cluttering results. mark any folder "exclude from search" from its menu;
+you can still open it and search inside.
+```
+
+**What's New** (0.8.2, first release)
 ```
 initial release. hack the planet.
 ```
