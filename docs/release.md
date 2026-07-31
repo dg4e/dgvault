@@ -91,6 +91,39 @@ First submission also requires:
   `Info.plist` (standard crypto protecting the user's own data is exempt),
   so no per-build questionnaire appears.
 
+## macOS (Developer ID DMG — GitHub release, not the Mac App Store)
+
+macOS ships as a notarized Developer ID DMG on GitHub, **not** through the Mac
+App Store. Because of that the app runs **unsandboxed** (`Release.entitlements`
+has no `com.apple.security.app-sandbox`): a local-first password manager must
+write vaults wherever the user keeps them — home directory, external drives,
+network shares — and the sandbox's per-file powerbox grant blocks the crash-safe
+atomic write (sibling temp + backup files fail with EPERM "operation not
+permitted"). Hardened runtime is still applied at signing, and secrets stay in
+the OS keychain. (Entitlements plists must be pure plist — **no XML comments**,
+or `codesign` fails with an AMFI parse error.)
+
+Build → sign (inside-out, hardened runtime) → DMG → notarize → staple → zip:
+
+```sh
+flutter build macos --release --build-name=X.Y.Z --build-number=N
+APP=build/macos/Build/Products/Release/dgvault.app
+ID="Developer ID Application: digital gangster enterprises, llc (5HJRP582SB)"
+find "$APP/Contents" -name '*.dylib' -exec codesign --force --options runtime --timestamp --sign "$ID" {} \;
+find "$APP/Contents/Frameworks" -type d -name '*.framework' -exec codesign --force --options runtime --timestamp --sign "$ID" {} \;
+codesign --force --options runtime --timestamp --entitlements macos/Runner/Release.entitlements --sign "$ID" "$APP"
+hdiutil create -volname "dgvault X.Y.Z" -srcfolder <staged .app + /Applications symlink> -ov -format UDZO dgvault-X.Y.Z.dmg
+codesign --force --timestamp --sign "$ID" dgvault-X.Y.Z.dmg
+xcrun notarytool submit dgvault-X.Y.Z.dmg --keychain-profile dgvault-notary --wait
+xcrun stapler staple dgvault-X.Y.Z.dmg && xcrun stapler staple "$APP"
+ditto -c -k --sequesterRsrc --keepParent "$APP" dgvault-macos-X.Y.Z.zip   # stapled .app, zipped
+```
+
+The `dgvault-notary` keychain profile is created once with
+`xcrun notarytool store-credentials`. Verify Gatekeeper acceptance with
+`spctl -a -vvv -t install dgvault-X.Y.Z.dmg` (expect `source=Notarized
+Developer ID`).
+
 ## Store screenshots
 
 Ready-to-upload screenshots live in `store/screenshots/` (iPhone 6.9",
