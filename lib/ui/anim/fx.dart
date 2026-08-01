@@ -146,6 +146,17 @@ class _FlyInState extends State<FlyIn> with SingleTickerProviderStateMixin {
   bool _armed = false; // has an entrance been scheduled/played yet?
 
   @override
+  void initState() {
+    super.initState();
+    // Once the entrance settles, rebuild to render the child raw (no residual
+    // transform/opacity) — the settled state must always be pixel-identical to
+    // no effect at all.
+    _c.addStatusListener((s) {
+      if (s == AnimationStatus.completed && mounted) setState(() {});
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!Fx.instance.on) return;
@@ -193,7 +204,8 @@ class _FlyInState extends State<FlyIn> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    if (!Fx.instance.on || !_armed) return widget.child;
+    // Not animating, not yet armed, or already settled → render the child as-is.
+    if (!Fx.instance.on || !_armed || _c.isCompleted) return widget.child;
     return AnimatedBuilder(
       animation: _t,
       builder: (context, child) {
@@ -277,8 +289,9 @@ Widget _transformFor(
         ),
       );
     case FxStyle.shimmer:
-      // Slide up a touch while flickering opacity a few times.
-      final flick = 0.55 + 0.45 * sin(t * pi * 5).abs();
+      // Slide up a touch while flickering — the flicker decays to fully opaque
+      // as it settles (t→1 ⇒ opacity 1), so a shimmer never leaves a row dimmed.
+      final flick = 1.0 - inv * 0.5 * (0.5 + 0.5 * sin(t * pi * 6));
       return Opacity(
         opacity: (fade * flick).clamp(0.0, 1.0),
         child: Transform.translate(offset: Offset(0, 10 * inv), child: child),
