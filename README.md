@@ -15,6 +15,10 @@ Zero-knowledge: your vault is encrypted locally with vetted crypto
 
 Runs on **macOS, Windows, Linux, iOS, and Android** from a single codebase.
 
+[Apple App Store](https://apps.apple.com/us/app/dgvault/id6794616952)
+
+[Google Play Store](https://play.google.com/store/apps/details?id=com.digitalgangster.dgvault)
+
 ## Features
 
 - Open/create real `.kdbx` files (KDBX 3 read, KDBX 4 read/write) - interops with KeePass / KeePassXC.
