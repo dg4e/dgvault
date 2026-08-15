@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:dgvault/core/generator/diceware_generator.dart';
 import 'package:dgvault/core/generator/password_generator.dart';
 
 import '../theme/terminal_theme.dart';
@@ -30,10 +31,24 @@ class _GeneratorSheet extends StatefulWidget {
   State<_GeneratorSheet> createState() => _GeneratorSheetState();
 }
 
+enum _GenMode { password, passphrase }
+
 class _GeneratorSheetState extends State<_GeneratorSheet> {
   final _gen = PasswordGenerator();
+  final _diceware = DicewareGenerator.standard();
+
+  _GenMode _mode = _GenMode.password;
+
+  // Charset (password) options.
   double _length = 20;
   bool _upper = true, _lower = true, _digits = true, _symbols = true;
+
+  // Passphrase (diceware) options.
+  double _words = 6;
+  String _separator = '-';
+  DicewareCapitalization _caps = DicewareCapitalization.none;
+  bool _wordNumber = false;
+
   String _output = '';
   double _bits = 0;
 
@@ -52,7 +67,21 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
         requireEachSelectedClass: false,
       );
 
+  DicewareOptions get _dopts => DicewareOptions(
+        wordCount: _words.round(),
+        separator: _separator,
+        capitalization: _caps,
+        includeNumber: _wordNumber,
+      );
+
   void _regen() {
+    if (_mode == _GenMode.passphrase) {
+      setState(() {
+        _output = _diceware.generate(_dopts);
+        _bits = _diceware.estimateEntropyBits(_dopts);
+      });
+      return;
+    }
     try {
       setState(() {
         _output = _gen.generate(_opts);
@@ -71,6 +100,152 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
       : _bits >= 60
           ? TermColors.amber
           : TermColors.red;
+
+  List<Widget> _passwordControls() => [
+        Row(
+          children: [
+            Text(
+              'length ${_length.round()}',
+              style: mono(size: 13, color: TermColors.text),
+            ),
+            Expanded(
+              child: Slider(
+                value: _length,
+                min: 6,
+                max: 64,
+                divisions: 58,
+                activeColor: TermColors.green,
+                inactiveColor: TermColors.border,
+                onChanged: (v) {
+                  setState(() => _length = v);
+                  _regen();
+                },
+              ),
+            ),
+          ],
+        ),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _Toggle(
+              label: 'A-Z',
+              tooltip: 'Include uppercase letters',
+              on: _upper,
+              onTap: () {
+                setState(() => _upper = !_upper);
+                _regen();
+              },
+            ),
+            _Toggle(
+              label: 'a-z',
+              tooltip: 'Include lowercase letters',
+              on: _lower,
+              onTap: () {
+                setState(() => _lower = !_lower);
+                _regen();
+              },
+            ),
+            _Toggle(
+              label: '0-9',
+              tooltip: 'Include digits',
+              on: _digits,
+              onTap: () {
+                setState(() => _digits = !_digits);
+                _regen();
+              },
+            ),
+            _Toggle(
+              label: '!@#',
+              tooltip: 'Include symbols',
+              on: _symbols,
+              onTap: () {
+                setState(() => _symbols = !_symbols);
+                _regen();
+              },
+            ),
+          ],
+        ),
+      ];
+
+  List<Widget> _passphraseControls() => [
+        Row(
+          children: [
+            Text(
+              'words ${_words.round()}',
+              style: mono(size: 13, color: TermColors.text),
+            ),
+            Expanded(
+              child: Slider(
+                value: _words,
+                min: 3,
+                max: 12,
+                divisions: 9,
+                activeColor: TermColors.green,
+                inactiveColor: TermColors.border,
+                onChanged: (v) {
+                  setState(() => _words = v);
+                  _regen();
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text('separator', style: mono(size: 12, color: TermColors.textDim)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final s in const [
+              ('-', 'dash'),
+              ('.', 'dot'),
+              (' ', 'space'),
+              ('_', 'underscore'),
+              ('', 'none'),
+            ])
+              _Toggle(
+                label: s.$2,
+                on: _separator == s.$1,
+                onTap: () {
+                  setState(() => _separator = s.$1);
+                  _regen();
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _Toggle(
+              label: 'Capitalize',
+              tooltip: 'Capitalize the first letter of each word',
+              on: _caps == DicewareCapitalization.firstLetterEachWord,
+              onTap: () {
+                setState(
+                  () => _caps =
+                      _caps == DicewareCapitalization.firstLetterEachWord
+                          ? DicewareCapitalization.none
+                          : DicewareCapitalization.firstLetterEachWord,
+                );
+                _regen();
+              },
+            ),
+            _Toggle(
+              label: 'Add number',
+              tooltip: 'Append a random digit to one word',
+              on: _wordNumber,
+              onTap: () {
+                setState(() => _wordNumber = !_wordNumber);
+                _regen();
+              },
+            ),
+          ],
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +290,29 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
               ],
             ),
             const SizedBox(height: 12),
+            // Mode switch: charset password vs diceware passphrase.
+            Row(
+              children: [
+                _ModeTab(
+                  label: 'password',
+                  on: _mode == _GenMode.password,
+                  onTap: () {
+                    setState(() => _mode = _GenMode.password);
+                    _regen();
+                  },
+                ),
+                const SizedBox(width: 8),
+                _ModeTab(
+                  label: 'passphrase',
+                  on: _mode == _GenMode.passphrase,
+                  onTap: () {
+                    setState(() => _mode = _GenMode.passphrase);
+                    _regen();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             TerminalPanel(
               accent: _strengthColor,
               child: SelectableText(
@@ -146,70 +344,10 @@ class _GeneratorSheetState extends State<_GeneratorSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  'length ${_length.round()}',
-                  style: mono(size: 13, color: TermColors.text),
-                ),
-                Expanded(
-                  child: Slider(
-                    value: _length,
-                    min: 6,
-                    max: 64,
-                    divisions: 58,
-                    activeColor: TermColors.green,
-                    inactiveColor: TermColors.border,
-                    onChanged: (v) {
-                      setState(() => _length = v);
-                      _regen();
-                    },
-                  ),
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _Toggle(
-                  label: 'A-Z',
-                  tooltip: 'Include uppercase letters',
-                  on: _upper,
-                  onTap: () {
-                    setState(() => _upper = !_upper);
-                    _regen();
-                  },
-                ),
-                _Toggle(
-                  label: 'a-z',
-                  tooltip: 'Include lowercase letters',
-                  on: _lower,
-                  onTap: () {
-                    setState(() => _lower = !_lower);
-                    _regen();
-                  },
-                ),
-                _Toggle(
-                  label: '0-9',
-                  tooltip: 'Include digits',
-                  on: _digits,
-                  onTap: () {
-                    setState(() => _digits = !_digits);
-                    _regen();
-                  },
-                ),
-                _Toggle(
-                  label: '!@#',
-                  tooltip: 'Include symbols',
-                  on: _symbols,
-                  onTap: () {
-                    setState(() => _symbols = !_symbols);
-                    _regen();
-                  },
-                ),
-              ],
-            ),
+            if (_mode == _GenMode.password)
+              ..._passwordControls()
+            else
+              ..._passphraseControls(),
             if (widget.onUse != null) ...[
               const SizedBox(height: 16),
               Align(
@@ -260,6 +398,28 @@ class _Toggle extends StatelessWidget {
             style: mono(size: 13, color: c),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ModeTab extends StatelessWidget {
+  const _ModeTab({required this.label, required this.on, required this.onTap});
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = on ? TermColors.green : TermColors.textFaint;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: c),
+          color: on ? c.withValues(alpha: 0.12) : Colors.transparent,
+        ),
+        child: Text(label, style: mono(size: 13, color: c)),
       ),
     );
   }

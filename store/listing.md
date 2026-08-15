@@ -37,8 +37,9 @@ compatible application.
 
 features:
 
-- totp (2fa) secrets stored next to your logins
-- password generator with an entropy readout
+- totp (2fa): shows the live rotating 6-digit code with a countdown
+- password generator: random charset or memorable passphrase, with an entropy readout
+- password audit: finds weak, reused, similar, empty, and old passwords
 - folders, search, custom sorting
 - entry history, so every save keeps old versions you can restore
 - recycle bin
@@ -66,6 +67,13 @@ written by ytcracker and clord. (c)2026 digital gangster enterprises, llc
 **Marketing URL** (optional): https://github.com/dg4e/dgvault
 **Privacy Policy URL**: https://dg4e.github.io/dgvault/privacy-policy.html
 **Copyright**: 2026 digital gangster enterprises, llc
+
+**What's New** (0.8.4)
+```
+totp entries now show the live rotating 6-digit code with a countdown, not
+just the stored secret. the password generator can make memorable passphrases
+too, and there's a new password audit that flags weak, reused, and old logins.
+```
 
 **What's New** (0.8.3)
 ```

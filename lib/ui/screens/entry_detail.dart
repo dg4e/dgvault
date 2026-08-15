@@ -6,6 +6,7 @@ import 'package:dgvault/core/core.dart';
 
 import '../theme/terminal_theme.dart';
 import '../widgets/terminal_widgets.dart';
+import '../widgets/totp_field.dart';
 
 class EntryDetailView extends StatefulWidget {
   const EntryDetailView({
@@ -104,17 +105,21 @@ class _EntryDetailViewState extends State<EntryDetailView> {
           ],
           const SizedBox(height: 20),
           for (final k in keys)
-            _FieldRow(
-              label: _labelFor(k),
-              value: e.fields[k]!.value.reveal(),
-              secret: e.fields[k]!.isProtected,
-              revealed: _revealed.contains(k),
-              onToggle: () => setState(
-                () => _revealed.contains(k)
-                    ? _revealed.remove(k)
-                    : _revealed.add(k),
+            if (k == 'TOTP')
+              // Show the live rotating 2FA code, not the raw secret.
+              TotpField(rawSecret: e.fields[k]!.value.reveal())
+            else
+              _FieldRow(
+                label: _labelFor(k),
+                value: e.fields[k]!.value.reveal(),
+                secret: e.fields[k]!.isProtected,
+                revealed: _revealed.contains(k),
+                onToggle: () => setState(
+                  () => _revealed.contains(k)
+                      ? _revealed.remove(k)
+                      : _revealed.add(k),
+                ),
               ),
-            ),
           if (e.history.isNotEmpty) ...[
             const SizedBox(height: 24),
             _HistorySection(history: e.history, onRestore: widget.onRestore),

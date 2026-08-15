@@ -7,7 +7,6 @@
 // traced against the implementation by hand (no toolchain to run `flutter test`;
 // see reviews/Critic-round-5.md).
 
-import 'package:dgvault/core/audit/password_audit.dart';
 import 'package:dgvault/core/core.dart';
 import 'package:test/test.dart';
 

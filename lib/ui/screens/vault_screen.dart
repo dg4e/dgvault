@@ -18,6 +18,7 @@ import '../widgets/terminal_widgets.dart';
 import 'cracktro_screen.dart';
 import 'entry_detail.dart';
 import 'entry_editor.dart';
+import 'audit_sheet.dart';
 import 'generator_sheet.dart';
 
 class VaultScreen extends StatefulWidget {
@@ -789,12 +790,17 @@ class _Header extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                Text(
-                  appTitle, // dgvault v0.1.0
-                  style: mono(
-                    size: 15,
-                    color: TermColors.green,
-                    weight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    appTitle, // dgvault v0.1.0
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    style: mono(
+                      size: 15,
+                      color: TermColors.green,
+                      weight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 if (controller.fileName != null) ...[
@@ -816,9 +822,23 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          // Wide: a row of labelled buttons. Narrow (phone): one overflow menu
-          // so the actions never overflow the bar.
-          if (isWide(context)) ..._actions(context) else _overflow(context),
+          // Wide: a row of labelled buttons (weighted to win most of the bar,
+          // and horizontally scrollable so a narrow "wide" window never
+          // overflows). Narrow (phone): one overflow menu.
+          if (isWide(context))
+            Flexible(
+              flex: 4,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                reverse: true,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _actions(context),
+                ),
+              ),
+            )
+          else
+            _overflow(context),
         ],
       ),
     );
@@ -845,6 +865,14 @@ class _Header extends StatelessWidget {
           icon: Icons.casino_outlined,
           tooltip: 'Generate a password${hotkeyHint('G')}',
           onTap: () => showGenerator(context),
+        ),
+        const SizedBox(width: 6),
+        _HeaderBtn(
+          label: 'audit',
+          icon: Icons.health_and_safety_outlined,
+          color: TermColors.cyan,
+          tooltip: 'Password health audit',
+          onTap: () => showAudit(context, controller),
         ),
         const SizedBox(width: 6),
         _HeaderBtn(
@@ -875,6 +903,8 @@ class _Header extends StatelessWidget {
             controller.save();
           case 'gen':
             showGenerator(context);
+          case 'audit':
+            showAudit(context, controller);
           case 'settings':
             _showSettings(context, controller);
           case 'about':
@@ -887,6 +917,8 @@ class _Header extends StatelessWidget {
         _menuItem('save', Icons.save_outlined, 'Save', TermColors.green),
         _menuItem(
             'gen', Icons.casino_outlined, 'Generate password', TermColors.green,),
+        _menuItem('audit', Icons.health_and_safety_outlined,
+            'Password audit', TermColors.cyan,),
         _menuItem('settings', Icons.settings_outlined, 'Settings',
             TermColors.cyan,),
         const PopupMenuDivider(),

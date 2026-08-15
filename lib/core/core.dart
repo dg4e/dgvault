@@ -31,6 +31,8 @@ export 'webauthn/webauthn.dart';
 
 export 'otp/totp.dart';
 
+export 'audit/password_audit.dart';
+
 export 'template/placeholder_resolver.dart';
 export 'url/custom_url.dart';
 
