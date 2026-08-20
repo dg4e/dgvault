@@ -822,21 +822,12 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          // Wide: a row of labelled buttons (weighted to win most of the bar,
-          // and horizontally scrollable so a narrow "wide" window never
-          // overflows). Narrow (phone): one overflow menu.
+          // Wide: a row of labelled buttons flush to the right edge — they take
+          // their intrinsic width and the Expanded title above absorbs all the
+          // slack (ellipsizing if needed), so the strip never overflows within
+          // the wide range. Narrow (phone): one overflow menu.
           if (isWide(context))
-            Flexible(
-              flex: 4,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                reverse: true,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: _actions(context),
-                ),
-              ),
-            )
+            ..._actions(context)
           else
             _overflow(context),
         ],

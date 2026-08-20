@@ -1,7 +1,7 @@
 name: dgvault
 description: Cross-platform KeePass-compatible password manager (zero-knowledge).
 publish_to: none
-version: 0.8.4
+version: 0.8.4+5
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
