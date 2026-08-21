@@ -37,10 +37,10 @@ compatible application.
 
 features:
 
-- totp (2fa): shows the live rotating 6-digit code with a countdown
-- password generator: random charset or memorable passphrase, with an entropy readout
+- totp (2fa): shows the live rotating 6-digit code with a countdown, not just the stored secret
+- password generator: random charset or memorable passphrase, with a live entropy readout
 - password audit: finds weak, reused, similar, empty, and old passwords
-- folders, search, custom sorting
+- folders, search, custom sorting; mark any folder "exclude from search"
 - entry history, so every save keeps old versions you can restore
 - recycle bin
 - configurable auto-lock on idle and when the app goes to background
