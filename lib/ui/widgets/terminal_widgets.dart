@@ -178,9 +178,16 @@ class _TermButtonState extends State<TermButton> {
                 ),
                 const SizedBox(width: 10),
               ],
-              Text(
-                '[ ${widget.label} ]',
-                style: mono(size: 13, color: c, weight: FontWeight.w600),
+              // Flexible so a long label ellipsizes on a narrow screen rather
+              // than overflowing the button (the Row is mainAxisSize.min, so
+              // this still shrink-wraps whenever there is room).
+              Flexible(
+                child: Text(
+                  '[ ${widget.label} ]',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: mono(size: 13, color: c, weight: FontWeight.w600),
+                ),
               ),
             ],
           ),
