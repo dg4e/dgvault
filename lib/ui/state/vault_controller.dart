@@ -23,6 +23,29 @@ import 'documents.dart';
 
 enum VaultStatus { noVault, locked, unlocking, unlocked, saving }
 
+/// Outcome of [VaultController.changeMasterPassword]. Anything other than [ok]
+/// means the vault is untouched — both in memory and on disk.
+enum ChangePasswordResult {
+  ok,
+
+  /// No vault is open, or one is mid-save.
+  notUnlocked,
+
+  /// The typed current password isn't the one this vault was unlocked with.
+  wrongCurrentPassword,
+
+  /// An empty new password would leave the vault with no password factor.
+  emptyNewPassword,
+
+  /// Nowhere to write the re-encrypted file (a pathless / imported load), so a
+  /// new password could only live in memory and would vanish on lock.
+  noWritableLocation,
+
+  /// The rewrite failed; the previous password was restored. See
+  /// [VaultController.error] for the underlying reason.
+  saveFailed,
+}
+
 class VaultController extends ChangeNotifier {
   VaultController();
 
@@ -173,6 +196,76 @@ class VaultController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Re-key the open vault: replace the master password with [newPassword] and
+  /// immediately rewrite the file under it.
+  ///
+  /// [currentPassword] is checked against the credential that actually decrypted
+  /// this vault, so a typo can't silently re-key the file out from under the
+  /// user. Non-password factors (key file / challenge-response) carry over
+  /// unchanged.
+  ///
+  /// The swap is durable only if the write succeeds: on failure the previous
+  /// credential is restored, so the in-memory credential never disagrees with
+  /// what is on disk. There is no half-changed state — the file is either fully
+  /// re-encrypted under the new password or still under the old one.
+  Future<ChangePasswordResult> changeMasterPassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final db = _db;
+    final old = _cred;
+    if (db == null || old == null || status != VaultStatus.unlocked) {
+      return ChangePasswordResult.notUnlocked;
+    }
+
+    final typed = _b(currentPassword);
+    final authorized = _secretsMatch(old.password, typed);
+    _zero(typed);
+    if (!authorized) return ChangePasswordResult.wrongCurrentPassword;
+
+    if (newPassword.isEmpty) return ChangePasswordResult.emptyNewPassword;
+    if (path == null) return ChangePasswordResult.noWritableLocation;
+
+    final fresh = CompositeCredential(
+      password: _b(newPassword),
+      keyFile: old.keyFile,
+      challengeResponse: old.challengeResponse,
+    );
+    final previousStamp = db.meta.masterKeyChanged;
+    db.meta.masterKeyChanged = DateTime.now().toUtc();
+    _cred = fresh;
+    // save() already re-encrypts the whole database with a fresh master seed /
+    // IV / KDF salt, so swapping the credential is the entire re-key.
+    await save();
+    if (error != null) {
+      // Roll back both halves: the file on disk is still under `old`, so the
+      // "master key changed" stamp must not claim otherwise either.
+      _cred = old;
+      db.meta.masterKeyChanged = previousStamp;
+      _zero(fresh.password);
+      return ChangePasswordResult.saveFailed;
+    }
+
+    // Committed. Only the password bytes are ours to wipe — keyFile and
+    // challengeResponse are shared by reference with `fresh`.
+    _zero(old.password);
+    notifyListeners();
+    return ChangePasswordResult.ok;
+  }
+
+  /// Compare a stored secret against typed bytes without an early exit on the
+  /// first differing byte. Lengths are compared up front (a length difference
+  /// is not worth the branchless dance, and is already visible from the typing).
+  static bool _secretsMatch(Uint8List? stored, Uint8List typed) {
+    final a = stored ?? Uint8List(0);
+    if (a.length != typed.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) {
+      diff |= a[i] ^ typed[i];
+    }
+    return diff == 0;
+  }
+
   /// Create a new empty vault at [location] protected by [password], and open
   /// it. [location] is a filesystem path or a mobile in-place document token
   /// (Android SAF URI / iOS bookmark); [displayName] is the human-readable name
@@ -184,7 +277,10 @@ class VaultController extends ChangeNotifier {
     try {
       final name = displayName ?? location.split(Platform.pathSeparator).last;
       final db = Database(
-        meta: DatabaseMeta(name: name.replaceAll('.kdbx', '')),
+        meta: DatabaseMeta(
+          name: name.replaceAll('.kdbx', ''),
+          masterKeyChanged: DateTime.now().toUtc(),
+        ),
         root: Group(uuid: _uuid(), name: 'Root'),
       );
       final cred = CompositeCredential(password: _b(password));

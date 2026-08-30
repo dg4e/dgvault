@@ -937,6 +937,168 @@ class _Header extends StatelessWidget {
 
 /// Vault settings sheet: recycle bin, key-derivation rounds + benchmark, and
 /// entry-history limits.
+/// Modal: change the vault's master password (current + new + confirm).
+///
+/// Runs the re-key itself rather than returning a password, so a wrong current
+/// password or a failed write is reported in place and the user keeps what they
+/// already typed. Returns true only if the vault was actually re-keyed.
+Future<bool> _promptChangeMasterPassword(
+    BuildContext context, VaultController controller,) async {
+  final changed = await showDialog<bool>(
+    context: context,
+    // A half-finished re-key shouldn't be dismissable by a stray tap.
+    barrierDismissible: false,
+    builder: (_) => _ChangePasswordDialog(controller: controller),
+  );
+  return changed ?? false;
+}
+
+/// A StatefulWidget rather than a StatefulBuilder so the route owns the three
+/// controllers: disposing them when showDialog returns would tear them down
+/// while the dialog's exit transition is still rebuilding the fields.
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog({required this.controller});
+  final VaultController controller;
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _current = TextEditingController();
+  final _fresh = TextEditingController();
+  final _confirm = TextEditingController();
+  String? _err;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _fresh.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_fresh.text.isEmpty) {
+      setState(() => _err = 'new password cannot be empty');
+      return;
+    }
+    if (_fresh.text != _confirm.text) {
+      setState(() => _err = 'new passwords do not match');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _err = null;
+    });
+    final result = await widget.controller.changeMasterPassword(
+      currentPassword: _current.text,
+      newPassword: _fresh.text,
+    );
+    if (!mounted) return;
+    if (result == ChangePasswordResult.ok) {
+      Navigator.pop(context, true);
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _err = _changePasswordError(result, widget.controller);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: TerminalPanel(
+          title: 'change master password',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SectionLabel('current password'),
+              PromptField(
+                controller: _current,
+                obscure: true,
+                autofocus: true,
+                hint: 'current password…',
+              ),
+              const SizedBox(height: 12),
+              const SectionLabel('new password'),
+              PromptField(
+                controller: _fresh,
+                obscure: true,
+                hint: 'new password…',
+              ),
+              const SizedBox(height: 12),
+              const SectionLabel('confirm'),
+              PromptField(
+                controller: _confirm,
+                obscure: true,
+                hint: 'repeat…',
+                onSubmitted: (_) => _busy ? null : _submit(),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'The vault is re-encrypted and saved immediately. Nothing can '
+                'recover a forgotten master password.',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              if (_err != null) ...[
+                const SizedBox(height: 12),
+                Text('!! $_err', style: mono(size: 12, color: TermColors.red)),
+              ],
+              const SizedBox(height: 18),
+              // Wrap, not Row+Spacer: on a narrow phone the two buttons don't
+              // fit on one line and would overflow.
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  TermButton(
+                    label: 'CANCEL',
+                    color: TermColors.textDim,
+                    onPressed:
+                        _busy ? null : () => Navigator.pop(context, false),
+                  ),
+                  TermButton(
+                    label: 'CHANGE',
+                    color: TermColors.amber,
+                    busy: _busy,
+                    onPressed: _busy ? null : _submit,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _changePasswordError(
+    ChangePasswordResult result, VaultController controller,) {
+  switch (result) {
+    case ChangePasswordResult.ok:
+      return '';
+    case ChangePasswordResult.notUnlocked:
+      return 'vault is not unlocked';
+    case ChangePasswordResult.wrongCurrentPassword:
+      return 'current password is wrong';
+    case ChangePasswordResult.emptyNewPassword:
+      return 'new password cannot be empty';
+    case ChangePasswordResult.noWritableLocation:
+      return 'this vault has no file to write to';
+    case ChangePasswordResult.saveFailed:
+      // save() left the reason in `error`; the old password still works.
+      return controller.error ?? 'save failed \u2014 password unchanged';
+  }
+}
+
 void _showSettings(BuildContext context, VaultController controller) {
   showModalBottomSheet<void>(
     context: context,
@@ -975,6 +1137,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       TextEditingController(text: '${widget.controller.focusLockMinutes}');
   bool _benchmarking = false;
   bool _recentsCleared = false;
+  bool _passwordChanged = false;
 
   @override
   void dispose() {
@@ -1205,6 +1368,37 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
               const _SettingsDivider(),
 
+              // Master password
+              const SectionLabel('master password'),
+              const SizedBox(height: 6),
+              Text(
+                'Re-encrypts the whole vault under a new password and rewrites '
+                'the file straight away. There is no recovery if you forget it.',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              const SizedBox(height: 10),
+              // Wrap so the confirmation can drop to its own line on a narrow
+              // phone instead of overflowing the row.
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  TermButton(
+                    label: 'CHANGE PASSWORD',
+                    color: TermColors.amber,
+                    tooltip: 'Set a new master password for this vault',
+                    onPressed: c.status == VaultStatus.unlocked
+                        ? () => _changeMasterPassword(c)
+                        : null,
+                  ),
+                  if (_passwordChanged)
+                    Text('changed ✓',
+                        style: mono(size: 12, color: TermColors.green),),
+                ],
+              ),
+              const _SettingsDivider(),
+
               // History
               const SectionLabel('entry history'),
               const SizedBox(height: 6),
@@ -1263,7 +1457,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 style: mono(size: 11, color: TermColors.textDim),
               ),
               const SizedBox(height: 10),
-              Row(
+              // Wrap so the confirmation can drop to its own line on a narrow
+              // phone instead of overflowing the row.
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
                 children: [
                   TermButton(
                     label: 'CLEAR RECENTS',
@@ -1271,11 +1470,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     tooltip: 'Forget the recently-opened vault list',
                     onPressed: _clearRecents,
                   ),
-                  if (_recentsCleared) ...[
-                    const SizedBox(width: 12),
+                  if (_recentsCleared)
                     Text('cleared ✓',
                         style: mono(size: 12, color: TermColors.green),),
-                  ],
                 ],
               ),
             ],
@@ -1288,6 +1485,11 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   Future<void> _clearRecents() async {
     await RecentVaults.clear();
     if (mounted) setState(() => _recentsCleared = true);
+  }
+
+  Future<void> _changeMasterPassword(VaultController c) async {
+    final changed = await _promptChangeMasterPassword(context, c);
+    if (mounted && changed) setState(() => _passwordChanged = true);
   }
 
   Widget _settingText(String title, String desc) => Column(

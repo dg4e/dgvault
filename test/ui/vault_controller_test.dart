@@ -331,6 +331,9 @@ void main() {
     await c2.unlock('s3cret-master');
     expect(c2.status, VaultStatus.unlocked);
     expect(c2.database!.meta.name, 'vault');
+    // A brand-new vault records when its master key was set.
+    expect(c2.database!.meta.masterKeyChanged, isNotNull);
+    expect(c2.database!.meta.masterKeyChanged, c.database!.meta.masterKeyChanged);
 
     await c2.unlock('wrong'); // already unlocked → ignored; sanity
   });
@@ -345,6 +348,12 @@ void main() {
     await c.unlock('correct horse battery staple');
     expect(c.status, VaultStatus.unlocked, reason: c.error);
     expect(c.search('acme').isNotEmpty, isTrue); // the fixture's 'Acme Corp'
+
+    // This file's times are the KDBX4 binary form, not ISO text. Reading them
+    // back as real dates (rather than null) is what makes MasterKeyChanged and
+    // the entry timestamps usable against vaults written by other clients.
+    expect(c.database!.meta.masterKeyChanged, isNotNull);
+    expect(c.search('acme').first.modified, isNotNull);
   }, timeout: const Timeout(Duration(minutes: 2)),);
 
   test('opens a legacy KDBX3 file via the same flow (version dispatch)',
