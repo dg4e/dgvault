@@ -15,6 +15,7 @@ class DatabaseMeta {
     this.recycleBinUuid,
     this.historyMaxItems = 10,
     this.historyMaxSize = 6 * 1024 * 1024,
+    this.masterKeyChanged,
     Map<String, String>? customData,
   }) : customData = customData ?? <String, String>{};
 
@@ -34,6 +35,12 @@ class DatabaseMeta {
   /// Max total history size per entry in bytes (KDBX HistoryMaxSize). A negative
   /// value means unlimited. KeePass default is 6 MiB.
   int historyMaxSize;
+
+  /// When the master key was last changed (KDBX MasterKeyChanged). Stamped on
+  /// vault creation and on every re-key; null for a vault that predates the
+  /// field (KeePass shows it in the database settings, and other clients use it
+  /// to drive "time to change your password" prompts).
+  DateTime? masterKeyChanged;
 
   /// Arbitrary plugin/app key-values stored in the database (e.g. read-only hint).
   final Map<String, String> customData;

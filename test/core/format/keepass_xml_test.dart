@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dgvault/core/core.dart';
@@ -72,6 +73,43 @@ void main() {
     final back2 = codec.decode(codec.encode(db));
     expect(back2.meta.historyMaxItems, 25);
     expect(back2.meta.historyMaxSize, 2 * 1024 * 1024);
+  });
+
+  test('round-trips MasterKeyChanged (absent, then stamped)', () {
+    // A vault that predates the field stays null rather than inventing a date.
+    final fresh = codec.decode(codec.encode(_sample()));
+    expect(fresh.meta.masterKeyChanged, isNull);
+    expect(codec.encode(_sample()), isNot(contains('MasterKeyChanged')));
+
+    final db = _sample();
+    final stamp = DateTime.utc(2026, 8, 29, 14, 30, 15);
+    db.meta.masterKeyChanged = stamp;
+    final xml = codec.encode(db);
+    expect(xml, contains('<MasterKeyChanged>'));
+
+    final back = codec.decode(xml);
+    expect(back.meta.masterKeyChanged, stamp);
+    expect(back.meta.masterKeyChanged!.isUtc, isTrue);
+  });
+
+  test('reads the KDBX4 binary time form written by KeePass/KeePassXC', () {
+    // base64 of a little-endian int64: seconds since 0001-01-01T00:00:00Z.
+    final expected = DateTime.utc(2026, 8, 29, 14, 30, 15);
+    final seconds = expected.difference(DateTime.utc(1, 1, 1)).inSeconds;
+    final bytes = Uint8List(8);
+    ByteData.sublistView(bytes).setInt64(0, seconds, Endian.little);
+    final encoded = base64.encode(bytes);
+
+    final xml = codec.encode(_sample()).replaceFirst(
+          '</Meta>',
+          '<MasterKeyChanged>$encoded</MasterKeyChanged></Meta>',
+        );
+    expect(codec.decode(xml).meta.masterKeyChanged, expected);
+
+    // Junk in a time element is ignored, not fatal.
+    final junk = codec.encode(_sample()).replaceFirst('</Meta>',
+        '<MasterKeyChanged>not-a-time</MasterKeyChanged></Meta>',);
+    expect(codec.decode(junk).meta.masterKeyChanged, isNull);
   });
 
   test('round-trips entry fields incl. protected + custom', () {

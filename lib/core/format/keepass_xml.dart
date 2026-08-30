@@ -10,7 +10,9 @@
 //    plaintext content. The KDBX inner-stream cipher (Salsa20/ChaCha20) that
 //    obfuscates protected values *within* the encrypted block is applied by the
 //    KDBX layer, not here — at this layer values are already in the clear.
-//  • Times use ISO-8601 (KeePass 2.x text form), round-trippable losslessly.
+//  • Times are WRITTEN as ISO-8601 (KeePass 2.x text form), round-trippable
+//    losslessly. Reads also accept the KDBX4 binary form (base64 int64 seconds
+//    since 0001-01-01), which is what KeePass 2.x / KeePassXC emit.
 //
 // Uses the vetted `package:xml` parser/builder — no hand-rolled XML.
 
@@ -51,6 +53,10 @@ class KeePassXml {
         }
         _textEl(builder, 'HistoryMaxItems', '${db.meta.historyMaxItems}');
         _textEl(builder, 'HistoryMaxSize', '${db.meta.historyMaxSize}');
+        if (db.meta.masterKeyChanged != null) {
+          _textEl(builder, 'MasterKeyChanged',
+              db.meta.masterKeyChanged!.toIso8601String(),);
+        }
         builder.element('Binaries', nest: () {
           for (final bin in db.binaryPool) {
             builder.element('Binary', nest: () {
@@ -224,6 +230,8 @@ class KeePassXml {
           : rbUuid,
       historyMaxItems: hMaxItems ?? 10,
       historyMaxSize: hMaxSize ?? 6 * 1024 * 1024,
+      masterKeyChanged:
+          _parseTime(metaEl?.getElement('MasterKeyChanged')?.innerText),
       customData: customData,
     );
   }
@@ -325,8 +333,30 @@ class KeePassXml {
     );
   }
 
+  /// Seconds-since epoch used by the KDBX4 binary time form.
+  static final DateTime _kdbxEpoch = DateTime.utc(1, 1, 1);
+
+  /// KeePass writes times in two forms and we must read both:
+  ///  • the 2.x text form — ISO-8601, which is what dgvault writes;
+  ///  • the KDBX4 binary form — base64 of a little-endian int64 count of
+  ///    seconds since 0001-01-01T00:00:00Z, which is what KeePass 2.x and
+  ///    KeePassXC emit. Without this, every timestamp in a vault written by
+  ///    another client reads back as null.
+  ///
+  /// Text is tried first (an ISO string is never valid base64 — it carries
+  /// `-` and `:`). Anything unrecognised yields null rather than throwing, so
+  /// an odd file still opens.
   DateTime? _parseTime(String? text) {
     if (text == null || text.isEmpty) return null;
-    return DateTime.tryParse(text);
+    final iso = DateTime.tryParse(text);
+    if (iso != null) return iso;
+    try {
+      final bytes = base64.decode(text);
+      if (bytes.length != 8) return null;
+      final seconds = ByteData.sublistView(bytes).getInt64(0, Endian.little);
+      return _kdbxEpoch.add(Duration(seconds: seconds));
+    } catch (_) {
+      return null; // not base64 either
+    }
   }
 }
