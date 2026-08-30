@@ -68,6 +68,13 @@ written by ytcracker and clord. (c)2026 digital gangster enterprises, llc
 **Privacy Policy URL**: https://dg4e.github.io/dgvault/privacy-policy.html
 **Copyright**: 2026 digital gangster enterprises, llc
 
+**What's New** (0.8.5)
+```
+you can change your vault's master password now — vault settings › master
+password › change password. the vault is re-encrypted under the new password
+and saved on the spot.
+```
+
 **What's New** (0.8.4)
 ```
 totp entries now show the live rotating 6-digit code with a countdown, not
