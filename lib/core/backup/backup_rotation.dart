@@ -72,6 +72,44 @@ class BackupRotator {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
+  /// Matches a name minted by [nextBackupName]: `.<yyyyMMddTHHmmssSSS>[-NN].kdbx.bak`.
+  static final RegExp _namePattern =
+      RegExp(r'\.(\d{8}T\d{9})(?:-\d{2})?\.kdbx\.bak$');
+
+  /// The UTC instant encoded in a name produced by [nextBackupName], or null
+  /// when [fileName] is not one of ours (or carries an out-of-range date).
+  ///
+  /// The NAME is the authority on when a backup was taken. A backup's file
+  /// mtime is not: the copy inherits the mtime of the vault it was copied
+  /// from, which is the time of the PREVIOUS save — so mtime lags reality by
+  /// one save and can be arbitrarily stale. Ageing backups by mtime would
+  /// delete the wrong files.
+  ///
+  /// Ranges are validated rather than left to DateTime's silent rollover, so a
+  /// malformed name can never masquerade as a very old (and thus deletable)
+  /// backup — it returns null and the caller decides how to treat it.
+  static DateTime? parseBackupTimestamp(String fileName) {
+    final match = _namePattern.firstMatch(fileName);
+    if (match == null) return null;
+    final d = match.group(1)!; // yyyyMMdd 'T' HHmmssSSS
+    int at(int start, int len) => int.parse(d.substring(start, start + len));
+    final year = at(0, 4),
+        month = at(4, 2),
+        day = at(6, 2),
+        hour = at(9, 2), // index 8 is the literal 'T'
+        minute = at(11, 2),
+        second = at(13, 2),
+        ms = at(15, 3);
+    if (month < 1 || month > 12) return null;
+    if (day < 1 || day > 31) return null;
+    if (hour > 23 || minute > 59 || second > 59) return null;
+    final parsed =
+        DateTime.utc(year, month, day, hour, minute, second, ms);
+    // Reject a rolled-over date (e.g. February 31st).
+    if (parsed.month != month || parsed.day != day) return null;
+    return parsed;
+  }
+
   /// Deterministic, sortable backup name: `<base>.<UTC-timestamp>.kdbx.bak`,
   /// timestamp `yyyyMMddTHHmmssSSS` (millisecond resolution) so lexical order
   /// matches chronological order. An optional [sequence] suffix (`-NN`)

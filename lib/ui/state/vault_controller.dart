@@ -323,7 +323,9 @@ class VaultController extends ChangeNotifier {
   }
 
   /// Backup-rotation policy for pre-overwrite safety copies (keep the last 5).
-  static const _backupRotator = BackupRotator();
+  /// Rotator for the pre-overwrite backups written by [_writeFileAtomic],
+  /// built from the vault's retention settings.
+  BackupRotator get _backupRotator => BackupRotator(policy: backupPolicy);
 
   /// Crash-safe write for a filesystem path: snapshot the current file as a
   /// timestamped backup, write the new bytes to a temp file (fsync'd), then
@@ -383,7 +385,14 @@ class VaultController extends ChangeNotifier {
     for (final f in dir.listSync().whereType<File>()) {
       final name = f.path.split(Platform.pathSeparator).last;
       if (name.startsWith(prefix) && name.endsWith('.kdbx.bak')) {
-        entries.add(BackupEntry(id: f.path, createdAt: f.statSync().modified));
+        // Age by the timestamp in the name, not the mtime: File.copy carries
+        // over the source vault's mtime, which is the PREVIOUS save's time.
+        // mtime is only a fallback for a name we didn't mint.
+        final stamped = BackupRotator.parseBackupTimestamp(name);
+        entries.add(BackupEntry(
+          id: f.path,
+          createdAt: stamped ?? f.statSync().modified,
+        ),);
       }
     }
     for (final e in _backupRotator.selectForDeletion(entries, now: now)) {
@@ -635,6 +644,66 @@ class VaultController extends ChangeNotifier {
   /// Lock after this many minutes away once focus returns (0 = off).
   int get focusLockMinutes => _customInt(_kFocusLock);
   set focusLockMinutes(int m) => _setCustomInt(_kFocusLock, m);
+
+  // ---- backup retention — persisted in the vault's custom data -------------
+
+  static const _kBackupKeepLast = 'dgvault.backupKeepLast';
+  static const _kBackupMaxCount = 'dgvault.backupMaxCount';
+  static const _kBackupMaxAgeDays = 'dgvault.backupMaxAgeDays';
+
+  /// Defaults applied when a vault carries no setting for these.
+  static const backupKeepLastDefault = 5;
+  static const backupMaxCountDefault = 20;
+  static const backupMaxAgeDaysDefault = 30;
+
+  int _customIntOr(String key, int fallback) {
+    final raw = _db?.meta.customData[key];
+    if (raw == null) return fallback;
+    return int.tryParse(raw) ?? fallback;
+  }
+
+  /// Store even a 0 here: for backups 0 means "no limit", which is a real
+  /// choice and must be distinguishable from "unset" (which means the default).
+  void _setBackupInt(String key, int value) {
+    final db = _db;
+    if (db == null) return;
+    db.meta.customData[key] = '${value < 0 ? 0 : value}';
+    _touch();
+  }
+
+  /// Always keep this many most-recent backups, whatever the limits say.
+  int get backupKeepLast => _customIntOr(_kBackupKeepLast, backupKeepLastDefault);
+  set backupKeepLast(int v) => _setBackupInt(_kBackupKeepLast, v);
+
+  /// Cap on retained backups; 0 = no count limit.
+  int get backupMaxCount => _customIntOr(_kBackupMaxCount, backupMaxCountDefault);
+  set backupMaxCount(int v) => _setBackupInt(_kBackupMaxCount, v);
+
+  /// Delete backups older than this many days; 0 = no age limit.
+  int get backupMaxAgeDays =>
+      _customIntOr(_kBackupMaxAgeDays, backupMaxAgeDaysDefault);
+  set backupMaxAgeDays(int v) => _setBackupInt(_kBackupMaxAgeDays, v);
+
+  /// True when neither limit is set, so backups accumulate one per save with
+  /// nothing ever pruned. A legitimate choice, but the UI should say so.
+  bool get backupsUnbounded => backupMaxCount <= 0 && backupMaxAgeDays <= 0;
+
+  /// The retention policy these settings describe.
+  ///
+  /// keepLast is floored at 1 (a 0 would leave nothing protected), and the
+  /// count cap is raised to keepLast when the user sets it lower — the policy
+  /// asserts maxTotalCount >= keepLast, and a debug crash is a worse answer
+  /// than honouring the stricter of the two.
+  BackupRetentionPolicy get backupPolicy {
+    final keep = max(1, backupKeepLast);
+    final count = backupMaxCount;
+    final days = backupMaxAgeDays;
+    return BackupRetentionPolicy(
+      keepLast: keep,
+      maxTotalCount: count <= 0 ? null : max(count, keep),
+      maxAge: days <= 0 ? null : Duration(days: days),
+    );
+  }
 
   /// The active auto-lock policy derived from the current settings.
   AutoLockPolicy get autoLockPolicy => AutoLockPolicy(

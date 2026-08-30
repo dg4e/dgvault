@@ -99,4 +99,41 @@ void main() {
       expect(a.compareTo(b) < 0, isTrue, reason: 'sequence preserves order');
     });
   });
+
+  group('parseBackupTimestamp', () {
+    const rot = BackupRotator();
+
+    test('round-trips a minted name, with and without a sequence suffix', () {
+      final when = DateTime.utc(2026, 8, 30, 5, 18, 46, 849);
+      expect(
+        BackupRotator.parseBackupTimestamp(rot.nextBackupName('vault', when)),
+        when,
+      );
+      expect(
+        BackupRotator.parseBackupTimestamp(
+            rot.nextBackupName('vault', when, sequence: 7),),
+        when,
+      );
+      // Full paths are names too — that is what the rotator scans.
+      expect(
+        BackupRotator.parseBackupTimestamp(
+            rot.nextBackupName('/home/me/vault.kdbx', when),),
+        when,
+      );
+    });
+
+    test('rejects foreign or malformed names rather than inventing a date', () {
+      for (final name in [
+        'vault.kdbx', // not a backup
+        'vault.kdbx.bak', // no timestamp
+        'vault.kdbx.20260830T051846849.kdbx', // wrong suffix
+        'vault.kdbx.2026083T051846849.kdbx.bak', // too few digits
+        'vault.kdbx.20261330T051846849.kdbx.bak', // month 13
+        'vault.kdbx.20260231T051846849.kdbx.bak', // February 31st
+        'vault.kdbx.20260830T251846849.kdbx.bak', // hour 25
+      ]) {
+        expect(BackupRotator.parseBackupTimestamp(name), isNull, reason: name);
+      }
+    });
+  });
 }
