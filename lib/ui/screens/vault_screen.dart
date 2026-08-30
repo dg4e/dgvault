@@ -871,7 +871,7 @@ class _Header extends StatelessWidget {
           icon: Icons.settings_outlined,
           color: TermColors.cyan,
           tooltip: 'Vault settings',
-          onTap: () => _showSettings(context, controller),
+          onTap: () => showSettings(context, controller),
         ),
         const SizedBox(width: 6),
         _HeaderBtn(
@@ -897,7 +897,7 @@ class _Header extends StatelessWidget {
           case 'audit':
             showAudit(context, controller);
           case 'settings':
-            _showSettings(context, controller);
+            showSettings(context, controller);
           case 'about':
             showCracktro(context);
           case 'lock':
@@ -935,8 +935,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Vault settings sheet: recycle bin, key-derivation rounds + benchmark, and
-/// entry-history limits.
+/// Vault settings sheet: recycle bin, key-derivation rounds + benchmark,
+/// entry-history limits, backup retention, and the master-password change.
 /// Modal: change the vault's master password (current + new + confirm).
 ///
 /// Runs the re-key itself rather than returning a password, so a wrong current
@@ -1099,7 +1099,7 @@ String _changePasswordError(
   }
 }
 
-void _showSettings(BuildContext context, VaultController controller) {
+void showSettings(BuildContext context, VaultController controller) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: TermColors.bg,
@@ -1135,6 +1135,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       TextEditingController(text: '${widget.controller.idleLockMinutes}');
   late final _focusLock =
       TextEditingController(text: '${widget.controller.focusLockMinutes}');
+  late final _bkKeep =
+      TextEditingController(text: '${widget.controller.backupKeepLast}');
+  late final _bkCount =
+      TextEditingController(text: '${widget.controller.backupMaxCount}');
+  late final _bkAge =
+      TextEditingController(text: '${widget.controller.backupMaxAgeDays}');
   bool _benchmarking = false;
   bool _recentsCleared = false;
   bool _passwordChanged = false;
@@ -1147,6 +1153,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _desc.dispose();
     _idleLock.dispose();
     _focusLock.dispose();
+    _bkKeep.dispose();
+    _bkCount.dispose();
+    _bkAge.dispose();
     super.dispose();
   }
 
@@ -1168,6 +1177,15 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   void _commitHistItems() {
     final v = int.tryParse(_histItems.text.trim());
     if (v != null) widget.controller.setHistoryMaxItems(v);
+  }
+
+  /// Backup limits: blank or junk means "leave it alone", not zero — zero is a
+  /// real value here (no limit) and must be typed deliberately.
+  void _commitBackup(TextEditingController field, void Function(int) apply) {
+    final v = int.tryParse(field.text.trim());
+    if (v == null || v < 0) return;
+    apply(v);
+    setState(() {}); // the unbounded hint depends on these
   }
 
   void _commitHistSize() {
@@ -1446,6 +1464,86 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 'Changes are saved with the vault${hotkeyHint('S')}.',
                 style: mono(size: 11, color: TermColors.textFaint),
               ),
+              const _SettingsDivider(),
+
+              // Backups
+              const SectionLabel('backups'),
+              const SizedBox(height: 6),
+              Text(
+                'Every save copies the previous vault file aside as a '
+                '.kdbx.bak next to it. The newest few are always kept; beyond '
+                'those, a backup goes once it is past the count cap or older '
+                'than the age limit. Use 0 for no limit.',
+                style: mono(size: 11, color: TermColors.textDim),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel('keep newest'),
+                        PromptField(
+                          controller: _bkKeep,
+                          sigil: '#',
+                          onChanged: (_) =>
+                              _commitBackup(_bkKeep, (v) => c.backupKeepLast = v),
+                          onSubmitted: (_) =>
+                              _commitBackup(_bkKeep, (v) => c.backupKeepLast = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel('max total'),
+                        PromptField(
+                          controller: _bkCount,
+                          sigil: '#',
+                          onChanged: (_) => _commitBackup(
+                              _bkCount, (v) => c.backupMaxCount = v,),
+                          onSubmitted: (_) => _commitBackup(
+                              _bkCount, (v) => c.backupMaxCount = v,),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel('max age (days)'),
+                        PromptField(
+                          controller: _bkAge,
+                          sigil: '#',
+                          onChanged: (_) => _commitBackup(
+                              _bkAge, (v) => c.backupMaxAgeDays = v,),
+                          onSubmitted: (_) => _commitBackup(
+                              _bkAge, (v) => c.backupMaxAgeDays = v,),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(child: SizedBox()),
+                ],
+              ),
+              if (c.backupsUnbounded) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '!! both limits are off — backups will pile up, one per save.',
+                  style: mono(size: 11, color: TermColors.amber),
+                ),
+              ],
               const _SettingsDivider(),
 
               // Recent vaults
