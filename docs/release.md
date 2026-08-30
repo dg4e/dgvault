@@ -128,7 +128,7 @@ Developer ID`).
 
 Ready-to-upload screenshots live in `store/screenshots/` (iPhone 6.9",
 iPad 13", Android phone, Android 10" tablet). To regenerate: build with
-`--dart-define=DGVAULT_DEMO=vault|locked|detail|generator` (seeds a demo
+`--dart-define=DGVAULT_DEMO=vault|locked|detail|generator|settings` (seeds a demo
 vault and stages that screen, see `lib/ui/dev/demo_vault.dart`), or
 `DGVAULT_OPEN_ABOUT=true` for the cracktro, then capture:
 

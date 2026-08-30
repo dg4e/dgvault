@@ -19,6 +19,7 @@ import '../../core/model/group.dart';
 import '../../core/model/protected_value.dart';
 import '../screens/entry_detail.dart';
 import '../screens/generator_sheet.dart';
+import '../screens/vault_screen.dart';
 import '../state/vault_controller.dart';
 import '../theme/terminal_theme.dart';
 
@@ -64,6 +65,8 @@ Future<void> stageDemo(
       );
     case 'generator':
       showGenerator(navKey.currentContext!);
+    case 'settings':
+      showSettings(navKey.currentContext!, c);
   }
 }
 

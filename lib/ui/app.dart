@@ -71,7 +71,7 @@ class _DgvaultAppState extends State<DgvaultApp> with WindowListener {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showAbout());
     }
     // Same idea for store screenshots: seed a demo vault and stage a screen.
-    //   flutter run --dart-define=DGVAULT_DEMO=vault|locked|detail|generator
+    //   flutter run --dart-define=DGVAULT_DEMO=vault|locked|detail|generator|settings
     const demoStage = String.fromEnvironment('DGVAULT_DEMO');
     if (demoStage.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback(
