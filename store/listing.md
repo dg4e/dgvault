@@ -73,6 +73,10 @@ written by ytcracker and clord. (c)2026 digital gangster enterprises, llc
 you can change your vault's master password now — vault settings › master
 password › change password. the vault is re-encrypted under the new password
 and saved on the spot.
+
+local backups are fixed too: they were piling up one per save and never
+getting cleaned out. vault settings › backups now controls how many to keep
+and how long.
 ```
 
 **What's New** (0.8.4)
